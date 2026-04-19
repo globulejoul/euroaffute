@@ -987,8 +987,8 @@
 
   <footer>
     Données publiques fournies par
-    <a href="https://nunofcguerreiro.com/post/euro-millions-api" target="_blank" rel="noopener">l'API N.F.C. Guerreiro</a>.
-    Les règles se recalculent à chaque chargement, donc s'adaptent aux nouveaux tirages.<br>
+    <a href="https://github.com/pedro-mealha/euromillions-api" target="_blank" rel="noopener">l'API EuroMillions de Pedro Mealha</a>,
+    actualisée automatiquement après chaque tirage.<br>
     Le jeu peut être dangereux : pertes d'argent, isolement, dépendance.
     <a href="https://www.joueurs-info-service.fr/" target="_blank" rel="noopener">Appelez le 09 74 75 13 13</a>.
   </footer>
@@ -1000,7 +1000,7 @@
 // EuroAffûté v2 — filtres appris depuis l'historique
 // =====================================================================
 
-const API_URL = 'https://nunofcguerreiro.com/api-euromillions-json?result=all';
+const API_URL = 'https://euromillions.api.pedromealha.dev/v1/draws';
 
 const state = {
   draws: [],
@@ -1086,21 +1086,22 @@ async function loadDraws() {
   try {
     const { data, via } = await fetchDrawsJson();
 
-    if (!data.drawns || !Array.isArray(data.drawns)) {
-      throw new Error('Format JSON inattendu');
+    // L'API de Pedro Mealha renvoie directement un tableau d'objets
+    // de forme { date, numbers: ["1","2"…], stars: ["3","4"], prizes:[…] }
+    if (!Array.isArray(data)) {
+      throw new Error('Format JSON inattendu (tableau attendu)');
     }
 
     const parsed = [];
-    for (const d of data.drawns) {
-      const ballsStr = d.balls || d.Balls || '';
-      const starsStr = d.stars || d.Stars || '';
-      const balls = ballsStr.trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && n >= 1);
-      const stars = starsStr.trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && n >= 1);
+    for (const d of data) {
+      const balls = (d.numbers || []).map(n => parseInt(n, 10)).filter(n => !isNaN(n) && n >= 1 && n <= 50);
+      const stars = (d.stars || []).map(n => parseInt(n, 10)).filter(n => !isNaN(n) && n >= 1 && n <= 12);
       if (balls.length === 5 && stars.length === 2) {
         parsed.push({
-          date: d.day || d.date || '',
+          date: d.date || '',
           balls: sortAsc(balls),
           stars: sortAsc(stars),
+          hasWinner: d.has_winner,
         });
       }
     }
