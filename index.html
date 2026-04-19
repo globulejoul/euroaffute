@@ -1050,16 +1050,41 @@ function decadesCovered(balls) {
 
 function evenCount(balls) { return balls.filter(b => b % 2 === 0).length; }
 
-// --- chargement ------------------------------------------------------
+// --- chargement (avec fallbacks CORS) --------------------------------
+
+// On tente plusieurs stratégies dans l'ordre : appel direct, puis deux
+// proxies CORS publics au cas où l'API refuse des origines comme github.io.
+async function fetchDrawsJson() {
+  const base = API_URL;
+  const strategies = [
+    { name: 'direct',     url: base },
+    { name: 'corsproxy',  url: 'https://corsproxy.io/?url=' + encodeURIComponent(base) },
+    { name: 'allorigins', url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(base) },
+  ];
+
+  let lastError = null;
+  for (const s of strategies) {
+    try {
+      console.log('[EuroAffûté] Tentative ' + s.name + '…');
+      const res = await fetch(s.url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      console.log('[EuroAffûté] Succès via ' + s.name);
+      return { data, via: s.name };
+    } catch (err) {
+      console.warn('[EuroAffûté] Échec ' + s.name + ' : ' + err.message);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('Tous les endpoints ont échoué');
+}
 
 async function loadDraws() {
   const dot = document.getElementById('statusDot');
   const txt = document.getElementById('statusText');
 
   try {
-    const res = await fetch(API_URL);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const { data, via } = await fetchDrawsJson();
 
     if (!data.drawns || !Array.isArray(data.drawns)) {
       throw new Error('Format JSON inattendu');
@@ -1087,7 +1112,8 @@ async function loadDraws() {
     state.ready = true;
 
     dot.classList.add('live');
-    txt.textContent = fmt(parsed.length) + ' tirages chargés';
+    const suffix = via === 'direct' ? '' : ' · via ' + via;
+    txt.textContent = fmt(parsed.length) + ' tirages chargés' + suffix;
 
     renderRules();
     renderAnomaly();
@@ -1100,8 +1126,16 @@ async function loadDraws() {
     console.error('Erreur de chargement :', err);
     dot.classList.add('err');
     txt.textContent = 'Erreur : ' + err.message;
-    const rules = document.getElementById('rules');
-    rules.innerHTML = '<div class="error-msg">Impossible de contacter l\'API. Vérifiez votre connexion réseau, ou réessayez dans un moment.<br><br><code>' + err.message + '</code></div>';
+    const rulesHard = document.getElementById('rulesHard');
+    const rulesCore = document.getElementById('rulesCore');
+    const msg = '<div class="error-msg">' +
+      '<strong>Impossible de joindre l\'API EuroMillions.</strong><br><br>' +
+      'Trois stratégies ont été tentées (appel direct + 2 proxies CORS), toutes ont échoué. ' +
+      'Ouvrez la console (F12 → Console) pour voir le détail des erreurs.<br><br>' +
+      '<code>' + err.message + '</code>' +
+      '</div>';
+    if (rulesHard) rulesHard.innerHTML = msg;
+    if (rulesCore) rulesCore.innerHTML = '';
   }
 }
 
