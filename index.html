@@ -775,6 +775,172 @@
     border: 1px dashed var(--line);
   }
 
+  /* FREQUENCES / HEATMAP */
+  .frequencies {
+    margin: 2rem 0 3rem;
+  }
+  .freq-block { margin-bottom: 2.5rem; }
+  .freq-block:last-child { margin-bottom: 0; }
+
+  .freq-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .freq-title small {
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.8rem;
+    color: var(--text-faint);
+    font-weight: 300;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .freq-grid {
+    display: grid;
+    gap: 3px;
+    margin-bottom: 0.75rem;
+  }
+  .freq-grid.balls  { grid-template-columns: repeat(10, 1fr); max-width: 680px; }
+  .freq-grid.stars  { grid-template-columns: repeat(12, 1fr); max-width: 540px; }
+
+  .freq-cell {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid transparent;
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: help;
+  }
+  .freq-cell:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    z-index: 5;
+    border-color: var(--text-dim);
+  }
+  .freq-cell .freq-num {
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .freq-cell .freq-count {
+    font-size: 0.55rem;
+    opacity: 0.7;
+    line-height: 1;
+    margin-top: 2px;
+  }
+
+  .freq-scale {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .freq-scale-bar {
+    width: 140px;
+    height: 10px;
+    background: linear-gradient(90deg, #2a4566 0%, #1a1a1e 50%, var(--gold) 100%);
+    border: 1px solid var(--line);
+  }
+
+  .freq-caveat {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    margin-top: 0.75rem;
+    font-style: italic;
+  }
+
+  /* GAINS */
+  .gains-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin: 1rem 0 3rem;
+  }
+  .gain-stat {
+    background: var(--bg);
+    padding: 2rem 1.75rem;
+    transition: background 0.3s;
+  }
+  .gain-stat:hover { background: var(--bg-elev); }
+  .gain-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 1rem;
+  }
+  .gain-value {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(2.25rem, 4vw, 3rem);
+    line-height: 1;
+    color: var(--gold);
+    font-style: italic;
+    font-weight: 400;
+  }
+  .gain-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    margin-top: 0.75rem;
+  }
+
+  /* AUDIT - panel de gains virtuels */
+  .virtual-winnings {
+    margin-top: 1rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--bg);
+    border: 1px dashed var(--gold);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+  .virtual-winnings .vw-head {
+    color: var(--gold);
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    margin-bottom: 0.75rem;
+  }
+  .virtual-winnings .vw-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .virtual-winnings .vw-row:last-child { border-bottom: none; }
+  .virtual-winnings .vw-label { color: var(--text-dim); }
+  .virtual-winnings .vw-value { color: var(--text); }
+  .virtual-winnings .vw-value.positive { color: var(--green); }
+  .virtual-winnings .vw-value.negative { color: var(--red); }
+  .virtual-winnings .vw-best {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line);
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .virtual-winnings .vw-best strong { color: var(--gold); font-style: normal; }
+
   @media (max-width: 640px) {
     .container { padding: 0 1.25rem; }
     .hero { padding: 3rem 0 2rem; }
@@ -808,6 +974,8 @@
     }
     .grid-profile { grid-column: 2; margin-top: 0.2rem; font-size: 0.65rem; }
     .grid-ball, .grid-star { width: 26px; height: 26px; font-size: 0.7rem; }
+    .freq-cell .freq-num { font-size: 0.7rem; }
+    .freq-cell .freq-count { font-size: 0.5rem; }
   }
 </style>
 </head>
@@ -872,6 +1040,34 @@
     </div>
   </div>
 
+  <div class="section-head">
+    <div class="section-eyebrow">Gains · depuis 2004</div>
+    <h2 class="section-title">Les <em>milliards</em> distribués.</h2>
+    <p class="section-lede">
+      Calculs effectués en direct sur l'intégralité des tirages historiques,
+      en sommant chaque rang (du 2+1 au jackpot) multiplié par le nombre de gagnants.
+      Un petit ordre de grandeur utile pour relativiser l'échelle du jeu.
+    </p>
+  </div>
+
+  <div class="gains-grid">
+    <div class="gain-stat">
+      <div class="gain-label">Total distribué aux gagnants</div>
+      <div class="gain-value" id="gainTotal">—</div>
+      <div class="gain-sub" id="gainTotalSub"></div>
+    </div>
+    <div class="gain-stat">
+      <div class="gain-label">Plus gros jackpot touché</div>
+      <div class="gain-value" id="gainBiggest">—</div>
+      <div class="gain-sub" id="gainBiggestSub"></div>
+    </div>
+    <div class="gain-stat">
+      <div class="gain-label">Tirages sans gagnant jackpot</div>
+      <div class="gain-value" id="gainNoJackpot">—</div>
+      <div class="gain-sub" id="gainNoJackpotSub"></div>
+    </div>
+  </div>
+
   <section class="generator">
     <div class="section-eyebrow" style="margin-bottom:1rem">Tirage filtré</div>
     <h2 class="section-title" style="margin-bottom:2rem">Une grille qui <em>passe</em>.</h2>
@@ -923,6 +1119,7 @@
       <div style="color:var(--text-dim); font-size:0.9rem" id="auditSummary"></div>
       <div class="audit-checks" id="auditChecks"></div>
       <div class="similarity-panel" id="auditSim"></div>
+      <div id="auditVirtual"></div>
     </div>
   </div>
 
@@ -966,6 +1163,42 @@
       vous perdrez statistiquement ~1 300 € par an.
     </div>
 
+  </div>
+
+  <div class="section-head">
+    <div class="section-eyebrow">Fréquences</div>
+    <h2 class="section-title">Vingt ans de <em>régularité</em>.</h2>
+    <p class="section-lede">
+      Chaque boule devrait sortir environ <strong id="freqExpectedBall">—</strong> fois
+      sur l'ensemble des tirages. Les écarts visibles ci-dessous sont à <strong>95% du bruit
+      statistique</strong>. Jouer les « numéros chauds » ou « froids » ne change rien à
+      vos chances — la seule utilité de ce tableau est esthétique, et peut-être un peu
+      thérapeutique contre l'illusion du pattern.
+    </p>
+  </div>
+
+  <div class="frequencies" id="frequencies">
+    <div class="freq-block">
+      <div class="freq-title">
+        Les 50 boules
+        <small>nombre de sorties observées</small>
+      </div>
+      <div class="freq-grid balls" id="freqBalls"></div>
+      <div class="freq-scale">
+        <span>moins tiré</span>
+        <div class="freq-scale-bar"></div>
+        <span>plus tiré</span>
+      </div>
+    </div>
+
+    <div class="freq-block">
+      <div class="freq-title">
+        Les 12 étoiles
+        <small>fréquences ajustées par période de disponibilité</small>
+      </div>
+      <div class="freq-grid stars" id="freqStars"></div>
+      <div class="freq-caveat" id="freqStarsCaveat"></div>
+    </div>
   </div>
 
   <div class="reality">
@@ -1050,6 +1283,194 @@ function decadesCovered(balls) {
 
 function evenCount(balls) { return balls.filter(b => b % 2 === 0).length; }
 
+// Plus grande suite de numéros consécutifs (ex : 19-20-21 → 3)
+function maxConsecutiveRun(sorted) {
+  let max = 1, cur = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] - sorted[i-1] === 1) { cur++; if (cur > max) max = cur; }
+    else cur = 1;
+  }
+  return max;
+}
+
+// Nombre de paires consécutives (ex : 19-20 ET 35-36 → 2 paires)
+function consecutivePairs(sorted) {
+  let n = 0;
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (sorted[i+1] - sorted[i] === 1) n++;
+  }
+  return n;
+}
+
+// Nombre max de balles dans une même dizaine
+function maxBallsPerDecade(balls) {
+  const counts = {};
+  for (const b of balls) {
+    const d = Math.floor(b / 10);
+    counts[d] = (counts[d] || 0) + 1;
+  }
+  return Math.max(...Object.values(counts));
+}
+
+// Nombre max de balles finissant par le même chiffre unité
+function maxBallsPerUnit(balls) {
+  const counts = {};
+  for (const b of balls) {
+    const u = b % 10;
+    counts[u] = (counts[u] || 0) + 1;
+  }
+  return Math.max(...Object.values(counts));
+}
+
+// Plus grand écart entre deux balles consécutives triées
+function maxGap(sorted) {
+  let m = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    const g = sorted[i] - sorted[i-1];
+    if (g > m) m = g;
+  }
+  return m;
+}
+
+// Combien de balles dans la moitié basse (1-25)
+function lowerHalfCount(balls) { return balls.filter(b => b <= 25).length; }
+
+// --- fréquences ------------------------------------------------------
+
+// L'étoile 12 a rejoint le tirage le 24 septembre 2016.
+// Avant cette date, les étoiles étaient tirées dans 1-11.
+const STAR_12_ERA_START = '2016-09-24';
+
+function computeFrequencies(draws) {
+  const ballFreq = new Array(51).fill(0);  // index 0 inutilisé
+  const starFreq = new Array(13).fill(0);
+  let drawsEra11 = 0;  // tirages avec 11 étoiles dans le pool
+  let drawsEra12 = 0;  // tirages avec 12 étoiles dans le pool
+  for (const d of draws) {
+    for (const b of d.balls) ballFreq[b]++;
+    for (const s of d.stars) starFreq[s]++;
+    if (d.date && d.date >= STAR_12_ERA_START) drawsEra12++;
+    else drawsEra11++;
+  }
+  // Attendus
+  const ballExpected = draws.length * 5 / 50;
+  const starExpected = new Array(13).fill(0);
+  for (let n = 1; n <= 11; n++) {
+    // étoiles 1-11 : toujours dans le pool
+    starExpected[n] = drawsEra11 * 2 / 11 + drawsEra12 * 2 / 12;
+  }
+  // étoile 12 : seulement depuis sept. 2016
+  starExpected[12] = drawsEra12 * 2 / 12;
+  return { ballFreq, starFreq, ballExpected, starExpected, drawsEra11, drawsEra12 };
+}
+
+// Couleur divergente : froid (bleu) → neutre → chaud (or)
+function colorForDelta(delta, maxAbs) {
+  const t = Math.max(-1, Math.min(1, delta / maxAbs));
+  const lerp = (a, b, u) => Math.round(a + (b - a) * u);
+  if (t >= 0) {
+    // du neutre (#1a1a1e) vers l'or (#E8C458)
+    return 'rgb(' + lerp(26, 232, t) + ',' + lerp(26, 196, t) + ',' + lerp(30, 88, t) + ')';
+  } else {
+    const u = -t;
+    // du neutre vers un bleu froid #2A4566
+    return 'rgb(' + lerp(26, 42, u) + ',' + lerp(26, 69, u) + ',' + lerp(30, 102, u) + ')';
+  }
+}
+// Si la couleur de fond est claire (côté or), on met du texte sombre.
+function textForDelta(delta, maxAbs) {
+  const t = delta / maxAbs;
+  return t > 0.3 ? '#1a1a1e' : 'var(--text)';
+}
+
+// --- gains et matching historique -----------------------------------
+
+const GRID_COST = 2.50;  // prix d'une grille FDJ en France (sans Étoile+)
+
+// Pour une grille donnée et un tirage historique, compte les concordances
+function matchesAgainst(userCombo, draw) {
+  const ballSet = new Set(draw.balls);
+  const starSet = new Set(draw.stars);
+  const mn = userCombo.balls.filter(b => ballSet.has(b)).length;
+  const ms = userCombo.stars.filter(s => starSet.has(s)).length;
+  return { mn, ms };
+}
+
+// Cherche le prix correspondant à (mn, ms) dans la table des rangs du tirage
+function findPrize(draw, mn, ms) {
+  if (!draw.prizes) return null;
+  const entry = draw.prizes.find(p => p.matched_numbers === mn && p.matched_stars === ms);
+  return entry && entry.prize > 0 ? { prize: entry.prize, winners: entry.winners } : null;
+}
+
+// Simule "j'ai joué cette grille à tous les tirages" : total gagné + meilleur coup
+function cumulativeWinnings(userCombo, draws) {
+  let total = 0, wins = 0, bestPrize = 0, bestDraw = null, bestTier = null;
+  for (const d of draws) {
+    const { mn, ms } = matchesAgainst(userCombo, d);
+    const hit = findPrize(d, mn, ms);
+    if (hit) {
+      total += hit.prize;
+      wins++;
+      if (hit.prize > bestPrize) {
+        bestPrize = hit.prize;
+        bestDraw = d;
+        bestTier = { mn, ms };
+      }
+    }
+  }
+  return { total, wins, bestPrize, bestDraw, bestTier, drawCount: draws.length };
+}
+
+// Total des gains distribués (tous rangs, tous tirages, tous gagnants)
+function totalDistributed(draws) {
+  let total = 0;
+  for (const d of draws) {
+    if (!d.prizes) continue;
+    for (const p of d.prizes) {
+      total += (p.prize || 0) * (p.winners || 0);
+    }
+  }
+  return total;
+}
+
+// Le plus gros jackpot jamais gagné
+function biggestJackpot(draws) {
+  let best = 0, bestDraw = null;
+  for (const d of draws) {
+    if (!d.prizes) continue;
+    const jp = d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
+    if (jp && jp.winners > 0 && jp.prize > best) {
+      best = jp.prize;
+      bestDraw = d;
+    }
+  }
+  return { amount: best, draw: bestDraw };
+}
+
+// Nombre de tirages sans gagnant du jackpot (rollover vers le tirage suivant)
+function drawsWithoutJackpot(draws) {
+  let count = 0;
+  for (const d of draws) {
+    if (d.hasWinner === false) { count++; continue; }
+    if (d.prizes) {
+      const jp = d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
+      if (!jp || !jp.winners) count++;
+    }
+  }
+  return count;
+}
+
+// Formatage lisible des montants en euros
+function formatMoney(eur) {
+  const abs = Math.abs(eur);
+  const sign = eur < 0 ? '-' : '';
+  if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2).replace('.', ',') + ' Md€';
+  if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1).replace('.', ',') + ' M€';
+  if (abs >= 1e3) return sign + fmt(Math.round(abs / 1e3)) + ' k€';
+  return sign + fmt(Math.round(abs)) + ' €';
+}
+
 // --- chargement (avec fallbacks CORS) --------------------------------
 
 // On tente plusieurs stratégies dans l'ordre : appel direct, puis deux
@@ -1102,6 +1523,7 @@ async function loadDraws() {
           balls: sortAsc(balls),
           stars: sortAsc(stars),
           hasWinner: d.has_winner,
+          prizes: Array.isArray(d.prizes) ? d.prizes : null,
         });
       }
     }
@@ -1118,6 +1540,8 @@ async function loadDraws() {
 
     renderRules();
     renderAnomaly();
+    renderGains();
+    renderFrequencies();
     document.getElementById('generateBtn').disabled = false;
     document.getElementById('auditBtn').disabled = false;
     document.getElementById('fillRandomBtn').disabled = false;
@@ -1145,6 +1569,7 @@ async function loadDraws() {
 function learnFilters(draws) {
   const sums = draws.map(d => sum(d.balls));
   const ranges = draws.map(d => range(d.balls));
+  const starSums = draws.map(d => sum(d.stars));
 
   const anyAP = draws.some(d => isAP(d.balls));
   const anySameDecade = draws.some(d => sameDecade(d.balls));
@@ -1183,6 +1608,20 @@ function learnFilters(draws) {
     rangeP90: quantile(ranges, 0.90),
     medianSum: quantile(sums, 0.50),
     medianRange: quantile(ranges, 0.50),
+    // Bornes étoiles (plus permissif : p5-p95)
+    starSumP5: quantile(starSums, 0.05),
+    starSumP95: quantile(starSums, 0.95),
+    // Nouvelles statistiques de fréquence (filtres rares)
+    pct3Consec: draws.filter(d => maxConsecutiveRun(d.balls) >= 3).length / draws.length,
+    pct2Pairs: draws.filter(d => consecutivePairs(d.balls) >= 2).length / draws.length,
+    pct4SameDec: draws.filter(d => maxBallsPerDecade(d.balls) >= 4).length / draws.length,
+    pct4SameUnit: draws.filter(d => maxBallsPerUnit(d.balls) >= 4).length / draws.length,
+    pctBigGap: draws.filter(d => maxGap(d.balls) >= 30).length / draws.length,
+    pctHalfExtreme: draws.filter(d => {
+      const l = lowerHalfCount(d.balls);
+      return l === 0 || l === 5;
+    }).length / draws.length,
+    pctStarsOppose: draws.filter(d => d.stars[1] - d.stars[0] >= 11).length / draws.length,
     // Statistiques de fréquence
     pctParityExtreme: draws.filter(d => {
       const e = evenCount(d.balls);
@@ -1266,6 +1705,58 @@ function checkCombo(combo, f) {
     detail: 'votre min : ' + combo.balls[0] + ' · 99% des tirages',
   });
 
+  // --- Filtres rares ---
+  const mcr = maxConsecutiveRun(combo.balls);
+  checks.push({
+    ok: mcr < 3,
+    label: 'Pas 3 numéros consécutifs',
+    detail: 'suite max : ' + mcr + ' · 97.8% des tirages',
+  });
+  const cp = consecutivePairs(combo.balls);
+  checks.push({
+    ok: cp < 2,
+    label: 'Max 1 paire consécutive',
+    detail: 'paires : ' + cp + ' · 95.7% des tirages',
+  });
+  const mpd = maxBallsPerDecade(combo.balls);
+  checks.push({
+    ok: mpd < 4,
+    label: 'Max 3 balles dans une dizaine',
+    detail: 'max concentration : ' + mpd + ' · 98.4% des tirages',
+  });
+  const mpu = maxBallsPerUnit(combo.balls);
+  checks.push({
+    ok: mpu < 4,
+    label: 'Max 3 balles finissant pareil',
+    detail: 'même unité : ' + mpu + ' · 99.9% des tirages',
+  });
+  const mg = maxGap(combo.balls);
+  checks.push({
+    ok: mg < 30,
+    label: 'Pas de trou de 30+',
+    detail: 'plus grand écart : ' + mg + ' · 97.1% des tirages',
+  });
+  const lh = lowerHalfCount(combo.balls);
+  checks.push({
+    ok: lh >= 1 && lh <= 4,
+    label: 'Équilibre 1–25 / 26–50',
+    detail: 'bas/haut : ' + lh + '/' + (5-lh) + ' · 95.6% des tirages',
+  });
+
+  // --- Étoiles ---
+  const ss = sum(combo.stars);
+  checks.push({
+    ok: ss >= f.starSumP5 && ss <= f.starSumP95,
+    label: 'Somme étoiles dans le cœur',
+    detail: 'votre somme : ' + ss + ' · cœur [' + f.starSumP5 + ', ' + f.starSumP95 + ']',
+  });
+  const sg = combo.stars[1] - combo.stars[0];
+  checks.push({
+    ok: sg < 11,
+    label: 'Étoiles pas aux extrêmes',
+    detail: 'écart : ' + sg + ' · 99.1% des tirages',
+  });
+
   return checks;
 }
 
@@ -1333,6 +1824,54 @@ function renderRules() {
       detail: 'Équilibre avec la première moitié',
       evidence: p(1 - f.pctAllAbove31) + '% des tirages',
     },
+    {
+      active: true,
+      name: 'Pas 3 numéros consécutifs',
+      detail: 'Type 19-20-21',
+      evidence: p(1 - f.pct3Consec) + '% des tirages',
+    },
+    {
+      active: true,
+      name: 'Max 1 paire consécutive',
+      detail: 'Pas 19-20 + 35-36 dans le même tirage',
+      evidence: p(1 - f.pct2Pairs) + '% des tirages',
+    },
+    {
+      active: true,
+      name: 'Max 3 balles dans une même dizaine',
+      detail: 'Pas 4 numéros concentrés sur une tranche',
+      evidence: p(1 - f.pct4SameDec) + '% des tirages',
+    },
+    {
+      active: true,
+      name: 'Max 3 balles avec le même chiffre unité',
+      detail: 'Pas 7-17-27-37 par exemple',
+      evidence: p(1 - f.pct4SameUnit) + '% des tirages',
+    },
+    {
+      active: true,
+      name: 'Pas de trou de 30+ entre balles',
+      detail: 'Distribution sans saut énorme',
+      evidence: p(1 - f.pctBigGap) + '% des tirages',
+    },
+    {
+      active: true,
+      name: 'Équilibre moitié basse / haute (1-25 vs 26-50)',
+      detail: 'Ni 5/0 ni 0/5',
+      evidence: p(1 - f.pctHalfExtreme) + '% des tirages',
+    },
+    {
+      active: true,
+      name: 'Somme étoiles ∈ [' + f.starSumP5 + ', ' + f.starSumP95 + ']',
+      detail: 'Bornes p5–p95',
+      evidence: '90% des tirages',
+    },
+    {
+      active: true,
+      name: 'Étoiles pas aux extrêmes (écart < 11)',
+      detail: 'Exclut par ex. la combinaison 1 + 12',
+      evidence: p(1 - f.pctStarsOppose) + '% des tirages',
+    },
   ];
 
   const renderBlock = (container, items) => {
@@ -1350,6 +1889,116 @@ function renderRules() {
 
   renderBlock(document.getElementById('rulesHard'), absolute);
   renderBlock(document.getElementById('rulesCore'), core);
+}
+
+// --- rendu des gains totaux -----------------------------------------
+
+function renderGains() {
+  const total = totalDistributed(state.draws);
+  const big = biggestJackpot(state.draws);
+  const noJp = drawsWithoutJackpot(state.draws);
+  const nDraws = state.draws.length;
+
+  const tEl = document.getElementById('gainTotal');
+  const tSub = document.getElementById('gainTotalSub');
+  if (total > 0) {
+    tEl.textContent = formatMoney(total);
+    tSub.textContent = 'répartis sur ' + fmt(nDraws) + ' tirages · moyenne ' + formatMoney(total / nDraws) + ' / tirage';
+  } else {
+    tEl.textContent = '—';
+    tSub.textContent = 'données de gains indisponibles';
+  }
+
+  const bEl = document.getElementById('gainBiggest');
+  const bSub = document.getElementById('gainBiggestSub');
+  if (big.draw) {
+    bEl.textContent = formatMoney(big.amount);
+    bSub.textContent = 'le ' + big.draw.date + ' · balles ' + big.draw.balls.join('·') + ' ✦ ' + big.draw.stars.join('·');
+  } else {
+    bEl.textContent = '—';
+    bSub.textContent = '';
+  }
+
+  const nEl = document.getElementById('gainNoJackpot');
+  const nSub = document.getElementById('gainNoJackpotSub');
+  nEl.textContent = fmt(noJp);
+  const pct = Math.round(100 * noJp / nDraws);
+  nSub.textContent = pct + '% des tirages · cagnotte reportée';
+}
+
+// --- rendu des fréquences (heatmap) ---------------------------------
+
+function renderFrequencies() {
+  const freq = computeFrequencies(state.draws);
+  const expected = freq.ballExpected;
+
+  // Texte d'intro : l'attendu par boule
+  const expEl = document.getElementById('freqExpectedBall');
+  if (expEl) expEl.textContent = Math.round(expected);
+
+  // Amplitude maximale observée pour calibrer la gamme de couleurs
+  let maxAbsDelta = 0;
+  for (let n = 1; n <= 50; n++) {
+    const d = (freq.ballFreq[n] - expected) / expected;
+    if (Math.abs(d) > maxAbsDelta) maxAbsDelta = Math.abs(d);
+  }
+  // on ajoute un petit buffer pour que même les extrêmes ne saturent pas
+  const ballScale = Math.max(0.08, maxAbsDelta);
+
+  // Rendu des boules (1..50)
+  const ballsEl = document.getElementById('freqBalls');
+  ballsEl.innerHTML = '';
+  for (let n = 1; n <= 50; n++) {
+    const count = freq.ballFreq[n];
+    const delta = (count - expected) / expected;
+    const cell = document.createElement('div');
+    cell.className = 'freq-cell';
+    cell.style.background = colorForDelta(delta, ballScale);
+    cell.style.color = textForDelta(delta, ballScale);
+    const deltaPct = Math.round(delta * 100);
+    const sign = deltaPct >= 0 ? '+' : '';
+    cell.title = 'Numéro ' + n + ' : sorti ' + count + ' fois · attendu ' +
+      Math.round(expected) + ' · écart ' + sign + deltaPct + '%';
+    cell.innerHTML =
+      '<div class="freq-num">' + n + '</div>' +
+      '<div class="freq-count">' + count + '</div>';
+    ballsEl.appendChild(cell);
+  }
+
+  // Rendu des étoiles (1..12), échelle calibrée par étoile selon son attendu
+  const starsEl = document.getElementById('freqStars');
+  starsEl.innerHTML = '';
+  let starMaxAbs = 0;
+  for (let n = 1; n <= 12; n++) {
+    const d = (freq.starFreq[n] - freq.starExpected[n]) / freq.starExpected[n];
+    if (Math.abs(d) > starMaxAbs) starMaxAbs = Math.abs(d);
+  }
+  const starScale = Math.max(0.08, starMaxAbs);
+  for (let n = 1; n <= 12; n++) {
+    const count = freq.starFreq[n];
+    const exp = freq.starExpected[n];
+    const delta = (count - exp) / exp;
+    const cell = document.createElement('div');
+    cell.className = 'freq-cell';
+    cell.style.background = colorForDelta(delta, starScale);
+    cell.style.color = textForDelta(delta, starScale);
+    const deltaPct = Math.round(delta * 100);
+    const sign = deltaPct >= 0 ? '+' : '';
+    cell.title = 'Étoile ' + n + ' : sortie ' + count + ' fois · attendu ' +
+      Math.round(exp) + ' · écart ' + sign + deltaPct + '%';
+    cell.innerHTML =
+      '<div class="freq-num">' + n + '</div>' +
+      '<div class="freq-count">' + count + '</div>';
+    starsEl.appendChild(cell);
+  }
+
+  // Caveat sur l'étoile 12
+  const caveat = document.getElementById('freqStarsCaveat');
+  if (caveat) {
+    caveat.textContent = 'L\'étoile 12 a rejoint le tirage le 24/09/2016, donc ' +
+      freq.drawsEra12 + ' tirages sur ' + (freq.drawsEra11 + freq.drawsEra12) +
+      ' seulement — l\'attendu affiché tient compte de cette différence.';
+  }
 }
 
 // --- rendu de l'anomalie --------------------------------------------
@@ -1406,15 +2055,28 @@ function passesAll(c, f) {
   if (f.rejectSameDecade && sameDecade(c.balls)) return false;
 
   // Règles "cœur" : ce qui caractérise 80%+ des tirages historiques
-  // On reste dans la zone typique, on évite les extrêmes même observés.
   if (s < f.sumP10 || s > f.sumP90) return false;
   if (r < f.rangeP10 || r > f.rangeP90) return false;
   const ec = evenCount(c.balls);
-  if (ec === 0 || ec === 5) return false;      // parité mixte (95% des tirages)
+  if (ec === 0 || ec === 5) return false;      // parité mixte (95%)
   const dc = decadesCovered(c.balls);
   if (dc < 3 || dc > 4) return false;          // 3 ou 4 dizaines (88%)
-  if (c.balls[0] > 31) return false;           // pas toutes > 31 (< 1% historique)
-  if (c.balls[4] <= 31) return false;          // pas toutes ≤ 31 (8% historique)
+  if (c.balls[0] > 31) return false;           // pas toutes > 31 (<1%)
+  if (c.balls[4] <= 31) return false;          // pas toutes ≤ 31 (8%)
+
+  // Règles "rares" : patterns présents dans <5% de l'histoire
+  if (maxConsecutiveRun(c.balls) >= 3) return false;        // 19-20-21 style (2.2%)
+  if (consecutivePairs(c.balls) >= 2) return false;         // 2+ paires (4.3%)
+  if (maxBallsPerDecade(c.balls) >= 4) return false;        // 4 dans la même dizaine (1.6%)
+  if (maxBallsPerUnit(c.balls) >= 4) return false;          // 4 finissant pareil (0.1%)
+  if (maxGap(c.balls) >= 30) return false;                  // trou de 30+ (2.9%)
+  const lh = lowerHalfCount(c.balls);
+  if (lh === 0 || lh === 5) return false;                   // toutes basses ou hautes (4.4%)
+
+  // Règles "rares" sur les étoiles
+  const ss = sum(c.stars);
+  if (ss < f.starSumP5 || ss > f.starSumP95) return false;  // somme étoiles hors cœur
+  if (c.stars[1] - c.stars[0] >= 11) return false;          // étoiles extrêmes (0.9%)
   return true;
 }
 
@@ -1556,6 +2218,38 @@ function runAudit() {
     '<div>Tirages historiques avec une somme similaire (±5) : <span class="hl">' + fmt(sameSum) + '</span></div>' +
     '<div>Plus proche voisin historique (<span class="hl">' + near.shared + '</span> num. communs) : ' +
     near.draw.date + ' — ' + near.draw.balls.join(' · ') + ' ✦ ' + near.draw.stars.join(' · ') + '</div>';
+
+  // Panel des gains virtuels : "si j'avais joué ça à tous les tirages…"
+  const virtEl = document.getElementById('auditVirtual');
+  const cw = cumulativeWinnings(combo, state.draws);
+  // On ne compte que les tirages avec des données de gains exploitables
+  const drawsWithPrizes = state.draws.filter(d => d.prizes && d.prizes.length).length;
+
+  if (drawsWithPrizes === 0) {
+    virtEl.innerHTML = '';
+  } else {
+    const cost = cw.drawCount * GRID_COST;
+    const balance = cw.total - cost;
+    const balanceClass = balance >= 0 ? 'positive' : 'negative';
+    const tierLabel = cw.bestTier ? cw.bestTier.mn + '+' + cw.bestTier.ms : '—';
+    const bestLine = cw.bestDraw
+      ? 'Meilleur coup : <strong>' + formatMoney(cw.bestPrize) + '</strong> au rang <strong>' +
+        tierLabel + '</strong> le ' + cw.bestDraw.date +
+        ' (tirage : ' + cw.bestDraw.balls.join('·') + ' ✦ ' + cw.bestDraw.stars.join('·') + ')'
+      : 'Aucun rang atteint sur l\'ensemble des tirages — statistiquement peu probable mais possible.';
+
+    virtEl.innerHTML =
+      '<div class="virtual-winnings">' +
+        '<div class="vw-head">Si vous aviez joué cette grille à chaque tirage</div>' +
+        '<div class="vw-row"><span class="vw-label">Tirages joués</span><span class="vw-value">' + fmt(cw.drawCount) + '</span></div>' +
+        '<div class="vw-row"><span class="vw-label">Dépense cumulée (2,50 € / grille)</span><span class="vw-value">' + formatMoney(cost) + '</span></div>' +
+        '<div class="vw-row"><span class="vw-label">Nombre de fois où la grille a gagné quelque chose</span><span class="vw-value">' + fmt(cw.wins) + '</span></div>' +
+        '<div class="vw-row"><span class="vw-label">Total gagné</span><span class="vw-value">' + formatMoney(cw.total) + '</span></div>' +
+        '<div class="vw-row"><span class="vw-label">Bilan net</span><span class="vw-value ' + balanceClass + '">' +
+          (balance >= 0 ? '+' : '') + formatMoney(balance) + '</span></div>' +
+        '<div class="vw-best">' + bestLine + '</div>' +
+      '</div>';
+  }
 
   resultEl.classList.add('show');
 }
