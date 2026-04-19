@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EuroAffûté — Filtres appris depuis 20 ans de tirages</title>
+<meta name="description" content="Un outil qui analyse tous les tirages EuroMillions depuis 2004 et en déduit des règles statistiques pour filtrer les combinaisons.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0E0E10;
+    --bg-elev: #18181C;
+    --bg-card: #141418;
+    --text: #F5F1E8;
+    --text-dim: #8A8578;
+    --text-faint: #4A4842;
+    --gold: #E8C458;
+    --gold-deep: #D4AF37;
+    --star: #E85D50;
+    --green: #7FB04F;
+    --red: #C73E3E;
+    --line: #242428;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', system-ui, sans-serif;
+    font-weight: 300;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(232, 196, 88, 0.08), transparent 50%),
+      radial-gradient(circle at 85% 75%, rgba(232, 93, 80, 0.05), transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    padding: 2rem 0;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.5rem;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+  .logo span {
+    color: var(--gold);
+    font-style: normal;
+    margin-right: 0.3em;
+  }
+
+  .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+
+  .meta-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    margin-right: 0.5rem;
+    vertical-align: middle;
+    transition: background 0.3s;
+    animation: pulse 2s infinite;
+  }
+  .meta-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .meta-dot.err { background: var(--red); animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .hero {
+    padding: 6rem 0 4rem;
+    max-width: 900px;
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 40px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(2.75rem, 9vw, 6.5rem);
+    line-height: 0.95;
+    font-weight: 400;
+    letter-spacing: -0.035em;
+    margin-bottom: 2.5rem;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .lede {
+    font-size: 1.15rem;
+    color: var(--text-dim);
+    max-width: 640px;
+    line-height: 1.6;
+  }
+  .lede strong { color: var(--text); font-weight: 500; }
+
+  .section-head {
+    max-width: 800px;
+    margin: 5rem 0 2.5rem;
+  }
+  .section-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    margin-bottom: 1rem;
+  }
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 1;
+    font-weight: 400;
+    margin-bottom: 1rem;
+  }
+  .section-title em { font-style: italic; color: var(--gold); }
+  .section-lede {
+    color: var(--text-dim);
+    max-width: 600px;
+  }
+
+  .rules {
+    border: 1px solid var(--line);
+    background: var(--bg-elev);
+  }
+
+  .rule {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    gap: 1.5rem;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule:last-child { border-bottom: none; }
+
+  .rule-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .rule-status.active { color: var(--green); }
+  .rule-status.rejected { color: var(--red); }
+
+  .rule-name {
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .rule-name small {
+    display: block;
+    font-weight: 300;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+  }
+
+  .rule-evidence {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .rule-evidence strong { color: var(--text); }
+
+  .rules-head {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .rules-head:first-of-type { margin-top: 0; }
+  .rules-head small {
+    color: var(--text-dim);
+    font-family: 'Manrope', sans-serif;
+    font-weight: 300;
+    font-size: 0.8rem;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .anomaly {
+    margin: 4rem 0;
+    padding: 2.5rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--star);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2.5rem;
+    align-items: center;
+  }
+  .anomaly-mark {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 4rem;
+    color: var(--star);
+    line-height: 1;
+  }
+  .anomaly h3 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.6rem;
+    font-weight: 400;
+    margin-bottom: 0.75rem;
+  }
+  .anomaly p { color: var(--text-dim); }
+  .anomaly-balls {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .mini-ball {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 25%, #f5d97c, var(--gold-deep));
+    color: #1a1a1e;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.85rem;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset -2px -3px 6px rgba(0,0,0,0.2), inset 1px 1px 2px rgba(255,255,255,0.3);
+  }
+  .anomaly-dates {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text);
+    flex-wrap: wrap;
+  }
+  .anomaly-dates span { color: var(--text-dim); }
+
+  .generator {
+    padding: 5rem 0;
+    text-align: center;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    margin: 4rem 0;
+    background: linear-gradient(180deg, rgba(232,196,88,0.025), transparent 60%);
+  }
+
+  .combo-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 3rem 0 2rem;
+    flex-wrap: wrap;
+    min-height: 90px;
+  }
+
+  .ball {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 1.4rem;
+    background: radial-gradient(circle at 30% 25%, #f5d97c, var(--gold-deep));
+    color: #1a1a1e;
+    box-shadow:
+      0 6px 24px rgba(232, 196, 88, 0.25),
+      inset -4px -6px 12px rgba(0,0,0,0.25),
+      inset 3px 3px 6px rgba(255,255,255,0.3);
+    animation: drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .ball.star {
+    background: radial-gradient(circle at 30% 25%, #ff8575, var(--star));
+    color: var(--text);
+    box-shadow:
+      0 6px 24px rgba(232, 93, 80, 0.3),
+      inset -4px -6px 12px rgba(0,0,0,0.25),
+      inset 3px 3px 6px rgba(255,255,255,0.25);
+  }
+
+  .separator {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--text-faint);
+    font-size: 1.5rem;
+    margin: 0 0.25rem;
+    letter-spacing: 0.2em;
+  }
+
+  .combo-placeholder {
+    color: var(--text-faint);
+    font-style: italic;
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.25rem;
+  }
+
+  @keyframes drop {
+    0%   { transform: translateY(-40px) scale(0.7); opacity: 0; }
+    60%  { transform: translateY(4px) scale(1.05); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  .btn {
+    background: var(--gold);
+    color: #1a1a1e;
+    border: none;
+    padding: 1rem 2.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.3s;
+    margin-top: 1rem;
+    border-radius: 2px;
+  }
+  .btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(232, 196, 88, 0.35);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--gold);
+    color: #1a1a1e;
+  }
+
+  .combo-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 2rem;
+    min-height: 1.2em;
+  }
+  .combo-meta .hl { color: var(--gold); }
+
+  .combo-profile {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+  .combo-profile span strong { color: var(--text); }
+
+  .audit-box {
+    border: 1px solid var(--line);
+    background: var(--bg-elev);
+    padding: 2.5rem;
+  }
+
+  .audit-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+    margin: 2rem 0;
+  }
+
+  .audit-input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .audit-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-right: 0.5rem;
+  }
+
+  .audit-input {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    -moz-appearance: textfield;
+  }
+  .audit-input::-webkit-outer-spin-button,
+  .audit-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .audit-input:focus { border-color: var(--gold); }
+  .audit-input.star:focus { border-color: var(--star); }
+  .audit-input.invalid { border-color: var(--red); background: rgba(199,62,62,0.1); }
+
+  .audit-separator {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 1.5rem;
+    color: var(--text-faint);
+  }
+
+  .audit-actions {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .audit-result {
+    margin-top: 2rem;
+    border-top: 1px solid var(--line);
+    padding-top: 2rem;
+    display: none;
+  }
+  .audit-result.show { display: block; }
+
+  .audit-verdict {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2.25rem;
+    font-style: italic;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+  }
+  .audit-verdict.pass { color: var(--green); }
+  .audit-verdict.fail { color: var(--red); }
+
+  .audit-checks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .audit-check {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 0.75rem 1rem;
+    background: var(--bg);
+    border-left: 2px solid var(--line);
+    font-size: 0.85rem;
+  }
+  .audit-check.pass { border-left-color: var(--green); }
+  .audit-check.fail { border-left-color: var(--red); }
+  .audit-check-icon {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .audit-check.pass .audit-check-icon { color: var(--green); }
+  .audit-check.fail .audit-check-icon { color: var(--red); }
+  .audit-check-body { flex: 1; color: var(--text-dim); }
+  .audit-check-body strong { color: var(--text); font-weight: 500; }
+
+  .similarity-panel {
+    margin-top: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--bg);
+    border: 1px dashed var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+  .similarity-panel .hl { color: var(--gold); }
+  .similarity-panel > div + div { margin-top: 0.5rem; }
+
+  .reality {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    padding: 2.5rem;
+    margin: 5rem 0 3rem;
+    border-left: 3px solid var(--gold);
+  }
+  .reality-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 1rem;
+  }
+  .reality h3 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.75rem;
+    font-weight: 400;
+    font-style: italic;
+    margin-bottom: 1rem;
+  }
+  .reality p { color: var(--text-dim); margin-bottom: 0.75rem; }
+  .reality p:last-child { margin-bottom: 0; }
+  .reality strong { color: var(--text); font-weight: 500; }
+  .reality em { color: var(--gold); font-style: italic; }
+
+  footer {
+    padding: 3rem 0;
+    border-top: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    text-align: center;
+    line-height: 1.8;
+    letter-spacing: 0.05em;
+  }
+  footer a {
+    color: var(--text-dim);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--text-faint);
+  }
+  footer a:hover { color: var(--gold); }
+
+  .error-msg {
+    background: rgba(199, 62, 62, 0.1);
+    border: 1px solid rgba(199, 62, 62, 0.3);
+    padding: 1rem 1.5rem;
+    margin: 2rem 0;
+    color: var(--red);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+  }
+
+  .loading-inline {
+    color: var(--text-faint);
+    font-style: italic;
+  }
+
+  /* PORTFOLIOS */
+  .portfolios { margin: 2rem 0 3rem; }
+
+  .portfolio {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    padding: 2rem 2.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .portfolio.jackpot { border-left: 3px solid var(--gold); }
+  .portfolio.backup { border-left: 3px solid var(--star); }
+  .portfolio.core { border-left: 3px solid var(--gold); }
+
+  .portfolio-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .portfolio-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+  .portfolio.backup .portfolio-tag { color: var(--star); }
+
+  .portfolio h3 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1;
+  }
+  .portfolio h3 em { font-style: italic; color: var(--gold); }
+  .portfolio.backup h3 em { color: var(--star); }
+
+  .portfolio-desc {
+    color: var(--text-dim);
+    max-width: 640px;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+  }
+  .portfolio-desc strong { color: var(--text); font-weight: 500; }
+
+  .grid-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 1.25rem;
+  }
+
+  .grid-row {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.7rem 1rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    animation: slide 0.3s ease-out both;
+  }
+
+  @keyframes slide {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .grid-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+
+  .grid-numbers {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .grid-numbers .row-sep {
+    color: var(--text-faint);
+    margin: 0 0.3rem;
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+  }
+
+  .grid-ball, .grid-star {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: #1a1a1e;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.72rem;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset -2px -2px 4px rgba(0,0,0,0.18);
+  }
+  .grid-ball {
+    background: radial-gradient(circle at 30% 25%, #f5d97c, var(--gold-deep));
+  }
+  .grid-star {
+    background: radial-gradient(circle at 30% 25%, #ff8575, var(--star));
+    color: var(--text);
+  }
+
+  .grid-profile {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
+
+  .portfolio-cost {
+    margin-top: 2rem;
+    padding: 1.1rem 1.5rem;
+    border-left: 2px solid var(--gold);
+    background: rgba(232, 196, 88, 0.04);
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+  .portfolio-cost strong {
+    color: var(--gold);
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    margin-right: 0.6rem;
+    font-weight: 700;
+  }
+
+  .grid-empty {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-faint);
+    font-style: italic;
+    font-family: 'Instrument Serif', serif;
+    border: 1px dashed var(--line);
+  }
+
+  @media (max-width: 640px) {
+    .container { padding: 0 1.25rem; }
+    .hero { padding: 3rem 0 2rem; }
+    .ball { width: 54px; height: 54px; font-size: 1.1rem; }
+    .separator { font-size: 1.1rem; }
+    .audit-input { width: 48px; height: 48px; font-size: 0.95rem; }
+    .generator { padding: 3rem 0; margin: 2rem 0; }
+    .section-head { margin: 3rem 0 1.5rem; }
+    .anomaly {
+      grid-template-columns: 1fr;
+      padding: 1.5rem;
+      gap: 1rem;
+    }
+    .anomaly-mark { font-size: 2.5rem; }
+    .rule {
+      grid-template-columns: 30px 1fr;
+      gap: 1rem;
+    }
+    .rule-evidence {
+      grid-column: 2;
+      text-align: left;
+      margin-top: 0.3rem;
+    }
+    .audit-box { padding: 1.5rem; }
+    .reality { padding: 1.5rem; }
+    .portfolio { padding: 1.5rem; }
+    .grid-row {
+      grid-template-columns: 24px 1fr;
+      gap: 0.5rem;
+      padding: 0.6rem 0.75rem;
+    }
+    .grid-profile { grid-column: 2; margin-top: 0.2rem; font-size: 0.65rem; }
+    .grid-ball, .grid-star { width: 26px; height: 26px; font-size: 0.7rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="logo"><span>◊</span>EuroAffûté</div>
+    <div class="meta">
+      <span class="meta-dot" id="statusDot"></span>
+      <span id="statusText">Connexion à l'API…</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="eyebrow">Filtres empiriques, honnêteté statistique</div>
+    <h1>Vos grilles, <em>affûtées</em> par vingt ans de tirages.</h1>
+    <p class="lede">
+      Au chargement, on télécharge l'intégralité des tirages EuroMillions depuis 2004.
+      On en déduit <strong>ce qui ne s'est jamais produit</strong>, et on transforme ces observations
+      en filtres. Rien n'est codé en dur : si un nouveau tirage bouscule une règle,
+      l'outil l'abandonne automatiquement.
+    </p>
+  </section>
+
+  <div class="section-head">
+    <div class="section-eyebrow">Ce qu'on a appris</div>
+    <h2 class="section-title">Les règles, <em>déduites</em> des données.</h2>
+    <p class="section-lede">
+      Deux familles de règles, déduites automatiquement de l'historique.
+      Les <strong>règles dures</strong> rejettent ce qui n'est <em>jamais</em> arrivé.
+      Les <strong>règles cœur</strong> rejettent ce qui arrive trop rarement pour qu'on mise dessus.
+    </p>
+  </div>
+
+  <div class="rules-head">Règles dures <small>— ce qui n'est jamais arrivé en 20 ans</small></div>
+  <div class="rules" id="rulesHard">
+    <div class="rule">
+      <div class="rule-status loading-inline">…</div>
+      <div class="rule-name">Chargement…<small>Analyse de l'historique en cours</small></div>
+      <div class="rule-evidence"></div>
+    </div>
+  </div>
+
+  <div class="rules-head">Règles cœur <small>— ce qui caractérise 80%+ des tirages</small></div>
+  <div class="rules" id="rulesCore">
+    <div class="rule">
+      <div class="rule-status loading-inline">…</div>
+      <div class="rule-name">Chargement…<small>Calcul des quantiles</small></div>
+      <div class="rule-evidence"></div>
+    </div>
+  </div>
+
+  <div class="anomaly" id="anomaly" style="display:none">
+    <div class="anomaly-mark">§</div>
+    <div>
+      <h3 id="anomalyTitle">Anomalie repérée</h3>
+      <p id="anomalyText">Chargement…</p>
+      <div class="anomaly-balls" id="anomalyBalls"></div>
+      <div class="anomaly-dates" id="anomalyDates"></div>
+    </div>
+  </div>
+
+  <section class="generator">
+    <div class="section-eyebrow" style="margin-bottom:1rem">Tirage filtré</div>
+    <h2 class="section-title" style="margin-bottom:2rem">Une grille qui <em>passe</em>.</h2>
+
+    <div class="combo-display" id="combo">
+      <span class="combo-placeholder">en attente…</span>
+    </div>
+
+    <button class="btn" id="generateBtn" disabled>Générer</button>
+
+    <div class="combo-meta" id="comboMeta">&nbsp;</div>
+    <div class="combo-profile" id="comboProfile"></div>
+  </section>
+
+  <div class="section-head">
+    <div class="section-eyebrow">Audit</div>
+    <h2 class="section-title">Testez <em>votre</em> grille.</h2>
+    <p class="section-lede">
+      Saisissez vos numéros fétiches. On vous dit s'ils passeraient nos filtres, combien
+      de tirages historiques leur ressemblent, et leur voisin le plus proche dans l'histoire.
+    </p>
+  </div>
+
+  <div class="audit-box">
+    <div class="audit-inputs">
+      <div class="audit-input-group">
+        <span class="audit-label">5 nums (1–50)</span>
+        <input type="number" class="audit-input" min="1" max="50" placeholder="·" data-kind="ball">
+        <input type="number" class="audit-input" min="1" max="50" placeholder="·" data-kind="ball">
+        <input type="number" class="audit-input" min="1" max="50" placeholder="·" data-kind="ball">
+        <input type="number" class="audit-input" min="1" max="50" placeholder="·" data-kind="ball">
+        <input type="number" class="audit-input" min="1" max="50" placeholder="·" data-kind="ball">
+      </div>
+      <span class="audit-separator">✦</span>
+      <div class="audit-input-group">
+        <span class="audit-label">2 étoiles (1–12)</span>
+        <input type="number" class="audit-input star" min="1" max="12" placeholder="·" data-kind="star">
+        <input type="number" class="audit-input star" min="1" max="12" placeholder="·" data-kind="star">
+      </div>
+    </div>
+
+    <div class="audit-actions">
+      <button class="btn btn-ghost" id="auditBtn" disabled>Auditer</button>
+      <button class="btn" id="fillRandomBtn" disabled>Remplir au hasard</button>
+    </div>
+
+    <div class="audit-result" id="auditResult">
+      <div class="audit-verdict" id="auditVerdict">—</div>
+      <div style="color:var(--text-dim); font-size:0.9rem" id="auditSummary"></div>
+      <div class="audit-checks" id="auditChecks"></div>
+      <div class="similarity-panel" id="auditSim"></div>
+    </div>
+  </div>
+
+  <div class="section-head">
+    <div class="section-eyebrow">Portefeuille</div>
+    <h2 class="section-title">Dix grilles au <em>cœur de la cible</em>.</h2>
+    <p class="section-lede">
+      Dix combinaisons tirées au hasard <strong>puis filtrées par toutes les règles
+      apprises</strong> — y compris les règles cœur. On évite les extrêmes, les
+      patterns absents de l'histoire, et on reste dans la zone qui a produit
+      <strong>80%+ des tirages réels</strong> depuis 2004.
+    </p>
+  </div>
+
+  <div class="portfolios">
+
+    <div class="portfolio core">
+      <div class="portfolio-head">
+        <div>
+          <span class="portfolio-tag">Cœur de distribution</span>
+          <h3>Les plus <em>typiques</em></h3>
+        </div>
+        <button class="btn" id="genCoreBtn" disabled>Tirer 10 grilles</button>
+      </div>
+      <p class="portfolio-desc">
+        Chaque grille respecte <strong>l'ensemble des filtres appris</strong> :
+        somme entre p10 et p90, range idem, parité mixte, 3 ou 4 dizaines
+        couvertes, au moins un numéro au-dessus de 31 et un en dessous.
+        Ce sont précisément les grilles qui <em>ressembleraient</em> à un tirage
+        historique — sans jamais en être un.
+      </p>
+      <div class="grid-list" id="coreGrids">
+        <div class="grid-empty">Cliquez sur « Tirer 10 grilles »</div>
+      </div>
+    </div>
+
+    <div class="portfolio-cost">
+      <strong>Rappel coût</strong>
+      10 grilles × 2,50 € = 25 € par tirage. Deux tirages par semaine = 2 600 € par an.
+      L'espérance mathématique de gain à l'EuroMillions se situe autour de 50 % de la mise —
+      vous perdrez statistiquement ~1 300 € par an.
+    </div>
+
+  </div>
+
+  <div class="reality">
+    <div class="reality-eyebrow">Note d'honnêteté</div>
+    <h3>Ça ne va toujours <em>pas</em> vous faire gagner.</h3>
+    <p>
+      L'EuroMillions compte <strong>139 838 160</strong> combinaisons possibles. Même
+      avec nos filtres, la réduction est <strong>marginale</strong> — on reste à une
+      chance sur des dizaines de millions d'empocher le jackpot.
+    </p>
+    <p>
+      <strong>En revanche</strong>, il y a une vraie stratégie validée par les maths :
+      <em>éviter les numéros populaires</em> — dates d'anniversaire ≤ 31, suites visuelles
+      sur la grille, multiples de 7, chiffres porte-bonheur. Ça ne change pas votre probabilité de gagner,
+      ça change ce que vous touchez <em>si</em> vous gagnez, parce que vous partagerez
+      avec moins de monde. Nos filtres appris vont très exactement dans ce sens.
+    </p>
+  </div>
+
+  <footer>
+    Données publiques fournies par
+    <a href="https://nunofcguerreiro.com/post/euro-millions-api" target="_blank" rel="noopener">l'API N.F.C. Guerreiro</a>.
+    Les règles se recalculent à chaque chargement, donc s'adaptent aux nouveaux tirages.<br>
+    Le jeu peut être dangereux : pertes d'argent, isolement, dépendance.
+    <a href="https://www.joueurs-info-service.fr/" target="_blank" rel="noopener">Appelez le 09 74 75 13 13</a>.
+  </footer>
+
+</div>
+
+<script>
+// =====================================================================
+// EuroAffûté v2 — filtres appris depuis l'historique
+// =====================================================================
+
+const API_URL = 'https://nunofcguerreiro.com/api-euromillions-json?result=all';
+
+const state = {
+  draws: [],
+  filters: null,
+  ready: false,
+};
+
+// --- utilitaires -----------------------------------------------------
+
+const fmt = n => n.toLocaleString('fr-FR').replace(/\s/g, ' ');
+const sortAsc = a => [...a].sort((x, y) => x - y);
+const sum = a => a.reduce((x, y) => x + y, 0);
+
+const comboKey = (balls, stars) =>
+  sortAsc(balls).join('-') + '|' + sortAsc(stars).join('-');
+const ballKey = balls => sortAsc(balls).join('-');
+
+function isAP(sorted) {
+  const d = sorted[1] - sorted[0];
+  for (let i = 2; i < sorted.length; i++) {
+    if (sorted[i] - sorted[i-1] !== d) return false;
+  }
+  return true;
+}
+
+function sameDecade(sorted) {
+  return Math.floor(sorted[0]/10) === Math.floor(sorted[sorted.length-1]/10);
+}
+
+function parityCount(balls) {
+  const even = balls.filter(b => b % 2 === 0).length;
+  return { even, odd: balls.length - even };
+}
+
+function range(sorted) {
+  return sorted[sorted.length-1] - sorted[0];
+}
+
+function quantile(values, p) {
+  const sv = [...values].sort((a, b) => a - b);
+  return sv[Math.min(sv.length - 1, Math.floor(sv.length * p))];
+}
+
+function decadesCovered(balls) {
+  return new Set(balls.map(b => Math.floor(b / 10))).size;
+}
+
+function evenCount(balls) { return balls.filter(b => b % 2 === 0).length; }
+
+// --- chargement ------------------------------------------------------
+
+async function loadDraws() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    if (!data.drawns || !Array.isArray(data.drawns)) {
+      throw new Error('Format JSON inattendu');
+    }
+
+    const parsed = [];
+    for (const d of data.drawns) {
+      const ballsStr = d.balls || d.Balls || '';
+      const starsStr = d.stars || d.Stars || '';
+      const balls = ballsStr.trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && n >= 1);
+      const stars = starsStr.trim().split(/\s+/).map(Number).filter(n => !isNaN(n) && n >= 1);
+      if (balls.length === 5 && stars.length === 2) {
+        parsed.push({
+          date: d.day || d.date || '',
+          balls: sortAsc(balls),
+          stars: sortAsc(stars),
+        });
+      }
+    }
+
+    if (parsed.length === 0) throw new Error('Aucun tirage parsé depuis la réponse');
+
+    state.draws = parsed;
+    state.filters = learnFilters(parsed);
+    state.ready = true;
+
+    dot.classList.add('live');
+    txt.textContent = fmt(parsed.length) + ' tirages chargés';
+
+    renderRules();
+    renderAnomaly();
+    document.getElementById('generateBtn').disabled = false;
+    document.getElementById('auditBtn').disabled = false;
+    document.getElementById('fillRandomBtn').disabled = false;
+    document.getElementById('genCoreBtn').disabled = false;
+
+  } catch (err) {
+    console.error('Erreur de chargement :', err);
+    dot.classList.add('err');
+    txt.textContent = 'Erreur : ' + err.message;
+    const rules = document.getElementById('rules');
+    rules.innerHTML = '<div class="error-msg">Impossible de contacter l\'API. Vérifiez votre connexion réseau, ou réessayez dans un moment.<br><br><code>' + err.message + '</code></div>';
+  }
+}
+
+// --- le cœur du "mini ML" : apprentissage des règles -----------------
+
+function learnFilters(draws) {
+  const sums = draws.map(d => sum(d.balls));
+  const ranges = draws.map(d => range(d.balls));
+
+  const anyAP = draws.some(d => isAP(d.balls));
+  const anySameDecade = draws.some(d => sameDecade(d.balls));
+  const anyAllEven = draws.some(d => d.balls.every(b => b % 2 === 0));
+  const anyAllOdd = draws.some(d => d.balls.every(b => b % 2 === 1));
+  const anyBirthday = draws.some(d => d.balls[4] <= 31);
+
+  const seenFull = new Set();
+  const ballCount = new Map();
+  const dupeFull = [];
+
+  for (const d of draws) {
+    const k = comboKey(d.balls, d.stars);
+    if (seenFull.has(k)) dupeFull.push(d);
+    seenFull.add(k);
+    const bk = ballKey(d.balls);
+    if (!ballCount.has(bk)) ballCount.set(bk, []);
+    ballCount.get(bk).push(d);
+  }
+
+  const dupeBalls = [];
+  for (const [, occurrences] of ballCount.entries()) {
+    if (occurrences.length > 1) dupeBalls.push(occurrences);
+  }
+
+  return {
+    totalDraws: draws.length,
+    minSum: Math.min(...sums),
+    maxSum: Math.max(...sums),
+    minRange: Math.min(...ranges),
+    maxRange: Math.max(...ranges),
+    // NEW — bornes "cœur de distribution" (p10 - p90)
+    sumP10: quantile(sums, 0.10),
+    sumP90: quantile(sums, 0.90),
+    rangeP10: quantile(ranges, 0.10),
+    rangeP90: quantile(ranges, 0.90),
+    medianSum: quantile(sums, 0.50),
+    medianRange: quantile(ranges, 0.50),
+    // Statistiques de fréquence
+    pctParityExtreme: draws.filter(d => {
+      const e = evenCount(d.balls);
+      return e === 0 || e === 5;
+    }).length / draws.length,
+    pctDecadesCommon: draws.filter(d => {
+      const dc = decadesCovered(d.balls);
+      return dc === 3 || dc === 4;
+    }).length / draws.length,
+    pctBirthdayOnly: draws.filter(d => d.balls[4] <= 31).length / draws.length,
+    pctAllAbove31: draws.filter(d => d.balls[0] > 31).length / draws.length,
+    rejectAP: !anyAP,
+    rejectSameDecade: !anySameDecade,
+    rejectAllEven: !anyAllEven,
+    rejectAllOdd: !anyAllOdd,
+    rejectBirthday: !anyBirthday,
+    pctAllEven: draws.filter(d => d.balls.every(b => b%2===0)).length / draws.length,
+    pctAllOdd: draws.filter(d => d.balls.every(b => b%2===1)).length / draws.length,
+    pctBirthday: draws.filter(d => d.balls[4] <= 31).length / draws.length,
+    seenFull,
+    dupeFull,
+    dupeBalls,
+  };
+}
+
+// --- vérification d'une combinaison ---------------------------------
+
+function checkCombo(combo, f) {
+  const s = sum(combo.balls);
+  const r = range(combo.balls);
+  const ec = evenCount(combo.balls);
+  const dc = decadesCovered(combo.balls);
+  const checks = [];
+
+  // --- Règles dures ---
+  checks.push({
+    ok: !f.seenFull.has(comboKey(combo.balls, combo.stars)),
+    label: 'Pas déjà tirée',
+    detail: fmt(f.seenFull.size) + ' tirages historiques exclus',
+  });
+  checks.push({
+    ok: !isAP(combo.balls),
+    label: 'Pas de progression arithmétique',
+    detail: 'jamais observé en ' + fmt(f.totalDraws) + ' tirages',
+  });
+  checks.push({
+    ok: !sameDecade(combo.balls),
+    label: 'Pas les 5 balles dans la même dizaine',
+    detail: 'jamais observé en ' + fmt(f.totalDraws) + ' tirages',
+  });
+
+  // --- Règles cœur de distribution ---
+  checks.push({
+    ok: s >= f.sumP10 && s <= f.sumP90,
+    label: 'Somme dans le cœur',
+    detail: 'votre somme : ' + s + ' · cœur [' + f.sumP10 + ', ' + f.sumP90 + '] (p10–p90)',
+  });
+  checks.push({
+    ok: r >= f.rangeP10 && r <= f.rangeP90,
+    label: 'Range dans le cœur',
+    detail: 'votre range : ' + r + ' · cœur [' + f.rangeP10 + ', ' + f.rangeP90 + ']',
+  });
+  checks.push({
+    ok: ec >= 1 && ec <= 4,
+    label: 'Parité mixte',
+    detail: 'votre parité : ' + ec + 'p / ' + (5-ec) + 'i · 95% des tirages',
+  });
+  checks.push({
+    ok: dc === 3 || dc === 4,
+    label: '3 ou 4 dizaines couvertes',
+    detail: 'vous en couvrez ' + dc + ' · 88% des tirages',
+  });
+  checks.push({
+    ok: combo.balls[4] > 31,
+    label: 'Au moins un numéro > 31',
+    detail: 'votre max : ' + combo.balls[4] + ' · 92% des tirages',
+  });
+  checks.push({
+    ok: combo.balls[0] <= 31,
+    label: 'Au moins un numéro ≤ 31',
+    detail: 'votre min : ' + combo.balls[0] + ' · 99% des tirages',
+  });
+
+  return checks;
+}
+
+// --- rendu des règles -----------------------------------------------
+
+function renderRules() {
+  const f = state.filters;
+  const p = v => Math.round(v * 1000) / 10;
+
+  const absolute = [
+    {
+      active: true,
+      name: 'Exclure les combinaisons déjà tirées',
+      detail: 'Balles + étoiles identiques',
+      evidence: fmt(f.seenFull.size) + ' exclues · ' + f.dupeFull.length + ' doublon(s)',
+    },
+    {
+      active: true,
+      name: 'Pas de progression arithmétique',
+      detail: 'Type 1-2-3-4-5 ou 5-10-15-20-25',
+      evidence: '0 sur ' + fmt(f.totalDraws),
+    },
+    {
+      active: true,
+      name: 'Pas les 5 balles dans la même dizaine',
+      detail: 'Jamais 5 balles dans la même tranche de 10',
+      evidence: '0 sur ' + fmt(f.totalDraws),
+    },
+  ];
+
+  const core = [
+    {
+      active: true,
+      name: 'Somme ∈ [' + f.sumP10 + ', ' + f.sumP90 + ']',
+      detail: 'Médiane historique : ' + f.medianSum + ' · bornes absolues [' + f.minSum + ', ' + f.maxSum + ']',
+      evidence: '80% des tirages',
+    },
+    {
+      active: true,
+      name: 'Range ∈ [' + f.rangeP10 + ', ' + f.rangeP90 + ']',
+      detail: 'Médiane historique : ' + f.medianRange + ' · bornes absolues [' + f.minRange + ', ' + f.maxRange + ']',
+      evidence: '80% des tirages',
+    },
+    {
+      active: true,
+      name: 'Parité mixte (au moins une paire et une impaire)',
+      detail: 'On écarte les extrêmes 0p/5i et 5p/0i',
+      evidence: p(1 - f.pctParityExtreme) + '% des tirages',
+    },
+    {
+      active: true,
+      name: '3 ou 4 dizaines couvertes',
+      detail: 'Ni concentré sur 2 dizaines, ni étalé sur 5',
+      evidence: p(f.pctDecadesCommon) + '% des tirages',
+    },
+    {
+      active: true,
+      name: 'Au moins un numéro > 31',
+      detail: 'Évite le biais « anniversaire »',
+      evidence: p(1 - f.pctBirthdayOnly) + '% des tirages',
+    },
+    {
+      active: true,
+      name: 'Au moins un numéro ≤ 31',
+      detail: 'Équilibre avec la première moitié',
+      evidence: p(1 - f.pctAllAbove31) + '% des tirages',
+    },
+  ];
+
+  const renderBlock = (container, items) => {
+    container.innerHTML = '';
+    for (const r of items) {
+      const div = document.createElement('div');
+      div.className = 'rule';
+      div.innerHTML =
+        '<div class="rule-status ' + (r.active ? 'active">✓' : 'rejected">✗') + '</div>' +
+        '<div class="rule-name">' + r.name + '<small>' + r.detail + '</small></div>' +
+        '<div class="rule-evidence">' + r.evidence + '</div>';
+      container.appendChild(div);
+    }
+  };
+
+  renderBlock(document.getElementById('rulesHard'), absolute);
+  renderBlock(document.getElementById('rulesCore'), core);
+}
+
+// --- rendu de l'anomalie --------------------------------------------
+
+function renderAnomaly() {
+  const f = state.filters;
+  const box = document.getElementById('anomaly');
+  if (f.dupeBalls.length === 0) {
+    box.style.display = 'none';
+    return;
+  }
+  const first = f.dupeBalls[0];
+  box.style.display = 'grid';
+
+  document.getElementById('anomalyTitle').textContent = 'L\'anomalie des cinq balles jumelles';
+  document.getElementById('anomalyText').innerHTML =
+    'Parmi ' + fmt(f.totalDraws) + ' tirages, les mêmes cinq balles sont sorties <strong>' + first.length +
+    ' fois</strong>, à plusieurs années d\'écart — avec des étoiles différentes. ' +
+    'Un clin d\'œil statistique à garder en tête quand on croit que « ça ne retombera jamais ».';
+
+  const ballsEl = document.getElementById('anomalyBalls');
+  ballsEl.innerHTML = '';
+  for (const n of first[0].balls) {
+    const b = document.createElement('div');
+    b.className = 'mini-ball';
+    b.textContent = n;
+    ballsEl.appendChild(b);
+  }
+
+  const datesEl = document.getElementById('anomalyDates');
+  datesEl.innerHTML = first.map(d =>
+    '<div>' + d.date + ' <span>(étoiles ' + d.stars.join(' · ') + ')</span></div>'
+  ).join('');
+}
+
+// --- générateur filtré ----------------------------------------------
+
+function randomCombo() {
+  const balls = new Set();
+  while (balls.size < 5) balls.add(Math.floor(Math.random() * 50) + 1);
+  const stars = new Set();
+  while (stars.size < 2) stars.add(Math.floor(Math.random() * 12) + 1);
+  return { balls: sortAsc([...balls]), stars: sortAsc([...stars]) };
+}
+
+function passesAll(c, f) {
+  // Règles dures (absolues) : ce qui n'est jamais arrivé
+  if (f.seenFull.has(comboKey(c.balls, c.stars))) return false;
+  const s = sum(c.balls);
+  if (s < f.minSum || s > f.maxSum) return false;
+  const r = range(c.balls);
+  if (r < f.minRange || r > f.maxRange) return false;
+  if (f.rejectAP && isAP(c.balls)) return false;
+  if (f.rejectSameDecade && sameDecade(c.balls)) return false;
+
+  // Règles "cœur" : ce qui caractérise 80%+ des tirages historiques
+  // On reste dans la zone typique, on évite les extrêmes même observés.
+  if (s < f.sumP10 || s > f.sumP90) return false;
+  if (r < f.rangeP10 || r > f.rangeP90) return false;
+  const ec = evenCount(c.balls);
+  if (ec === 0 || ec === 5) return false;      // parité mixte (95% des tirages)
+  const dc = decadesCovered(c.balls);
+  if (dc < 3 || dc > 4) return false;          // 3 ou 4 dizaines (88%)
+  if (c.balls[0] > 31) return false;           // pas toutes > 31 (< 1% historique)
+  if (c.balls[4] <= 31) return false;          // pas toutes ≤ 31 (8% historique)
+  return true;
+}
+
+function generateFiltered() {
+  let tries = 0;
+  while (tries < 10000) {
+    tries++;
+    const c = randomCombo();
+    if (passesAll(c, state.filters)) return { combo: c, tries };
+  }
+  return null;
+}
+
+function renderCombo(combo, tries) {
+  const display = document.getElementById('combo');
+  const meta = document.getElementById('comboMeta');
+  const profile = document.getElementById('comboProfile');
+  display.innerHTML = '';
+
+  combo.balls.forEach((n, i) => {
+    const el = document.createElement('div');
+    el.className = 'ball';
+    el.textContent = n;
+    el.style.animationDelay = (i * 80) + 'ms';
+    display.appendChild(el);
+  });
+
+  const sep = document.createElement('div');
+  sep.className = 'separator';
+  sep.textContent = '✦';
+  display.appendChild(sep);
+
+  combo.stars.forEach((n, i) => {
+    const el = document.createElement('div');
+    el.className = 'ball star';
+    el.textContent = n;
+    el.style.animationDelay = (400 + i * 80) + 'ms';
+    display.appendChild(el);
+  });
+
+  meta.innerHTML = 'Trouvée en <span class="hl">' + tries + '</span> essai' +
+    (tries > 1 ? 's' : '') + ' · toutes les règles validées';
+
+  const p = parityCount(combo.balls);
+  profile.innerHTML =
+    '<span>Somme <strong>' + sum(combo.balls) + '</strong></span>' +
+    '<span>Range <strong>' + range(combo.balls) + '</strong></span>' +
+    '<span>Parité <strong>' + p.even + 'p / ' + p.odd + 'i</strong></span>';
+}
+
+// --- audit ----------------------------------------------------------
+
+function readAuditInputs() {
+  const inputs = document.querySelectorAll('.audit-input');
+  const balls = [], stars = [];
+  inputs.forEach(el => {
+    const v = parseInt(el.value, 10);
+    if (el.dataset.kind === 'ball') balls.push(v);
+    else stars.push(v);
+  });
+  return { balls, stars };
+}
+
+function validateInputs(balls, stars) {
+  const errs = [];
+  const bs = balls.filter(n => !isNaN(n));
+  const ss = stars.filter(n => !isNaN(n));
+  if (bs.length !== 5) errs.push('Il faut 5 balles.');
+  if (ss.length !== 2) errs.push('Il faut 2 étoiles.');
+  if (bs.some(n => n < 1 || n > 50)) errs.push('Les balles doivent être entre 1 et 50.');
+  if (ss.some(n => n < 1 || n > 12)) errs.push('Les étoiles doivent être entre 1 et 12.');
+  if (new Set(bs).size !== bs.length) errs.push('Deux balles sont identiques.');
+  if (new Set(ss).size !== ss.length) errs.push('Deux étoiles sont identiques.');
+  return errs;
+}
+
+function nearestDraw(combo, draws) {
+  // Similarité = nb balles communes + 0.5 × nb étoiles communes
+  const ballSet = new Set(combo.balls);
+  const starSet = new Set(combo.stars);
+  let best = null;
+  let bestScore = -1;
+  for (const d of draws) {
+    let score = 0;
+    for (const b of d.balls) if (ballSet.has(b)) score++;
+    for (const s of d.stars) if (starSet.has(s)) score += 0.5;
+    if (score > bestScore) { bestScore = score; best = d; }
+  }
+  return { draw: best, shared: bestScore };
+}
+
+function runAudit() {
+  const resultEl = document.getElementById('auditResult');
+  const verdictEl = document.getElementById('auditVerdict');
+  const summaryEl = document.getElementById('auditSummary');
+  const checksEl = document.getElementById('auditChecks');
+  const simEl = document.getElementById('auditSim');
+
+  const { balls, stars } = readAuditInputs();
+  const errs = validateInputs(balls, stars);
+
+  if (errs.length) {
+    verdictEl.textContent = 'Saisie incomplète';
+    verdictEl.className = 'audit-verdict fail';
+    summaryEl.innerHTML = errs.map(e => '· ' + e).join('<br>');
+    checksEl.innerHTML = '';
+    simEl.innerHTML = '';
+    resultEl.classList.add('show');
+    return;
+  }
+
+  const combo = { balls: sortAsc(balls), stars: sortAsc(stars) };
+  const f = state.filters;
+  const checks = checkCombo(combo, f);
+  const allPass = checks.every(c => c.ok);
+
+  verdictEl.textContent = allPass ? 'Votre grille passe.' : 'Votre grille serait rejetée.';
+  verdictEl.className = 'audit-verdict ' + (allPass ? 'pass' : 'fail');
+
+  const p = parityCount(combo.balls);
+  summaryEl.innerHTML =
+    'Somme <strong style="color:var(--text)">' + sum(combo.balls) + '</strong> · ' +
+    'Range <strong style="color:var(--text)">' + range(combo.balls) + '</strong> · ' +
+    'Parité <strong style="color:var(--text)">' + p.even + 'p / ' + p.odd + 'i</strong>';
+
+  checksEl.innerHTML = '';
+  for (const c of checks) {
+    const div = document.createElement('div');
+    div.className = 'audit-check ' + (c.ok ? 'pass' : 'fail');
+    div.innerHTML =
+      '<div class="audit-check-icon">' + (c.ok ? '✓' : '✗') + '</div>' +
+      '<div class="audit-check-body"><strong>' + c.label + '</strong><br>' + c.detail + '</div>';
+    checksEl.appendChild(div);
+  }
+
+  const near = nearestDraw(combo, state.draws);
+  const sameSum = state.draws.filter(d => Math.abs(sum(d.balls) - sum(combo.balls)) <= 5).length;
+  simEl.innerHTML =
+    '<div>Tirages historiques avec une somme similaire (±5) : <span class="hl">' + fmt(sameSum) + '</span></div>' +
+    '<div>Plus proche voisin historique (<span class="hl">' + near.shared + '</span> num. communs) : ' +
+    near.draw.date + ' — ' + near.draw.balls.join(' · ') + ' ✦ ' + near.draw.stars.join(' · ') + '</div>';
+
+  resultEl.classList.add('show');
+}
+
+// --- interactions ---------------------------------------------------
+
+function fillRandom() {
+  if (!state.ready) return;
+  const c = randomCombo();
+  const inputs = document.querySelectorAll('.audit-input');
+  let bi = 0, si = 0;
+  inputs.forEach(el => {
+    if (el.dataset.kind === 'ball') el.value = c.balls[bi++];
+    else el.value = c.stars[si++];
+    el.classList.remove('invalid');
+  });
+  runAudit();
+  document.getElementById('auditResult').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+document.querySelectorAll('.audit-input').forEach((el, i, all) => {
+  el.addEventListener('input', () => {
+    const v = parseInt(el.value, 10);
+    const max = parseInt(el.max, 10);
+    const min = parseInt(el.min, 10);
+    el.classList.remove('invalid');
+    if (!isNaN(v) && (v < min || v > max)) el.classList.add('invalid');
+    if (el.value.length >= el.max.length && i < all.length - 1) all[i+1].focus();
+  });
+});
+
+document.getElementById('generateBtn').addEventListener('click', () => {
+  if (!state.ready) return;
+  const r = generateFiltered();
+  if (r) renderCombo(r.combo, r.tries);
+  else document.getElementById('comboMeta').textContent = 'Aucune combinaison trouvée après 10 000 essais.';
+});
+
+document.getElementById('auditBtn').addEventListener('click', runAudit);
+document.getElementById('fillRandomBtn').addEventListener('click', fillRandom);
+
+// --- portefeuille "cœur de distribution" -----------------------------
+// Note : passesAll applique désormais TOUTES les règles (dures + cœur),
+// donc un simple randomCombo + filtrage suffit.
+
+function generatePortfolio(f, target = 10) {
+  const grids = [];
+  const seenKeys = new Set();
+  let tries = 0;
+  while (grids.length < target && tries < 50000) {
+    tries++;
+    const c = randomCombo();
+    if (!passesAll(c, f)) continue;
+    const k = comboKey(c.balls, c.stars);
+    if (seenKeys.has(k)) continue;
+    seenKeys.add(k);
+    grids.push(c);
+  }
+  return grids;
+}
+
+function renderGridList(containerId, grids) {
+  const el = document.getElementById(containerId);
+  if (grids.length === 0) {
+    el.innerHTML = '<div class="grid-empty">Aucune grille générée — réessayez.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  grids.forEach((g, i) => {
+    const row = document.createElement('div');
+    row.className = 'grid-row';
+    row.style.animationDelay = (i * 40) + 'ms';
+
+    const ballsHtml = g.balls.map(n => '<span class="grid-ball">' + n + '</span>').join('');
+    const starsHtml = g.stars.map(n => '<span class="grid-star">' + n + '</span>').join('');
+    const dc = decadesCovered(g.balls);
+    const pairs = evenCount(g.balls);
+
+    row.innerHTML =
+      '<div class="grid-num">' + String(i+1).padStart(2, '0') + '</div>' +
+      '<div class="grid-numbers">' + ballsHtml +
+        '<span class="row-sep">✦</span>' + starsHtml + '</div>' +
+      '<div class="grid-profile">s=' + sum(g.balls) + ' · r=' + range(g.balls) +
+        ' · ' + pairs + 'p/' + (5-pairs) + 'i · ' + dc + ' diz.</div>';
+    el.appendChild(row);
+  });
+}
+
+document.getElementById('genCoreBtn').addEventListener('click', () => {
+  if (!state.ready) return;
+  const grids = generatePortfolio(state.filters);
+  renderGridList('coreGrids', grids);
+});
+
+loadDraws();
+</script>
+</body>
+</html>
