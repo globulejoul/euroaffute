@@ -918,6 +918,33 @@
     animation: pulse 2s infinite;
   }
 
+  .outcome-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.25em 0.7em;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    border: 1px solid;
+    line-height: 1;
+    animation: none;
+  }
+  .outcome-badge::before { content: none; }
+  .outcome-badge.won {
+    color: var(--green);
+    border-color: var(--green);
+    background: color-mix(in srgb, var(--green) 10%, transparent);
+  }
+  .outcome-badge.not-won {
+    color: var(--text-dim);
+    border-color: var(--border);
+    background: transparent;
+  }
+  .outcome-badge .flag { font-size: 0.9em; }
+
   .latest-title {
     font-family: 'Instrument Serif', serif;
     font-size: 2rem;
@@ -1284,7 +1311,7 @@
   <section class="latest" id="latest" style="display:none">
     <div class="latest-head">
       <div>
-        <div class="latest-eyebrow">Dernier tirage</div>
+        <div class="latest-eyebrow">Dernier tirage <span id="latestOutcome"></span></div>
         <div class="latest-title" id="latestTitle"></div>
       </div>
       <div class="latest-date" id="latestDate"></div>
@@ -1521,7 +1548,8 @@
     <h3>Ça ne va toujours <em>pas</em> vous faire gagner.</h3>
     <p>
       L'EuroMillions compte <strong>139 838 160</strong> combinaisons possibles. Même
-      avec nos filtres, la réduction est <strong>marginale</strong> — on reste à une
+      avec nos filtres, il reste <strong id="remainingCombos">… combinaisons</strong>
+      en lice : la réduction est <strong>marginale</strong> — on reste à une
       chance sur des dizaines de millions d'empocher le jackpot.
     </p>
     <p>
@@ -1858,6 +1886,7 @@ async function loadDraws() {
     renderLatest();
     renderGains();
     renderFrequencies();
+    renderRemainingCombos();  // estimation Monte Carlo du nb de combos survivantes
     renderNextDraw();  // async, non bloquant
     document.getElementById('generateBtn').disabled = false;
     document.getElementById('auditBtn').disabled = false;
@@ -2215,11 +2244,33 @@ const NEXT_DRAW_URL = 'https://www.fdj.fr/jeux-de-tirage/euromillions-my-million
 // On utilise la version anglaise /results car elle expose des chiffres précis
 // au format "Jackpot: €48,175,066" dès que le tirage est connu.
 const RESULTS_PAGE_URL = 'https://www.euro-millions.com/results';
+// Source alternative française (secretsdujeu.com) qui expose le tableau
+// détaillé des gains avec "Gagnants tous pays" par rang.
+const SECRETS_LATEST_URL = 'https://www.secretsdujeu.com/euromillion/resultat';
+
+// Construit l'URL secretsdujeu pour une date spécifique :
+// 2026-04-21 → https://www.secretsdujeu.com/euromillions/resultat/tirage-euromillions-du-mardi-21-avril-2026
+function secretsUrlForDate(isoDate) {
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return null;
+  const d = new Date(isoDate + 'T12:00:00');  // midi pour éviter les problèmes de fuseau
+  if (isNaN(d)) return null;
+  const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const months = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
+  const dayName = days[d.getDay()];
+  const monthName = months[d.getMonth()];
+  // Gère les accents : secretsdujeu utilise "fevrier", "aout", "decembre" sans accents dans les URLs
+  return 'https://www.secretsdujeu.com/euromillions/resultat/tirage-euromillions-du-' +
+    dayName + '-' + parseInt(parts[2], 10) + '-' + monthName + '-' + parts[0];
+}
 
 // Helper générique : tente l'appel direct puis plusieurs proxies CORS
 async function fetchViaProxy(targetUrl) {
+  // Liste ordonnée des stratégies. La première (direct) est silencieuse :
+  // sur GitHub Pages / navigateurs modernes, CORS bloque presque toujours les
+  // sites scraped, donc l'erreur est attendue et ne mérite pas d'être logguée.
   const strategies = [
-    { name: 'direct',       url: targetUrl },
+    { name: 'direct',       url: targetUrl,                                                             silent: true },
     { name: 'corsproxy.io', url: 'https://corsproxy.io/?url=' + encodeURIComponent(targetUrl) },
     { name: 'allorigins',   url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl) },
     { name: 'thingproxy',   url: 'https://thingproxy.freeboard.io/fetch/' + targetUrl },
@@ -2236,7 +2287,9 @@ async function fetchViaProxy(targetUrl) {
       }
       throw new Error('réponse vide/trop courte (' + text.length + ' chars)');
     } catch (err) {
-      console.warn('[EuroAffûté] ' + s.name + ' a échoué pour ' + targetUrl + ' :', err.message);
+      if (!s.silent) {
+        console.warn('[EuroAffûté] ' + s.name + ' a échoué pour ' + targetUrl + ' :', err.message);
+      }
       lastErr = err;
     }
   }
@@ -2397,9 +2450,17 @@ function htmlToText(html) {
 function parseSingleDrawPage(html, isoDate) {
   const text = htmlToText(html);
 
+  // Diagnostic : afficher ce qu'on voit autour du mot "Jackpot"
+  const jpIdx = text.search(/Jackpot/i);
+  if (jpIdx >= 0) {
+    const snippet = text.substring(Math.max(0, jpIdx - 20), Math.min(text.length, jpIdx + 200));
+    console.log('[EuroAffûté] contexte "Jackpot" :', JSON.stringify(snippet));
+  } else {
+    console.log('[EuroAffûté] mot "Jackpot" introuvable dans le texte extrait (' + text.length + ' chars)');
+    console.log('[EuroAffûté] extrait début :', JSON.stringify(text.substring(0, 300)));
+  }
+
   // Cherche "Jackpot: €XXX,XXX,XXX" (format précis)
-  // Note: après htmlToText, "Jackpot:" et "€48,175,066" sont séparés par au plus
-  // quelques espaces (labels des autres champs éventuellement), mais on reste prudent.
   const preciseRe = /Jackpot\s*:?\s*€\s*([\d,]+)/i;
   // Fallback arrondi : "Jackpot: X million" ou "Jackpot: €X million"
   const roundRe = /Jackpot\s*:?\s*€?\s*(\d+(?:[.,]\d+)?)\s*[Mm]illion/i;
@@ -2432,11 +2493,37 @@ function parseSingleDrawPage(html, isoDate) {
     if (!isNaN(n) && n > 100) totalWinners = n;
   }
 
-  return { jackpot, won, precise, totalWinners };
+  // Extraction du nombre de gagnants français au rang 5+2 depuis la phrase en prose :
+  //   "1 ticket was purchased in France" ou "2 tickets were purchased in France"
+  //   Apparaît juste après "X jackpot winning tickets in total".
+  let frWinners = null;
+  const frRe = /(\d+)\s+tickets?\s+(?:was|were)\s+purchased\s+in\s+(?:the\s+)?France\b/i;
+  const mFr = frRe.exec(text);
+  if (mFr) {
+    const n = parseInt(mFr[1], 10);
+    if (!isNaN(n) && n >= 0) frWinners = n;
+  }
+
+  return { jackpot, won, precise, totalWinners, frWinners };
 }
 
 async function fetchSingleDrawJackpot(isoDate) {
-  // URL format anglais : /results/DD-MM-YYYY
+  // Stratégie 1 : secretsdujeu.com (FR, tableau complet, très précis)
+  const secretsUrl = secretsUrlForDate(isoDate);
+  if (secretsUrl) {
+    try {
+      const html = await fetchViaProxy(secretsUrl);
+      const parsed = parseSecretsDuJeuPage(html, isoDate);
+      if (parsed) {
+        console.log('[EuroAffûté] ✓ via secretsdujeu :', parsed);
+        return parsed;
+      }
+    } catch (err) {
+      console.warn('[EuroAffûté] secretsdujeu ' + secretsUrl + ' échoué :', err.message);
+    }
+  }
+
+  // Stratégie 2 : euro-millions.com (anglais, source secondaire)
   const parts = isoDate.split('-');
   if (parts.length !== 3) return null;
   const url = 'https://www.euro-millions.com/results/' + parts[2] + '-' + parts[1] + '-' + parts[0];
@@ -2444,9 +2531,94 @@ async function fetchSingleDrawJackpot(isoDate) {
     const html = await fetchViaProxy(url);
     return parseSingleDrawPage(html, isoDate);
   } catch (err) {
-    console.warn('[EuroAffûté] scrape page individuelle ' + url + ' échoué :', err.message);
+    console.warn('[EuroAffûté] euro-millions.com ' + url + ' échoué :', err.message);
     return null;
   }
+}
+
+// Parse une page individuelle secretsdujeu.com pour récupérer :
+//   - jackpot total (extrait du titre / accroche : "Jackpot de 145 millions remporté/non remporté")
+//   - ligne 5+2 du tableau : nombre de gagnants tous pays + gain par gagnant
+//     → on calcule le total réel = winners × gain
+//   - Total gagnants tous rangs (si dispo)
+function parseSecretsDuJeuPage(html, isoDate) {
+  const text = htmlToText(html);
+
+  // 1. Headline pour le jackpot annoncé + statut remporté (non greedy pour "non")
+  const headlineRe = /Jackpot\s+de\s+(\d+(?:[.,]\d+)?)\s*millions?\s+(non\s+)?remport[ée]/i;
+  const mH = headlineRe.exec(text);
+  let jackpotAnnoncé = null;
+  let wasWon = null;
+  if (mH) {
+    const n = parseFloat(mH[1].replace(',', '.')) * 1e6;
+    if (n >= 1e6 && n <= 300e6) jackpotAnnoncé = Math.round(n);
+    wasWon = !mH[2];  // "non" présent = non remporté
+  }
+
+  // 2. Parse le tableau via <tr>/<td> : cherche la première ligne dont la
+  //    première cellule contient "5 bons N° +" (c'est le rang 5+2, toujours en tête).
+  let jackpotPerWinner = null;
+  let jackpotWinners = null;
+  let frWinners = null;  // nb de gagnants en France au rang 5+2
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  const tdRe = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+  let mRow;
+  while ((mRow = rowRe.exec(html)) !== null) {
+    const rowHtml = mRow[1];
+    const cells = [];
+    let mTd;
+    tdRe.lastIndex = 0;
+    while ((mTd = tdRe.exec(rowHtml)) !== null) {
+      cells.push(htmlToText(mTd[1]).trim());
+    }
+    if (cells.length < 3) continue;
+    // Première cellule du rang 5+2 : "5 bons N° +"
+    if (!/^5\s+bons\s+N/i.test(cells[0])) continue;
+    // Dernière cellule = gain en € (ou "Pas de gagnant")
+    const gainCell = cells[cells.length - 1];
+    if (!/€/.test(gainCell)) break;  // "Pas de gagnant" → on sort
+    const gainM = /([\d\s\u00a0\u202f.,]+)\s*€/.exec(gainCell);
+    if (!gainM) break;
+    const gain = parseFloat(gainM[1].replace(/[\s\u00a0\u202f]/g, '').replace(',', '.'));
+    if (isNaN(gain) || gain < 1e6) break;  // pas un jackpot
+    // Avant-dernière cellule = gagnants tous pays
+    const winnersCell = cells[cells.length - 2];
+    const winners = parseInt(winnersCell.replace(/[\s\u00a0\u202f]/g, ''), 10);
+    if (isNaN(winners) || winners < 1) break;
+    jackpotPerWinner = Math.round(gain);
+    jackpotWinners = winners;
+    // La 2e cellule (index 1) est "Gagnants France" — 1ère colonne pays
+    if (cells.length >= 3) {
+      const fr = parseInt(cells[1].replace(/[\s\u00a0\u202f]/g, ''), 10);
+      if (!isNaN(fr) && fr >= 0) frWinners = fr;
+    }
+    break;  // première ligne "5 bons N° +" trouvée = le 5+2
+  }
+
+  // 3. Décide du jackpot à afficher
+  let jackpot = null;
+  let precise = false;
+  if (jackpotPerWinner && jackpotWinners) {
+    jackpot = jackpotPerWinner * jackpotWinners;
+    precise = true;
+    wasWon = true;
+  } else if (jackpotAnnoncé) {
+    jackpot = jackpotAnnoncé;
+    precise = false;
+  }
+
+  if (!jackpot) return null;
+
+  return {
+    jackpot,
+    won: !!wasWon,
+    precise,
+    jackpotPerWinner,
+    jackpotWinners,
+    frWinners,
+    totalWinners: null,
+    source: 'secretsdujeu',
+  };
 }
 
 // --- rendu du dernier tirage ----------------------------------------
@@ -2478,6 +2650,10 @@ async function renderLatest() {
   else if (daysAgo < 30) ago = 'il y a ' + Math.floor(daysAgo/7) + ' semaine' + (daysAgo>=14?'s':'');
   else ago = 'il y a ' + Math.floor(daysAgo/30) + ' mois';
   document.getElementById('latestDate').textContent = ago;
+
+  // Reset badge d'issue (au cas où il y aurait un re-render)
+  const outcomeReset = document.getElementById('latestOutcome');
+  if (outcomeReset) outcomeReset.innerHTML = '';
 
   // Balles et étoiles
   const ballsEl = document.getElementById('latestBalls');
@@ -2587,20 +2763,75 @@ async function renderLatest() {
   }
 
   if (realJackpot) {
-    // On a le vrai jackpot en €. On affiche ça en priorité et on complète avec les infos gagnants de l'API.
+    // On a les données scrapées. Deux cas selon la source :
+    // - secretsdujeu : realJackpot.jackpot = TOTAL, avec jackpotPerWinner + jackpotWinners
+    // - euro-millions.com : realJackpot.jackpot = PART par gagnant (pas de breakdown)
+    const fromSecrets = realJackpot.source === 'secretsdujeu';
     const apiJp = latest.prizes && latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
+    const apiWinners = apiJp ? apiJp.winners : 0;
+
+    // Construit la mention "dont X en France" quand disponible (secretsdujeu uniquement)
+    function frDetail(totalWinners) {
+      const fr = realJackpot.frWinners;
+      if (fr === null || fr === undefined) return '';
+      if (fr === 0) return ' (aucun en France 🇫🇷)';
+      if (fr === totalWinners) return fr === 1 ? ' 🇫🇷' : ' (tous en France 🇫🇷)';
+      return ' (dont ' + fr + ' 🇫🇷)';
+    }
+
     let line;
-    if (realJackpot.won && apiJp && apiJp.winners > 0) {
-      const perWinner = realJackpot.jackpot;  // le scraping donne déjà la part par gagnant
-      const totalJackpot = realJackpot.jackpot * apiJp.winners;
-      line = '<div class="latest-prize-main">' + formatMoney(perWinner) + '</div>' +
-        '<div class="latest-prize-sub">Jackpot gagné ! Part par gagnant · ' +
-        (apiJp.winners === 1 ? '1 seul gagnant' : apiJp.winners + ' gagnants') +
-        ' au rang 5+2 (≈ ' + formatMoney(totalJackpot) + ' au total)</div>';
+    // Badge d'issue du tirage affiché à droite de "Dernier tirage"
+    const outcomeEl = document.getElementById('latestOutcome');
+    if (outcomeEl) {
+      // Statut effectif : soit le scrape a dit "won", soit l'API a des gagnants 5+2
+      const isWon = realJackpot.won || apiWinners > 0;
+      if (isWon) {
+        const fr = realJackpot.frWinners;
+        const hasFrWin = fr && fr > 0;
+        const flag = hasFrWin ? ' <span class="flag">🇫🇷</span>' : '';
+        outcomeEl.innerHTML = '<span class="outcome-badge won">Jackpot gagné' + flag + '</span>';
+      } else {
+        outcomeEl.innerHTML = '<span class="outcome-badge not-won">Jackpot non remporté</span>';
+      }
+    }
+
+    if (realJackpot.won && fromSecrets && realJackpot.jackpotPerWinner && realJackpot.jackpotWinners) {
+      // Cas idéal : on a tout depuis secretsdujeu
+      const perWinner = realJackpot.jackpotPerWinner;
+      const winners = realJackpot.jackpotWinners;
+      const total = realJackpot.jackpot;
+      const frText = frDetail(winners);
+      if (winners === 1) {
+        const who = realJackpot.frWinners === 1 ? '1 gagnant unique en France 🇫🇷' : '1 seul gagnant au rang 5+2';
+        line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
+          '<div class="latest-prize-sub">Jackpot gagné par ' + who + '</div>';
+      } else {
+        line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
+          '<div class="latest-prize-sub">Jackpot partagé · ' + winners + ' gagnants' + frText + ' · ' +
+          formatMoney(perWinner) + ' par personne</div>';
+      }
     } else if (realJackpot.won) {
-      line = '<div class="latest-prize-main">' + formatMoney(realJackpot.jackpot) + '</div>' +
-        '<div class="latest-prize-sub">Jackpot gagné ! (part par gagnant · nombre indisponible)</div>';
+      // Source euro-millions.com : on infère le total depuis l'API si possible
+      const effectiveWinners = apiWinners > 0 ? apiWinners : 1;
+      const perWinner = realJackpot.jackpot;
+      const total = perWinner * effectiveWinners;
+      if (effectiveWinners === 1) {
+        line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
+          '<div class="latest-prize-sub">Jackpot gagné par 1 seul gagnant au rang 5+2</div>';
+      } else {
+        line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
+          '<div class="latest-prize-sub">Jackpot partagé · ' + effectiveWinners + ' gagnants au rang 5+2 · ' +
+          formatMoney(perWinner) + ' par personne</div>';
+      }
+    } else if (apiWinners > 0) {
+      // Scraping dit "pas gagné" mais API confirme des gagnants 5+2 → probablement partagé
+      const perWinner = realJackpot.jackpot;
+      const total = perWinner * apiWinners;
+      line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
+        '<div class="latest-prize-sub">Jackpot partagé · ' + apiWinners + ' gagnants au rang 5+2 · ' +
+        formatMoney(perWinner) + ' par personne</div>';
     } else {
+      // Jackpot annoncé, non gagné
       line = '<div class="latest-prize-main" style="color:var(--text-dim)">' + formatMoney(realJackpot.jackpot) + '</div>' +
         '<div class="latest-prize-sub">Jackpot en jeu · cagnotte reportée au tirage suivant (aucun 5+2)</div>';
     }
@@ -2753,6 +2984,39 @@ function renderFrequencies() {
       freq.drawsEra12 + ' tirages sur ' + (freq.drawsEra11 + freq.drawsEra12) +
       ' seulement — l\'attendu affiché tient compte de cette différence.';
   }
+}
+
+// --- estimation Monte Carlo du nombre de combinaisons survivant aux filtres ---
+
+function renderRemainingCombos() {
+  const el = document.getElementById('remainingCombos');
+  if (!el) return;
+
+  // Affichage intermédiaire pendant le calcul (perçu comme instantané mais évite le vide)
+  el.textContent = 'calcul…';
+
+  // Défère sur la tick suivante pour ne pas bloquer le rendu initial
+  setTimeout(() => {
+    const TOTAL_COMBOS = 139838160;  // C(50,5) × C(12,2)
+    const SAMPLE_SIZE = 50000;       // compromis vitesse/précision (±0.3%)
+
+    let passed = 0;
+    for (let i = 0; i < SAMPLE_SIZE; i++) {
+      const c = randomCombo();
+      if (passesAll(c, state.filters)) passed++;
+    }
+
+    const estimate = Math.round((passed / SAMPLE_SIZE) * TOTAL_COMBOS);
+    const pctDropped = 100 - (passed / SAMPLE_SIZE) * 100;
+
+    let display;
+    if (estimate >= 1e7) display = '≈ ' + (estimate / 1e6).toFixed(0) + ' millions de combinaisons';
+    else if (estimate >= 1e6) display = '≈ ' + (estimate / 1e6).toFixed(1) + ' millions de combinaisons';
+    else display = '≈ ' + fmt(estimate) + ' combinaisons';
+
+    el.innerHTML = display + ' <span style="font-weight:400; color:var(--text-dim);">(' +
+      pctDropped.toFixed(0) + ' % éliminées)</span>';
+  }, 0);
 }
 
 // --- rendu de l'anomalie --------------------------------------------
