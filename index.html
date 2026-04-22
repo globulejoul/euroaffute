@@ -2542,9 +2542,14 @@ async function fetchSingleDrawJackpot(isoDate) {
 //     → on calcule le total réel = winners × gain
 //   - Total gagnants tous rangs (si dispo)
 function parseSecretsDuJeuPage(html, isoDate) {
-  // Enlève les <link rel="preload"> avant tout traitement : ils déclenchent des
-  // requêtes CORS inutiles quand le HTML est touché par le navigateur.
-  html = html.replace(/<link[^>]*rel=["']?preload["']?[^>]*>/gi, '');
+  // Avant parsing : enlève TOUT ce qui pourrait déclencher une requête réseau
+  // quand on passe le HTML à DOMParser (link, style, script, meta preload, image).
+  html = html
+    .replace(/<link\b[^>]*>/gi, '')           // tous les <link> (preload, stylesheet, etc.)
+    .replace(/<meta\b[^>]*>/gi, '')           // meta (dont preconnect hints)
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '');
 
   const text = htmlToText(html);
 
@@ -2565,12 +2570,8 @@ function parseSecretsDuJeuPage(html, isoDate) {
   let frWinners = null;
   try {
     const parser = new DOMParser();
-    // On lui passe un doc minimal pour éviter tout side-effect (fonts, images, scripts)
-    const cleanedHtml = html
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?<\/style>/gi, '')
-      .replace(/<img[^>]*>/gi, '');
-    const doc = parser.parseFromString(cleanedHtml, 'text/html');
+    // Le HTML a déjà été nettoyé (link/script/style/meta/img retirés au début de la fonction)
+    const doc = parser.parseFromString(html.replace(/<img[^>]*>/gi, ''), 'text/html');
 
     // On parcourt toutes les lignes de tous les tableaux
     const rows = doc.querySelectorAll('tr');
