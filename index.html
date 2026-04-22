@@ -2565,31 +2565,44 @@ function parseSecretsDuJeuPage(html, isoDate) {
   let mRow;
   while ((mRow = rowRe.exec(html)) !== null) {
     const rowHtml = mRow[1];
-    const cells = [];
+    let cells = [];
     let mTd;
     tdRe.lastIndex = 0;
     while ((mTd = tdRe.exec(rowHtml)) !== null) {
       cells.push(htmlToText(mTd[1]).trim());
     }
+    // La page secretsdujeu peut avoir des <td> vides en préfixe/suffixe (icônes).
+    // On les enlève pour simplifier la logique.
+    while (cells.length && cells[0] === '') cells.shift();
+    while (cells.length && cells[cells.length - 1] === '') cells.pop();
+
     if (cells.length < 3) continue;
-    // Première cellule du rang 5+2 : "5 bons N° +"
-    if (!/^5\s+bons\s+N/i.test(cells[0])) continue;
+    // Localise "5 bons N° +" dans les premières cellules (pas forcément cells[0]).
+    let fiveIdx = -1;
+    for (let i = 0; i < Math.min(3, cells.length); i++) {
+      if (/^5\s+bons\s+N/i.test(cells[i])) { fiveIdx = i; break; }
+    }
+    if (fiveIdx < 0) continue;
+
     // Dernière cellule = gain en € (ou "Pas de gagnant")
     const gainCell = cells[cells.length - 1];
-    if (!/€/.test(gainCell)) break;  // "Pas de gagnant" → on sort
+    if (!/€/.test(gainCell)) break;  // "Pas de gagnant" → jackpot non gagné
     const gainM = /([\d\s\u00a0\u202f.,]+)\s*€/.exec(gainCell);
     if (!gainM) break;
     const gain = parseFloat(gainM[1].replace(/[\s\u00a0\u202f]/g, '').replace(',', '.'));
     if (isNaN(gain) || gain < 1e6) break;  // pas un jackpot
+
     // Avant-dernière cellule = gagnants tous pays
     const winnersCell = cells[cells.length - 2];
     const winners = parseInt(winnersCell.replace(/[\s\u00a0\u202f]/g, ''), 10);
     if (isNaN(winners) || winners < 1) break;
+
     jackpotPerWinner = Math.round(gain);
     jackpotWinners = winners;
-    // La 2e cellule (index 1) est "Gagnants France" — 1ère colonne pays
-    if (cells.length >= 3) {
-      const fr = parseInt(cells[1].replace(/[\s\u00a0\u202f]/g, ''), 10);
+
+    // Gagnants France = 1ère colonne pays, immédiatement après "5 bons N° +"
+    if (fiveIdx + 1 < cells.length - 2) {
+      const fr = parseInt(cells[fiveIdx + 1].replace(/[\s\u00a0\u202f]/g, ''), 10);
       if (!isNaN(fr) && fr >= 0) frWinners = fr;
     }
     break;  // première ligne "5 bons N° +" trouvée = le 5+2
@@ -2811,16 +2824,26 @@ async function renderLatest() {
           formatMoney(perWinner) + ' par personne</div>';
       }
     } else if (realJackpot.won) {
-      // Source euro-millions.com : on infère le total depuis l'API si possible
+      // Pas de breakdown précis. Deux cas selon la source :
+      // - secretsdujeu headline ("Jackpot de 144 millions remporté") : jackpot = TOTAL
+      // - euro-millions.com : jackpot = PART par gagnant
       const effectiveWinners = apiWinners > 0 ? apiWinners : 1;
-      const perWinner = realJackpot.jackpot;
-      const total = perWinner * effectiveWinners;
+      let total, perWinner;
+      if (fromSecrets) {
+        total = realJackpot.jackpot;
+        perWinner = effectiveWinners > 0 ? Math.round(total / effectiveWinners) : total;
+      } else {
+        perWinner = realJackpot.jackpot;
+        total = perWinner * effectiveWinners;
+      }
+      const frText = frDetail(effectiveWinners);
       if (effectiveWinners === 1) {
+        const who = realJackpot.frWinners === 1 ? '1 gagnant unique en France 🇫🇷' : '1 seul gagnant au rang 5+2';
         line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
-          '<div class="latest-prize-sub">Jackpot gagné par 1 seul gagnant au rang 5+2</div>';
+          '<div class="latest-prize-sub">Jackpot gagné par ' + who + '</div>';
       } else {
         line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
-          '<div class="latest-prize-sub">Jackpot partagé · ' + effectiveWinners + ' gagnants au rang 5+2 · ' +
+          '<div class="latest-prize-sub">Jackpot partagé · ' + effectiveWinners + ' gagnants' + frText + ' · ' +
           formatMoney(perWinner) + ' par personne</div>';
       }
     } else if (apiWinners > 0) {
