@@ -2208,9 +2208,30 @@ function renderRules() {
   renderBlock(document.getElementById('rulesCore'), core);
 }
 
-// --- cagnotte du prochain tirage (scraping FDJ) ---------------------
+// --- scraping : cagnotte prochain tirage (FDJ) ----------------------
 
 const NEXT_DRAW_URL = 'https://www.fdj.fr/jeux-de-tirage/euromillions-my-million/';
+// Page avec les vrais jackpots (en €) des tirages récents
+const RESULTS_PAGE_URL = 'https://www.euro-millions.com/fr/resultats';
+
+// Helper générique : tente plusieurs proxies CORS
+async function fetchViaProxy(targetUrl) {
+  const strategies = [
+    'https://corsproxy.io/?url=' + encodeURIComponent(targetUrl),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl),
+  ];
+  let lastErr = null;
+  for (const url of strategies) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.text();
+    } catch (err) { lastErr = err; }
+  }
+  throw lastErr || new Error('tous les proxies ont échoué');
+}
+
+// --- cagnotte du prochain tirage (scraping FDJ) ---------------------
 
 // Parse la page FDJ. Cible en priorité le titre de la page qui contient
 // typiquement "EuroMillions – My Million : 17 M€ ce vendredi 24 avr. !"
@@ -2254,24 +2275,10 @@ function parseNextDraw(html) {
 }
 
 async function fetchNextDrawInfo() {
-  const strategies = [
-    'https://corsproxy.io/?url=' + encodeURIComponent(NEXT_DRAW_URL),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(NEXT_DRAW_URL),
-  ];
-  let lastErr = null;
-  for (const url of strategies) {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const html = await res.text();
-      const parsed = parseNextDraw(html);
-      if (parsed.amountEur) return parsed;
-      throw new Error('montant introuvable dans la page FDJ');
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr || new Error('scraping échoué');
+  const html = await fetchViaProxy(NEXT_DRAW_URL);
+  const parsed = parseNextDraw(html);
+  if (!parsed.amountEur) throw new Error('montant introuvable dans la page FDJ');
+  return parsed;
 }
 
 async function renderNextDraw() {
@@ -2301,9 +2308,47 @@ async function renderNextDraw() {
   }
 }
 
+// --- scraping : vrais jackpots en € (euro-millions.com/fr/resultats) ---
+
+// Parse la page de résultats pour extraire { 'YYYY-MM-DD': { jackpot, won } }
+// pour tous les tirages affichés (~60 derniers jours).
+function parseRecentJackpots(html) {
+  const out = {};
+  // 1. Repérer toutes les occurrences de liens vers /fr/resultats/DD-MM-YYYY
+  //    (chaque tirage en a plusieurs, on ne garde que la première pour un bloc).
+  const linkRe = /\/fr\/resultats\/(\d{2})-(\d{2})-(\d{4})/g;
+  const positions = [];
+  let m;
+  while ((m = linkRe.exec(html)) !== null) {
+    positions.push({ iso: m[3] + '-' + m[2] + '-' + m[1], start: m.index });
+  }
+  // 2. Pour chaque tirage, on analyse le segment [position_actuelle, position_suivante]
+  for (let i = 0; i < positions.length; i++) {
+    const date = positions[i].iso;
+    if (out[date]) continue;
+    const from = positions[i].start;
+    const to = (i + 1 < positions.length) ? positions[i + 1].start : from + 5000;
+    const block = html.substring(from, to);
+    // Cherche le premier montant € dans le bloc
+    const amtRe = /(\d[\d\s\u00a0\u202f]{5,20})\s*€/;
+    const mAmt = amtRe.exec(block);
+    if (!mAmt) continue;
+    const num = parseInt(mAmt[1].replace(/[\s\u00a0\u202f]/g, ''), 10);
+    if (isNaN(num) || num < 1e6) continue;  // trop petit pour être un jackpot
+    const won = /Jackpot\s+gagné/i.test(block);
+    out[date] = { jackpot: num, won };
+  }
+  return out;
+}
+
+async function fetchRecentJackpots() {
+  const html = await fetchViaProxy(RESULTS_PAGE_URL);
+  return parseRecentJackpots(html);
+}
+
 // --- rendu du dernier tirage ----------------------------------------
 
-function renderLatest() {
+async function renderLatest() {
   const box = document.getElementById('latest');
   if (!state.draws || state.draws.length === 0) { box.style.display = 'none'; return; }
 
@@ -2408,15 +2453,53 @@ function renderLatest() {
       '<span class="tag fail">' + passed + '/' + tests.length + '</span>';
   }
 
-  // Gains du tirage
+  // Gains du tirage — on tente d'abord de récupérer les vrais chiffres depuis
+  // la page /fr/resultats (jackpot en € précis, source officielle).
   const prizesEl = document.getElementById('latestPrizes');
-  if (latest.prizes && latest.prizes.length) {
+  prizesEl.innerHTML = '<div class="latest-prize-main" style="color:var(--text-faint); font-size:1rem; font-style:italic;">Chargement…</div>';
+
+  let realJackpot = null;
+  try {
+    const recent = await fetchRecentJackpots();
+    if (recent[latest.date]) realJackpot = recent[latest.date];
+  } catch (err) {
+    console.warn('[EuroAffûté] jackpot réel :', err.message);
+  }
+
+  if (realJackpot) {
+    // On a le vrai jackpot en €. On affiche ça en priorité et on complète avec les infos gagnants de l'API.
+    const apiJp = latest.prizes && latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
+    let line;
+    if (realJackpot.won && apiJp && apiJp.winners > 0) {
+      const perWinner = realJackpot.jackpot / apiJp.winners;
+      line = '<div class="latest-prize-main">' + formatMoney(realJackpot.jackpot) + '</div>' +
+        '<div class="latest-prize-sub">Jackpot gagné ! ' +
+        (apiJp.winners === 1 ? '1 seul gagnant' : apiJp.winners + ' gagnants') +
+        ' au rang 5+2 · ≈ ' + formatMoney(perWinner) + ' par personne</div>';
+    } else if (realJackpot.won) {
+      line = '<div class="latest-prize-main">' + formatMoney(realJackpot.jackpot) + '</div>' +
+        '<div class="latest-prize-sub">Jackpot gagné ! (nombre de gagnants indisponible)</div>';
+    } else {
+      line = '<div class="latest-prize-main" style="color:var(--text-dim)">' + formatMoney(realJackpot.jackpot) + '</div>' +
+        '<div class="latest-prize-sub">Jackpot en jeu · cagnotte reportée au tirage suivant (aucun 5+2)</div>';
+    }
+
+    let extra = '';
+    if (latest.prizes && latest.prizes.length) {
+      let totalWinners = 0;
+      for (const p of latest.prizes) totalWinners += (p.winners || 0);
+      if (totalWinners > 0) {
+        extra = '<div class="latest-prize-total">' +
+          '<strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus' +
+          '</div>';
+      }
+    }
+    prizesEl.innerHTML = line + extra;
+  } else if (latest.prizes && latest.prizes.length) {
+    // Pas de vrai jackpot scrapé : on tombe sur le fallback API (données potentiellement imparfaites)
     const jp = latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
     let jpLine;
     if (jp && jp.winners > 0) {
-      // L'API Pedro Mealha scrape euro-millions.com qui affiche une part par gagnant
-      // dans une juridiction donnée — pas le jackpot global divisé par le nb de gagnants.
-      // On affiche donc la part par gagnant + le nombre, sans multiplier pour faire un faux total.
       jpLine = '<div class="latest-prize-main">' + formatMoney(jp.prize) + '</div>' +
         '<div class="latest-prize-sub">par gagnant · ' +
         (jp.winners === 1 ? '1 seul gagnant' : jp.winners + ' gagnants') +
@@ -2427,17 +2510,12 @@ function renderLatest() {
     } else {
       jpLine = '<div class="latest-prize-main" style="color:var(--text-dim)">—</div>';
     }
-
-    let totalPaid = 0, totalWinners = 0;
-    for (const p of latest.prizes) {
-      totalPaid += (p.prize || 0) * (p.winners || 0);
-      totalWinners += (p.winners || 0);
-    }
-
+    let totalWinners = 0;
+    for (const p of latest.prizes) totalWinners += (p.winners || 0);
     prizesEl.innerHTML = jpLine +
       '<div class="latest-prize-total">' +
       '<strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus' +
-      '<div style="margin-top:0.4rem; font-size:0.7rem; color:var(--text-faint); font-style:italic;">Gains par gagnant issus d\'agrégats européens. Le vrai montant FDJ peut différer (part par juridiction).</div>' +
+      '<div style="margin-top:0.4rem; font-size:0.7rem; color:var(--text-faint); font-style:italic;">Chiffres issus de l\'API (agrégats européens, peuvent différer de la FDJ).</div>' +
       '</div>';
   } else {
     prizesEl.innerHTML = '<div class="latest-prize-main" style="color:var(--text-dim); font-size:1rem">Données indisponibles</div>';
