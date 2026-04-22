@@ -656,6 +656,30 @@
     margin-bottom: 0.3rem;
   }
   .portfolio.backup .portfolio-tag { color: var(--star); }
+  .portfolio-tag.alt { color: var(--green); }
+  .portfolio.contrarian h3 em { color: var(--green); }
+  .portfolio.contrarian { border-color: color-mix(in srgb, var(--green) 25%, var(--border)); }
+
+  .contrarian-note {
+    margin-top: 1.25rem;
+    padding: 0.9rem 1.1rem;
+    background: color-mix(in srgb, var(--green) 5%, transparent);
+    border-left: 2px solid var(--green);
+    border-radius: 0 6px 6px 0;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+  .contrarian-note strong {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--green);
+    font-weight: 500;
+  }
 
   .portfolio h3 {
     font-family: 'Instrument Serif', serif;
@@ -944,6 +968,117 @@
     background: transparent;
   }
   .outcome-badge .flag { font-size: 0.9em; }
+
+  /* --- Timeline des jackpots ------------------------------------- */
+  .jackpot-timeline {
+    max-width: 1100px;
+    margin: 4rem auto;
+    padding: 2rem 2.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .jackpot-timeline-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+  .jackpot-timeline-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    margin-bottom: 0.35rem;
+  }
+  .jackpot-timeline-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.9rem;
+    font-weight: 400;
+    line-height: 1.1;
+  }
+  .jackpot-timeline-title em { font-style: italic; color: var(--gold); }
+  .jackpot-timeline-legend {
+    display: flex;
+    gap: 1.2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+  .jackpot-timeline-legend span { display: inline-flex; align-items: center; gap: 0.4em; }
+  .dot-green, .dot-blue {
+    width: 9px; height: 9px; border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-green { background: var(--green); box-shadow: 0 0 6px color-mix(in srgb, var(--green) 50%, transparent); }
+  .dot-blue  { background: var(--star); }
+  .jackpot-timeline-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.35rem;
+    height: 220px;
+    padding: 0.5rem 0 2.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .jt-bar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    position: relative;
+    min-width: 0;
+  }
+  .jt-bar-fill {
+    width: 100%;
+    max-width: 48px;
+    margin: 0 auto;
+    background: var(--star);
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    transition: transform 0.2s ease;
+  }
+  .jt-bar.won .jt-bar-fill {
+    background: linear-gradient(to top, var(--green), color-mix(in srgb, var(--green) 40%, transparent));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--green) 30%, transparent);
+  }
+  .jt-bar:hover .jt-bar-fill { transform: translateY(-2px); }
+  .jt-bar-amount {
+    position: absolute;
+    top: -1.35rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .jt-bar-date {
+    position: absolute;
+    bottom: -2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    transform: rotate(-45deg);
+    transform-origin: top right;
+    white-space: nowrap;
+  }
+  .jackpot-timeline-note {
+    margin-top: 1.5rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  @media (max-width: 640px) {
+    .jackpot-timeline { padding: 1.5rem 1rem; }
+    .jackpot-timeline-chart { gap: 0.2rem; height: 180px; }
+    .jt-bar-amount { font-size: 0.55rem; top: -1.1rem; }
+    .jt-bar-date { font-size: 0.5rem; }
+  }
 
   .latest-title {
     font-family: 'Instrument Serif', serif;
@@ -1344,6 +1479,24 @@
     </div>
   </section>
 
+  <section class="jackpot-timeline" id="jackpotTimeline" style="display:none">
+    <div class="jackpot-timeline-head">
+      <div>
+        <div class="jackpot-timeline-eyebrow">Dynamique récente</div>
+        <h3 class="jackpot-timeline-title">Évolution des <em>15 derniers jackpots</em></h3>
+      </div>
+      <div class="jackpot-timeline-legend">
+        <span><span class="dot-green"></span> Gagné</span>
+        <span><span class="dot-blue"></span> Reporté</span>
+      </div>
+    </div>
+    <div class="jackpot-timeline-chart" id="jackpotChart"></div>
+    <p class="jackpot-timeline-note">
+      Chaque barre = un tirage. Le jackpot enfle tant que personne ne rafle le 5+2,
+      puis retombe à 17 M€ dès qu'un gagnant s'en empare.
+    </p>
+  </section>
+
   <div class="section-head">
     <div class="section-eyebrow">Ce qu'on a appris</div>
     <h2 class="section-title">Les règles, <em>déduites</em> des données.</h2>
@@ -1495,6 +1648,32 @@
       </p>
       <div class="grid-list" id="coreGrids">
         <div class="grid-empty">Cliquez sur « Tirer 10 grilles »</div>
+      </div>
+    </div>
+
+    <div class="portfolio contrarian">
+      <div class="portfolio-head">
+        <div>
+          <span class="portfolio-tag alt">Contre-tendance</span>
+          <h3>Les plus <em>impopulaires</em></h3>
+        </div>
+        <button class="btn" id="genContrarianBtn" disabled>Tirer 10 grilles</button>
+      </div>
+      <p class="portfolio-desc">
+        <strong>La seule stratégie validée par les maths :</strong> ces grilles ne
+        changent pas vos chances de gagner, elles changent <em>ce que vous
+        toucheriez si ça arrivait</em>. On évite les schémas joués par des millions
+        de personnes — dates d'anniversaire (≤ 31), multiples de 7, suites
+        arithmétiques (5‑10‑15‑20‑25), colonnes/lignes sur la grille FDJ. Résultat :
+        un jackpot moins partagé.
+      </p>
+      <div class="grid-list" id="contrarianGrids">
+        <div class="grid-empty">Cliquez sur « Tirer 10 grilles »</div>
+      </div>
+      <div class="contrarian-note">
+        <strong>À savoir</strong> — environ 20 à 30 % des joueurs choisissent des numéros ≤ 31 (dates).
+        Une grille qui les évite réduit de façon mesurable le risque de partage.
+        On applique aussi nos filtres "cœur de distribution" pour garder un profil statistique sain.
       </div>
     </div>
 
@@ -1818,7 +1997,54 @@ function formatMoney(eur) {
 
 // On tente plusieurs stratégies dans l'ordre : appel direct, puis deux
 // proxies CORS publics au cas où l'API refuse des origines comme github.io.
+// --- Cache localStorage ---------------------------------------------
+// On stocke les tirages et les jackpots scrapés localement pour accélérer
+// les visites suivantes. Invalidation : changement de date (nouveau tirage attendu).
+
+const CACHE_KEYS = {
+  DRAWS: 'euroaffute:draws:v1',
+  JACKPOT: 'euroaffute:jackpot:v1:',  // préfixe, suivi de la date ISO
+  NEXT_DRAW: 'euroaffute:nextDraw:v1',
+};
+
+// TTL (en ms) pour chaque type de donnée
+const CACHE_TTL = {
+  DRAWS: 6 * 60 * 60 * 1000,       // 6h : assez court pour capter un nouveau tirage rapidement
+  JACKPOT: 24 * 60 * 60 * 1000,    // 24h : un tirage ne change jamais après coup
+  NEXT_DRAW: 30 * 60 * 1000,        // 30 min : montant du prochain tirage peut évoluer
+};
+
+function cacheGet(key, maxAgeMs) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.t !== 'number') return null;
+    if (Date.now() - parsed.t > maxAgeMs) return null;
+    return parsed.v;
+  } catch { return null; }
+}
+
+function cacheSet(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ t: Date.now(), v: value }));
+    return true;
+  } catch (err) {
+    // Quota dépassé ou mode privé : on échoue silencieusement
+    console.warn('[EuroAffûté] cache set échoué pour', key, ':', err.message);
+    return false;
+  }
+}
+
 async function fetchDrawsJson() {
+  // 1. Check cache local d'abord
+  const cached = cacheGet(CACHE_KEYS.DRAWS, CACHE_TTL.DRAWS);
+  if (cached && Array.isArray(cached.data)) {
+    console.log('[EuroAffûté] tirages depuis le cache (' + cached.data.length + ' entrées)');
+    return { data: cached.data, via: cached.via + ' (cache)' };
+  }
+
+  // 2. Sinon, on fetch en vrai
   const base = API_URL;
   const strategies = [
     { name: 'direct',     url: base },
@@ -1834,6 +2060,8 @@ async function fetchDrawsJson() {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       console.log('[EuroAffûté] Succès via ' + s.name);
+      // Mise en cache pour la prochaine visite
+      cacheSet(CACHE_KEYS.DRAWS, { data, via: s.name });
       return { data, via: s.name };
     } catch (err) {
       console.warn('[EuroAffûté] Échec ' + s.name + ' : ' + err.message);
@@ -1887,11 +2115,13 @@ async function loadDraws() {
     renderGains();
     renderFrequencies();
     renderRemainingCombos();  // estimation Monte Carlo du nb de combos survivantes
+    renderJackpotTimeline();  // sparkline des 15 derniers jackpots (async)
     renderNextDraw();  // async, non bloquant
     document.getElementById('generateBtn').disabled = false;
     document.getElementById('auditBtn').disabled = false;
     document.getElementById('fillRandomBtn').disabled = false;
     document.getElementById('genCoreBtn').disabled = false;
+    document.getElementById('genContrarianBtn').disabled = false;
 
   } catch (err) {
     console.error('Erreur de chargement :', err);
@@ -2340,9 +2570,15 @@ function parseNextDraw(html) {
 }
 
 async function fetchNextDrawInfo() {
+  const cached = cacheGet(CACHE_KEYS.NEXT_DRAW, CACHE_TTL.NEXT_DRAW);
+  if (cached && cached.amountEur) {
+    console.log('[EuroAffûté] prochain tirage depuis cache');
+    return cached;
+  }
   const html = await fetchViaProxy(NEXT_DRAW_URL);
   const parsed = parseNextDraw(html);
   if (!parsed.amountEur) throw new Error('montant introuvable dans la page FDJ');
+  cacheSet(CACHE_KEYS.NEXT_DRAW, parsed);
   return parsed;
 }
 
@@ -2417,8 +2653,16 @@ function parseRecentJackpots(html) {
 }
 
 async function fetchRecentJackpots() {
+  const CACHE_KEY = 'euroaffute:recentJackpots:v1';
+  const cached = cacheGet(CACHE_KEY, CACHE_TTL.JACKPOT);
+  if (cached) {
+    console.log('[EuroAffûté] jackpots récents depuis cache');
+    return cached;
+  }
   const html = await fetchViaProxy(RESULTS_PAGE_URL);
-  return parseRecentJackpots(html);
+  const parsed = parseRecentJackpots(html);
+  cacheSet(CACHE_KEY, parsed);
+  return parsed;
 }
 
 // Convertit le HTML brut en texte lisible en enlevant balises et en normalisant les espaces.
@@ -2508,6 +2752,14 @@ function parseSingleDrawPage(html, isoDate) {
 }
 
 async function fetchSingleDrawJackpot(isoDate) {
+  // Cache par date : un tirage passé ne change jamais
+  const cacheKey = CACHE_KEYS.JACKPOT + isoDate;
+  const cached = cacheGet(cacheKey, CACHE_TTL.JACKPOT);
+  if (cached) {
+    console.log('[EuroAffûté] jackpot ' + isoDate + ' depuis cache');
+    return cached;
+  }
+
   // Stratégie 1 : secretsdujeu.com (FR, tableau complet, très précis)
   const secretsUrl = secretsUrlForDate(isoDate);
   if (secretsUrl) {
@@ -2516,6 +2768,7 @@ async function fetchSingleDrawJackpot(isoDate) {
       const parsed = parseSecretsDuJeuPage(html, isoDate);
       if (parsed) {
         console.log('[EuroAffûté] ✓ via secretsdujeu :', parsed);
+        cacheSet(cacheKey, parsed);
         return parsed;
       }
     } catch (err) {
@@ -2529,7 +2782,9 @@ async function fetchSingleDrawJackpot(isoDate) {
   const url = 'https://www.euro-millions.com/results/' + parts[2] + '-' + parts[1] + '-' + parts[0];
   try {
     const html = await fetchViaProxy(url);
-    return parseSingleDrawPage(html, isoDate);
+    const parsed = parseSingleDrawPage(html, isoDate);
+    if (parsed) cacheSet(cacheKey, parsed);
+    return parsed;
   } catch (err) {
     console.warn('[EuroAffûté] euro-millions.com ' + url + ' échoué :', err.message);
     return null;
@@ -3040,7 +3295,6 @@ function renderFrequencies() {
 }
 
 // --- estimation Monte Carlo du nombre de combinaisons survivant aux filtres ---
-
 function renderRemainingCombos() {
   const el = document.getElementById('remainingCombos');
   if (!el) return;
@@ -3070,6 +3324,67 @@ function renderRemainingCombos() {
     el.innerHTML = display + ' <span style="font-weight:400; color:var(--text-dim);">(' +
       pctDropped.toFixed(0) + ' % éliminées)</span>';
   }, 0);
+}
+
+// --- rendu de la sparkline des 15 derniers jackpots ------------------
+
+async function renderJackpotTimeline() {
+  const section = document.getElementById('jackpotTimeline');
+  const chartEl = document.getElementById('jackpotChart');
+  if (!section || !chartEl) return;
+
+  // Récupère les jackpots récents (avec cache automatique de euro-millions.com)
+  let recent;
+  try {
+    recent = await fetchRecentJackpots();
+  } catch (err) {
+    console.warn('[EuroAffûté] timeline : scraping échoué', err.message);
+    return;  // on cache la section
+  }
+
+  // On combine avec les tirages de l'API pour récupérer l'ordre chronologique
+  // et croiser les dates. Si on n'a pas de jackpot pour une date, on skip.
+  const dated = [];
+  const sortedDraws = state.draws.slice().sort((a, b) => a.date.localeCompare(b.date));
+  for (const d of sortedDraws) {
+    if (recent[d.date]) {
+      dated.push({
+        date: d.date,
+        jackpot: recent[d.date].jackpot,
+        won: recent[d.date].won,
+      });
+    }
+  }
+
+  // On garde les 15 derniers
+  const data = dated.slice(-15);
+  if (data.length === 0) return;
+
+  section.style.display = 'block';
+
+  // Échelle basée sur le max pour hauteur relative
+  const maxJp = Math.max.apply(null, data.map(d => d.jackpot));
+  chartEl.innerHTML = '';
+  data.forEach((d, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'jt-bar' + (d.won ? ' won' : '');
+    const heightPct = Math.max(8, (d.jackpot / maxJp) * 100);
+
+    const parts = d.date.split('-');
+    const dateLabel = parts.length === 3 ? (parts[2] + '/' + parts[1]) : d.date;
+    const amountLabel = d.jackpot >= 1e6
+      ? (d.jackpot / 1e6).toFixed(0) + ' M€'
+      : (d.jackpot / 1e3).toFixed(0) + ' k€';
+
+    bar.innerHTML =
+      '<div class="jt-bar-amount">' + amountLabel + '</div>' +
+      '<div class="jt-bar-fill" style="height:' + heightPct + '%"></div>' +
+      '<div class="jt-bar-date">' + dateLabel + '</div>';
+    bar.title = parts.length === 3
+      ? parts[2] + '/' + parts[1] + '/' + parts[0] + ' — ' + fmt(d.jackpot) + ' € · ' + (d.won ? 'Gagné' : 'Reporté')
+      : amountLabel;
+    chartEl.appendChild(bar);
+  });
 }
 
 // --- rendu de l'anomalie --------------------------------------------
@@ -3383,6 +3698,81 @@ function generatePortfolio(f, target = 10) {
   return grids;
 }
 
+// --- détection des patterns populaires (à éviter pour contre-tendance) -----
+
+// 1. Trop de numéros ≤ 31 = pattern "dates de naissance/anniversaire"
+function hasBirthdayPattern(balls) {
+  const lowCount = balls.filter(n => n <= 31).length;
+  return lowCount >= 4;  // 4 ou 5 numéros ≤ 31 → signature anniversaire
+}
+
+// 2. Suite arithmétique de 3+ numéros (ex: 5-10-15-20-25, 3-8-13-18-23)
+function hasArithmeticRun(balls) {
+  const s = balls.slice().sort((a, b) => a - b);
+  for (let i = 0; i < s.length - 2; i++) {
+    const d1 = s[i + 1] - s[i];
+    const d2 = s[i + 2] - s[i + 1];
+    if (d1 === d2 && d1 > 0 && d1 <= 7) return true;
+  }
+  return false;
+}
+
+// 3. ≥ 3 multiples de 7 (nombre porte-bonheur très joué)
+function tooManyMultiplesOf7(balls) {
+  return balls.filter(n => n % 7 === 0 && n > 0).length >= 3;
+}
+
+// 4. ≥ 3 numéros divisibles par 5 (aussi très joués)
+function tooManyMultiplesOf5(balls) {
+  return balls.filter(n => n % 5 === 0).length >= 3;
+}
+
+// 5. Patterns visuels sur la grille FDJ (10 colonnes × 5 lignes, numéros 1-50)
+//    → détecte ≥ 3 numéros alignés sur une même colonne ou ligne
+function hasGridAlignment(balls) {
+  const cols = new Array(10).fill(0);
+  const rows = new Array(5).fill(0);
+  for (const n of balls) {
+    const col = (n - 1) % 10;
+    const row = Math.floor((n - 1) / 10);
+    cols[col]++;
+    rows[row]++;
+  }
+  return cols.some(c => c >= 3) || rows.some(r => r >= 3);
+}
+
+// 6. Étoiles populaires (1-7, "chiffres porte-bonheur")
+function hasPopularStars(stars) {
+  return stars.every(s => s <= 7);  // les 2 étoiles ≤ 7 = combo très joué
+}
+
+// Grille "contre-tendance" : passe passesAll ET aucun pattern populaire
+function isContrarian(c) {
+  return !hasBirthdayPattern(c.balls)
+      && !hasArithmeticRun(c.balls)
+      && !tooManyMultiplesOf7(c.balls)
+      && !tooManyMultiplesOf5(c.balls)
+      && !hasGridAlignment(c.balls)
+      && !hasPopularStars(c.stars);
+}
+
+function generateContrarianPortfolio(f, target = 10) {
+  const grids = [];
+  const seenKeys = new Set();
+  let tries = 0;
+  while (grids.length < target && tries < 200000) {
+    tries++;
+    const c = randomCombo();
+    if (!passesAll(c, f)) continue;
+    if (!isContrarian(c)) continue;
+    const k = comboKey(c.balls, c.stars);
+    if (seenKeys.has(k)) continue;
+    seenKeys.add(k);
+    grids.push(c);
+  }
+  return grids;
+}
+
 function renderGridList(containerId, grids) {
   const el = document.getElementById(containerId);
   if (grids.length === 0) {
@@ -3414,6 +3804,12 @@ document.getElementById('genCoreBtn').addEventListener('click', () => {
   if (!state.ready) return;
   const grids = generatePortfolio(state.filters);
   renderGridList('coreGrids', grids);
+});
+
+document.getElementById('genContrarianBtn').addEventListener('click', () => {
+  if (!state.ready) return;
+  const grids = generateContrarianPortfolio(state.filters);
+  renderGridList('contrarianGrids', grids);
 });
 
 loadDraws();
