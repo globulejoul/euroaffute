@@ -1081,6 +1081,66 @@
   }
   .latest-prize-total strong { color: var(--gold); }
 
+  /* NEXT DRAW BANNER */
+  .next-draw {
+    margin-top: 2rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--line);
+    position: relative;
+    z-index: 1;
+  }
+  .next-draw-head {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+  }
+  .next-draw-body {
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .next-draw-amount {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    line-height: 1;
+    color: var(--gold);
+    font-weight: 400;
+  }
+  .next-draw-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .next-draw-meta .nd-rollover {
+    display: inline-block;
+    margin-top: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border: 1px solid var(--star);
+    color: var(--star);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.7rem;
+  }
+  .next-draw-loading {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--text-faint);
+    font-size: 1.1rem;
+  }
+  .next-draw-err {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    font-style: italic;
+  }
+
   @media (max-width: 640px) {
     .latest { padding: 1.5rem; margin: 1.5rem 0 2.5rem; }
     .latest-ball { width: 44px; height: 44px; font-size: 0.9rem; }
@@ -1246,6 +1306,13 @@
       <div class="latest-prizes">
         <h4>Gains de ce tirage</h4>
         <div id="latestPrizes"></div>
+      </div>
+    </div>
+
+    <div class="next-draw">
+      <div class="next-draw-head">Prochain tirage · cagnotte estimée</div>
+      <div id="nextDrawBody">
+        <div class="next-draw-loading">chargement en cours…</div>
       </div>
     </div>
   </section>
@@ -1791,6 +1858,7 @@ async function loadDraws() {
     renderLatest();
     renderGains();
     renderFrequencies();
+    renderNextDraw();  // async, non bloquant
     document.getElementById('generateBtn').disabled = false;
     document.getElementById('auditBtn').disabled = false;
     document.getElementById('fillRandomBtn').disabled = false;
@@ -2138,6 +2206,85 @@ function renderRules() {
 
   renderBlock(document.getElementById('rulesHard'), absolute);
   renderBlock(document.getElementById('rulesCore'), core);
+}
+
+// --- cagnotte du prochain tirage (scraping euro-millions.com) -------
+
+const NEXT_DRAW_URL = 'https://www.euro-millions.com/';
+
+// Extrait le montant ("€145 Million") et les rollovers ("11× Rollover") du HTML
+function parseNextDraw(html) {
+  const out = { amountText: null, amountEur: null, rolloverCount: null, nextDay: null };
+
+  // Capture "€145 Million" ou "€145.5 Million" (parfois avec un espace insécable)
+  const amountRe = /€\s*([0-9]+(?:[.,][0-9]+)?)\s*Million/i;
+  const mAmt = amountRe.exec(html);
+  if (mAmt) {
+    const num = parseFloat(mAmt[1].replace(',', '.'));
+    if (!isNaN(num)) {
+      out.amountText = '€' + mAmt[1] + ' Million';
+      out.amountEur = num * 1e6;
+    }
+  }
+
+  // Capture "11× Rollover" ou "11x Rollover"
+  const rollRe = /([0-9]+)\s*[×x]\s*Rollover/i;
+  const mRoll = rollRe.exec(html);
+  if (mRoll) out.rolloverCount = parseInt(mRoll[1], 10);
+
+  // Capture le jour cible du prochain tirage ("Tuesday's estimated" ou "Friday's estimated")
+  const dayRe = /(Tuesday|Friday)'s\s+estimated/i;
+  const mDay = dayRe.exec(html);
+  if (mDay) {
+    const map = { Tuesday: 'mardi', Friday: 'vendredi' };
+    out.nextDay = map[mDay[1]] || mDay[1].toLowerCase();
+  }
+
+  return out;
+}
+
+async function fetchNextDrawInfo() {
+  // On passe direct par des proxies CORS — le site euro-millions.com ne renvoie
+  // pas de header CORS permissif, donc un appel direct depuis le navigateur échouerait.
+  const strategies = [
+    'https://corsproxy.io/?url=' + encodeURIComponent(NEXT_DRAW_URL),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(NEXT_DRAW_URL),
+  ];
+  let lastErr = null;
+  for (const url of strategies) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const html = await res.text();
+      const parsed = parseNextDraw(html);
+      if (parsed.amountEur) return parsed;
+      throw new Error('montant introuvable dans la page');
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('scraping échoué');
+}
+
+async function renderNextDraw() {
+  const el = document.getElementById('nextDrawBody');
+  if (!el) return;
+  try {
+    const info = await fetchNextDrawInfo();
+    const dayLabel = info.nextDay ? info.nextDay.charAt(0).toUpperCase() + info.nextDay.slice(1) : 'Prochain tirage';
+    let meta = dayLabel;
+    if (info.rolloverCount !== null) {
+      meta += ' · <span class="nd-rollover">' + info.rolloverCount + '× rollover</span>';
+    }
+    el.innerHTML =
+      '<div class="next-draw-body">' +
+        '<div class="next-draw-amount">' + info.amountText + '</div>' +
+        '<div class="next-draw-meta">' + meta + '</div>' +
+      '</div>';
+  } catch (err) {
+    console.warn('[EuroAffûté] next draw :', err.message);
+    el.innerHTML = '<div class="next-draw-err">Cagnotte indisponible (scraping euro-millions.com via proxy CORS).</div>';
+  }
 }
 
 // --- rendu du dernier tirage ----------------------------------------
