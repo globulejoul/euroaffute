@@ -2372,10 +2372,12 @@ async function fetchRecentJackpots() {
 //   Total Winners: 1,967,227      (tous rangs confondus)
 //   Outcome: Jackpot Won!         (ou absent si non gagné)
 function parseSingleDrawPage(html, isoDate) {
-  // Jackpot en format "€48,175,066" ou "€145,000,000" (précis)
-  const preciseRe = /Jackpot\s*:?\s*€\s*([\d,]+(?:\.\d+)?)/i;
-  // Fallback arrondi : "145 million" ou "€145 million"
-  const roundRe = /€?\s*(\d+(?:[.,]\d+)?)\s*[Mm]illion/i;
+  // Entre "Jackpot" et le montant "€", il peut y avoir plein de balises HTML
+  // (e.g. "Jackpot:</dt>\n<dd>€48,175,066</dd>"). On est permissif mais avec
+  // une distance max pour éviter de matcher un € du menu ou une pub Mega Millions.
+  const preciseRe = /Jackpot[\s\S]{0,300}?€\s*([\d,]+(?:\.\d+)?)/i;
+  // Fallback arrondi : "Jackpot ... 145 million" (€ optionnel avant le chiffre)
+  const roundRe = /Jackpot[\s\S]{0,300}?€?\s*(\d+(?:[.,]\d+)?)\s*[Mm]illion/i;
 
   let jackpot = null;
   let precise = false;
@@ -2396,13 +2398,13 @@ function parseSingleDrawPage(html, isoDate) {
   // "Jackpot Won!" (en) ou "Jackpot gagné" (fr)
   const won = /Jackpot\s+(Won|gagné)/i.test(html);
 
-  // Total Winners: 1,967,227 (cette ligne n'existe que pour les tirages complets)
+  // Total Winners: 1,967,227 — même problème avec les balises HTML
   let totalWinners = null;
-  const twRe = /Total\s+Winners\s*:?\s*([\d,\s\u00a0\u202f]+)/i;
+  const twRe = /Total\s+Winners[\s\S]{0,200}?([\d,]+)/i;
   const mTw = twRe.exec(html);
   if (mTw) {
-    const n = parseInt(mTw[1].replace(/[,\s\u00a0\u202f]/g, ''), 10);
-    if (!isNaN(n) && n > 0) totalWinners = n;
+    const n = parseInt(mTw[1].replace(/[,\s]/g, ''), 10);
+    if (!isNaN(n) && n > 100) totalWinners = n;  // filtre les petits chiffres parasites
   }
 
   return { jackpot, won, precise, totalWinners };
