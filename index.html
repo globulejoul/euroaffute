@@ -2542,9 +2542,13 @@ async function fetchSingleDrawJackpot(isoDate) {
 //     → on calcule le total réel = winners × gain
 //   - Total gagnants tous rangs (si dispo)
 function parseSecretsDuJeuPage(html, isoDate) {
+  // Enlève les <link rel="preload"> avant tout traitement : ils déclenchent des
+  // requêtes CORS inutiles quand le HTML est touché par le navigateur.
+  html = html.replace(/<link[^>]*rel=["']?preload["']?[^>]*>/gi, '');
+
   const text = htmlToText(html);
 
-  // 1. Headline pour le jackpot annoncé + statut remporté (non greedy pour "non")
+  // 1. Headline pour le jackpot annoncé + statut remporté
   const headlineRe = /Jackpot\s+de\s+(\d+(?:[.,]\d+)?)\s*millions?\s+(non\s+)?remport[ée]/i;
   const mH = headlineRe.exec(text);
   let jackpotAnnoncé = null;
@@ -2552,60 +2556,71 @@ function parseSecretsDuJeuPage(html, isoDate) {
   if (mH) {
     const n = parseFloat(mH[1].replace(',', '.')) * 1e6;
     if (n >= 1e6 && n <= 300e6) jackpotAnnoncé = Math.round(n);
-    wasWon = !mH[2];  // "non" présent = non remporté
+    wasWon = !mH[2];
   }
 
-  // 2. Parse le tableau via <tr>/<td> : cherche la première ligne dont la
-  //    première cellule contient "5 bons N° +" (c'est le rang 5+2, toujours en tête).
+  // 2. Parse le tableau via DOMParser (bien plus robuste que les regex manuelles)
   let jackpotPerWinner = null;
   let jackpotWinners = null;
-  let frWinners = null;  // nb de gagnants en France au rang 5+2
-  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  const tdRe = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-  let mRow;
-  while ((mRow = rowRe.exec(html)) !== null) {
-    const rowHtml = mRow[1];
-    let cells = [];
-    let mTd;
-    tdRe.lastIndex = 0;
-    while ((mTd = tdRe.exec(rowHtml)) !== null) {
-      cells.push(htmlToText(mTd[1]).trim());
+  let frWinners = null;
+  try {
+    const parser = new DOMParser();
+    // On lui passe un doc minimal pour éviter tout side-effect (fonts, images, scripts)
+    const cleanedHtml = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<img[^>]*>/gi, '');
+    const doc = parser.parseFromString(cleanedHtml, 'text/html');
+
+    // On parcourt toutes les lignes de tous les tableaux
+    const rows = doc.querySelectorAll('tr');
+    for (const tr of rows) {
+      // Extrait le texte de chaque cellule (th ou td), trim, enlève vides
+      let cells = Array.from(tr.children).map(c => (c.textContent || '').replace(/\s+/g, ' ').trim());
+      while (cells.length && cells[0] === '') cells.shift();
+      while (cells.length && cells[cells.length - 1] === '') cells.pop();
+      if (cells.length < 3) continue;
+
+      // Cherche "5 bons N° +" dans les 3 premières cellules
+      let fiveIdx = -1;
+      for (let i = 0; i < Math.min(3, cells.length); i++) {
+        if (/^5\s+bons\s+N/i.test(cells[i])) { fiveIdx = i; break; }
+      }
+      if (fiveIdx < 0) continue;
+
+      const gainCell = cells[cells.length - 1];
+      if (!/€/.test(gainCell)) break;  // "Pas de gagnant"
+      const gainM = /([\d\s\u00a0\u202f.,]+)\s*€/.exec(gainCell);
+      if (!gainM) break;
+      const gain = parseFloat(gainM[1].replace(/[\s\u00a0\u202f]/g, '').replace(',', '.'));
+      if (isNaN(gain) || gain < 1e6) break;
+
+      const winnersCell = cells[cells.length - 2];
+      const winners = parseInt(winnersCell.replace(/[\s\u00a0\u202f]/g, ''), 10);
+      if (isNaN(winners) || winners < 1) break;
+
+      jackpotPerWinner = Math.round(gain);
+      jackpotWinners = winners;
+
+      if (fiveIdx + 1 < cells.length - 2) {
+        const fr = parseInt(cells[fiveIdx + 1].replace(/[\s\u00a0\u202f]/g, ''), 10);
+        if (!isNaN(fr) && fr >= 0) frWinners = fr;
+      }
+      break;  // première ligne "5 bons N° +" trouvée = le 5+2
     }
-    // La page secretsdujeu peut avoir des <td> vides en préfixe/suffixe (icônes).
-    // On les enlève pour simplifier la logique.
-    while (cells.length && cells[0] === '') cells.shift();
-    while (cells.length && cells[cells.length - 1] === '') cells.pop();
+  } catch (err) {
+    console.warn('[EuroAffûté] parse DOM secretsdujeu :', err.message);
+  }
 
-    if (cells.length < 3) continue;
-    // Localise "5 bons N° +" dans les premières cellules (pas forcément cells[0]).
-    let fiveIdx = -1;
-    for (let i = 0; i < Math.min(3, cells.length); i++) {
-      if (/^5\s+bons\s+N/i.test(cells[i])) { fiveIdx = i; break; }
+  // Si le tableau n'a pas été parsé, log un aperçu pour diagnostic
+  if (!jackpotPerWinner && mH) {
+    const idx = html.search(/5\s*bons\s*N/i);
+    if (idx >= 0) {
+      console.warn('[EuroAffûté] tableau secretsdujeu non parsé, HTML autour de "5 bons" :',
+        html.substring(Math.max(0, idx - 100), Math.min(html.length, idx + 500)));
+    } else {
+      console.warn('[EuroAffûté] aucune occurrence de "5 bons N°" dans le HTML secretsdujeu');
     }
-    if (fiveIdx < 0) continue;
-
-    // Dernière cellule = gain en € (ou "Pas de gagnant")
-    const gainCell = cells[cells.length - 1];
-    if (!/€/.test(gainCell)) break;  // "Pas de gagnant" → jackpot non gagné
-    const gainM = /([\d\s\u00a0\u202f.,]+)\s*€/.exec(gainCell);
-    if (!gainM) break;
-    const gain = parseFloat(gainM[1].replace(/[\s\u00a0\u202f]/g, '').replace(',', '.'));
-    if (isNaN(gain) || gain < 1e6) break;  // pas un jackpot
-
-    // Avant-dernière cellule = gagnants tous pays
-    const winnersCell = cells[cells.length - 2];
-    const winners = parseInt(winnersCell.replace(/[\s\u00a0\u202f]/g, ''), 10);
-    if (isNaN(winners) || winners < 1) break;
-
-    jackpotPerWinner = Math.round(gain);
-    jackpotWinners = winners;
-
-    // Gagnants France = 1ère colonne pays, immédiatement après "5 bons N° +"
-    if (fiveIdx + 1 < cells.length - 2) {
-      const fr = parseInt(cells[fiveIdx + 1].replace(/[\s\u00a0\u202f]/g, ''), 10);
-      if (!isNaN(fr) && fr >= 0) frWinners = fr;
-    }
-    break;  // première ligne "5 bons N° +" trouvée = le 5+2
   }
 
   // 3. Décide du jackpot à afficher
@@ -2776,90 +2791,97 @@ async function renderLatest() {
   }
 
   if (realJackpot) {
-    // On a les données scrapées. Deux cas selon la source :
-    // - secretsdujeu : realJackpot.jackpot = TOTAL, avec jackpotPerWinner + jackpotWinners
-    // - euro-millions.com : realJackpot.jackpot = PART par gagnant (pas de breakdown)
     const fromSecrets = realJackpot.source === 'secretsdujeu';
     const apiJp = latest.prizes && latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
     const apiWinners = apiJp ? apiJp.winners : 0;
 
-    // Construit la mention "dont X en France" quand disponible (secretsdujeu uniquement)
+    // Mention "dont X en France" selon le nb de gagnants France vs total
     function frDetail(totalWinners) {
       const fr = realJackpot.frWinners;
       if (fr === null || fr === undefined) return '';
-      if (fr === 0) return ' (aucun en France 🇫🇷)';
-      if (fr === totalWinners) return fr === 1 ? ' 🇫🇷' : ' (tous en France 🇫🇷)';
+      if (fr === 0) return ' (aucun 🇫🇷)';
+      if (fr === totalWinners) return fr === 1 ? ' 🇫🇷' : ' (tous 🇫🇷)';
       return ' (dont ' + fr + ' 🇫🇷)';
     }
 
-    let line;
-    // Badge d'issue du tirage affiché à droite de "Dernier tirage"
+    // ---- Normalise jackpot : toujours {total, perWinner, winners} ou null ----
+    let jackpotTotal = null;
+    let jackpotPerWinner = null;
+    let jackpotWinners = null;
+
+    if (realJackpot.won && realJackpot.jackpotPerWinner && realJackpot.jackpotWinners) {
+      // Cas idéal : breakdown complet depuis secretsdujeu
+      jackpotTotal = realJackpot.jackpotPerWinner * realJackpot.jackpotWinners;
+      jackpotPerWinner = realJackpot.jackpotPerWinner;
+      jackpotWinners = realJackpot.jackpotWinners;
+    } else if (realJackpot.won && fromSecrets) {
+      // Headline seul : jackpot = total
+      jackpotTotal = realJackpot.jackpot;
+      jackpotWinners = apiWinners || 1;
+      jackpotPerWinner = Math.round(jackpotTotal / jackpotWinners);
+    } else if (realJackpot.won) {
+      // euro-millions.com : jackpot = part par gagnant
+      jackpotPerWinner = realJackpot.jackpot;
+      jackpotWinners = apiWinners || 1;
+      jackpotTotal = jackpotPerWinner * jackpotWinners;
+    } else if (apiWinners > 0) {
+      // Scrape dit "pas gagné" mais API voit des gagnants 5+2 → probablement partagé
+      jackpotPerWinner = realJackpot.jackpot;
+      jackpotWinners = apiWinners;
+      jackpotTotal = jackpotPerWinner * jackpotWinners;
+    }
+    const isWon = jackpotTotal !== null;
+
+    // ---- Badge d'issue affiché à droite de "Dernier tirage" ----
     const outcomeEl = document.getElementById('latestOutcome');
     if (outcomeEl) {
-      // Statut effectif : soit le scrape a dit "won", soit l'API a des gagnants 5+2
-      const isWon = realJackpot.won || apiWinners > 0;
       if (isWon) {
         const fr = realJackpot.frWinners;
-        const hasFrWin = fr && fr > 0;
-        const flag = hasFrWin ? ' <span class="flag">🇫🇷</span>' : '';
+        const flag = (fr && fr > 0) ? ' <span class="flag">🇫🇷</span>' : '';
         outcomeEl.innerHTML = '<span class="outcome-badge won">Jackpot gagné' + flag + '</span>';
       } else {
         outcomeEl.innerHTML = '<span class="outcome-badge not-won">Jackpot non remporté</span>';
       }
     }
 
-    if (realJackpot.won && fromSecrets && realJackpot.jackpotPerWinner && realJackpot.jackpotWinners) {
-      // Cas idéal : on a tout depuis secretsdujeu
-      const perWinner = realJackpot.jackpotPerWinner;
-      const winners = realJackpot.jackpotWinners;
-      const total = realJackpot.jackpot;
-      const frText = frDetail(winners);
-      if (winners === 1) {
-        const who = realJackpot.frWinners === 1 ? '1 gagnant unique en France 🇫🇷' : '1 seul gagnant au rang 5+2';
-        line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
-          '<div class="latest-prize-sub">Jackpot gagné par ' + who + '</div>';
-      } else {
-        line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
-          '<div class="latest-prize-sub">Jackpot partagé · ' + winners + ' gagnants' + frText + ' · ' +
-          formatMoney(perWinner) + ' par personne</div>';
+    // ---- Total distribué : jackpot (si gagné) + tous les autres rangs ----
+    // On utilise l'API pour les rangs < 5+2 (prize × winners). Le rang 5+2 de l'API
+    // a un bug (montant divisé), donc on le remplace par le vrai jackpot scrapé.
+    let otherTiersTotal = 0;
+    if (latest.prizes && latest.prizes.length) {
+      for (const p of latest.prizes) {
+        if (p.matched_numbers === 5 && p.matched_stars === 2) continue;
+        otherTiersTotal += (p.prize || 0) * (p.winners || 0);
       }
-    } else if (realJackpot.won) {
-      // Pas de breakdown précis. Deux cas selon la source :
-      // - secretsdujeu headline ("Jackpot de 144 millions remporté") : jackpot = TOTAL
-      // - euro-millions.com : jackpot = PART par gagnant
-      const effectiveWinners = apiWinners > 0 ? apiWinners : 1;
-      let total, perWinner;
-      if (fromSecrets) {
-        total = realJackpot.jackpot;
-        perWinner = effectiveWinners > 0 ? Math.round(total / effectiveWinners) : total;
+    }
+    const totalDistributed = otherTiersTotal + (isWon ? jackpotTotal : 0);
+
+    // ---- Construit le rendu ----
+    let line;
+    if (isWon) {
+      const frText = frDetail(jackpotWinners);
+      let subText;
+      if (jackpotWinners === 1) {
+        const who = realJackpot.frWinners === 1
+          ? '1 gagnant unique 🇫🇷'
+          : '1 seul gagnant au rang 5+2';
+        subText = 'Dont jackpot <strong>' + formatMoney(jackpotTotal) + '</strong> · ' + who;
       } else {
-        perWinner = realJackpot.jackpot;
-        total = perWinner * effectiveWinners;
+        subText = 'Dont jackpot <strong>' + formatMoney(jackpotTotal) + '</strong> · ' +
+          jackpotWinners + ' gagnants 5+2' + frText + ' · ' + formatMoney(jackpotPerWinner) + ' chacun';
       }
-      const frText = frDetail(effectiveWinners);
-      if (effectiveWinners === 1) {
-        const who = realJackpot.frWinners === 1 ? '1 gagnant unique en France 🇫🇷' : '1 seul gagnant au rang 5+2';
-        line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
-          '<div class="latest-prize-sub">Jackpot gagné par ' + who + '</div>';
-      } else {
-        line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
-          '<div class="latest-prize-sub">Jackpot partagé · ' + effectiveWinners + ' gagnants' + frText + ' · ' +
-          formatMoney(perWinner) + ' par personne</div>';
-      }
-    } else if (apiWinners > 0) {
-      // Scraping dit "pas gagné" mais API confirme des gagnants 5+2 → probablement partagé
-      const perWinner = realJackpot.jackpot;
-      const total = perWinner * apiWinners;
-      line = '<div class="latest-prize-main">' + formatMoney(total) + '</div>' +
-        '<div class="latest-prize-sub">Jackpot partagé · ' + apiWinners + ' gagnants au rang 5+2 · ' +
-        formatMoney(perWinner) + ' par personne</div>';
+      line = '<div class="latest-prize-main">' + formatMoney(totalDistributed) + '</div>' +
+        '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Total distribué aux gagnants</div>' +
+        '<div class="latest-prize-sub">' + subText + '</div>';
     } else {
-      // Jackpot annoncé, non gagné
-      line = '<div class="latest-prize-main" style="color:var(--text-dim)">' + formatMoney(realJackpot.jackpot) + '</div>' +
-        '<div class="latest-prize-sub">Jackpot en jeu · cagnotte reportée au tirage suivant (aucun 5+2)</div>';
+      // Jackpot non remporté : seuls les rangs inférieurs ont distribué
+      const announcedJackpot = realJackpot.jackpot;
+      line = '<div class="latest-prize-main">' + formatMoney(otherTiersTotal) + '</div>' +
+        '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Distribués aux rangs secondaires</div>' +
+        '<div class="latest-prize-sub">Jackpot <strong>' + formatMoney(announcedJackpot) + '</strong> non remporté · reporté au tirage suivant</div>';
     }
 
-    // Nombre total de gagnants : priorité au chiffre scrapé, fallback sur la somme API
+    // ---- Nombre total de gagnants tous rangs confondus ----
     let totalWinners = realJackpot.totalWinners;
     if (!totalWinners && latest.prizes && latest.prizes.length) {
       totalWinners = 0;
@@ -2873,26 +2895,33 @@ async function renderLatest() {
     }
     prizesEl.innerHTML = line + extra;
   } else if (latest.prizes && latest.prizes.length) {
-    // Pas de vrai jackpot scrapé : on tombe sur le fallback API (données potentiellement imparfaites)
+    // Pas de vrai jackpot scrapé : fallback API complet (données imparfaites)
     const jp = latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
+    let otherTiersTotal = 0;
+    let totalWinners = 0;
+    for (const p of latest.prizes) {
+      totalWinners += (p.winners || 0);
+      if (p.matched_numbers === 5 && p.matched_stars === 2) continue;
+      otherTiersTotal += (p.prize || 0) * (p.winners || 0);
+    }
+    const apiJackpotTotal = jp && jp.winners > 0 ? (jp.prize * jp.winners) : 0;
+    const totalDistributed = otherTiersTotal + apiJackpotTotal;
+
     let jpLine;
     if (jp && jp.winners > 0) {
-      jpLine = '<div class="latest-prize-main">' + formatMoney(jp.prize) + '</div>' +
-        '<div class="latest-prize-sub">par gagnant · ' +
-        (jp.winners === 1 ? '1 seul gagnant' : jp.winners + ' gagnants') +
-        ' au rang 5+2</div>';
-    } else if (jp) {
-      jpLine = '<div class="latest-prize-main" style="color:var(--text-dim)">Aucun gagnant</div>' +
-        '<div class="latest-prize-sub">la cagnotte repart pour le prochain tirage</div>';
+      jpLine = '<div class="latest-prize-main">' + formatMoney(totalDistributed) + '</div>' +
+        '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Total distribué aux gagnants</div>' +
+        '<div class="latest-prize-sub">Dont jackpot ≈ ' + formatMoney(apiJackpotTotal) + ' · ' +
+        (jp.winners === 1 ? '1 seul gagnant' : jp.winners + ' gagnants') + ' au 5+2</div>';
     } else {
-      jpLine = '<div class="latest-prize-main" style="color:var(--text-dim)">—</div>';
+      jpLine = '<div class="latest-prize-main">' + formatMoney(otherTiersTotal) + '</div>' +
+        '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Distribués aux rangs secondaires</div>' +
+        '<div class="latest-prize-sub">Jackpot non remporté · reporté au tirage suivant</div>';
     }
-    let totalWinners = 0;
-    for (const p of latest.prizes) totalWinners += (p.winners || 0);
     prizesEl.innerHTML = jpLine +
       '<div class="latest-prize-total">' +
       '<strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus' +
-      '<div style="margin-top:0.4rem; font-size:0.7rem; color:var(--text-faint); font-style:italic;">Chiffres issus de l\'API (agrégats européens, peuvent différer de la FDJ).</div>' +
+      '<div style="margin-top:0.4rem; font-size:0.7rem; color:var(--text-faint); font-style:italic;">Chiffres issus de l\'API (agrégats européens).</div>' +
       '</div>';
   } else {
     prizesEl.innerHTML = '<div class="latest-prize-main" style="color:var(--text-dim); font-size:1rem">Données indisponibles</div>';
