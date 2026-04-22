@@ -2208,44 +2208,52 @@ function renderRules() {
   renderBlock(document.getElementById('rulesCore'), core);
 }
 
-// --- cagnotte du prochain tirage (scraping euro-millions.com) -------
+// --- cagnotte du prochain tirage (scraping FDJ) ---------------------
 
-const NEXT_DRAW_URL = 'https://www.euro-millions.com/';
+const NEXT_DRAW_URL = 'https://www.fdj.fr/jeux-de-tirage/euromillions-my-million/';
 
-// Extrait le montant ("€145 Million") et les rollovers ("11× Rollover") du HTML
+// Parse la page FDJ. Cible en priorité le titre de la page qui contient
+// typiquement "EuroMillions – My Million : 17 M€ ce vendredi 24 avr. !"
+// Fallback : première occurrence de "XX millions €" dans le body.
 function parseNextDraw(html) {
-  const out = { amountText: null, amountEur: null, rolloverCount: null, nextDay: null };
+  const out = { amountText: null, amountEur: null, nextDate: null, nextDay: null };
 
-  // Capture "€145 Million" ou "€145.5 Million" (parfois avec un espace insécable)
-  const amountRe = /€\s*([0-9]+(?:[.,][0-9]+)?)\s*Million/i;
-  const mAmt = amountRe.exec(html);
-  if (mAmt) {
-    const num = parseFloat(mAmt[1].replace(',', '.'));
+  // 1. Priorité au <title> de la page, qui est spécifique au prochain tirage
+  const titleMatch = /<title[^>]*>([^<]*)<\/title>/i.exec(html);
+  const titleText = titleMatch ? titleMatch[1] : '';
+
+  // Format FDJ courant : "XX M€" ou "XX,X M€"
+  const compactRe = /([0-9]+(?:[.,][0-9]+)?)\s*M€/i;
+  // Format étendu : "XX millions €" ou "XX millions d'euros"
+  const longRe = /([0-9]+(?:[.,][0-9]+)?)\s*millions?\s*(?:€|d'euros?)/i;
+
+  let m = compactRe.exec(titleText) || longRe.exec(titleText);
+  if (!m) {
+    // Fallback : chercher dans le body (mais en évitant les textes descriptifs)
+    m = compactRe.exec(html) || longRe.exec(html);
+  }
+  if (m) {
+    const num = parseFloat(m[1].replace(',', '.'));
     if (!isNaN(num)) {
-      out.amountText = '€' + mAmt[1] + ' Million';
       out.amountEur = num * 1e6;
+      // Formatage propre
+      const display = (num === Math.floor(num)) ? String(Math.floor(num)) : num.toFixed(1).replace('.', ',');
+      out.amountText = display + ' M€';
     }
   }
 
-  // Capture "11× Rollover" ou "11x Rollover"
-  const rollRe = /([0-9]+)\s*[×x]\s*Rollover/i;
-  const mRoll = rollRe.exec(html);
-  if (mRoll) out.rolloverCount = parseInt(mRoll[1], 10);
-
-  // Capture le jour cible du prochain tirage ("Tuesday's estimated" ou "Friday's estimated")
-  const dayRe = /(Tuesday|Friday)'s\s+estimated/i;
-  const mDay = dayRe.exec(html);
-  if (mDay) {
-    const map = { Tuesday: 'mardi', Friday: 'vendredi' };
-    out.nextDay = map[mDay[1]] || mDay[1].toLowerCase();
+  // Jour et date : cherche "mardi X avril" ou "vendredi X avril"
+  const dateRe = /(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s+([0-9]{1,2}\s+(?:janv\.?|févr\.?|mars|avr\.?|mai|juin|juil\.?|août|sept\.?|oct\.?|nov\.?|déc\.?)(?:\s+\d{4})?)/i;
+  const mDate = dateRe.exec(titleText) || dateRe.exec(html);
+  if (mDate) {
+    out.nextDay = mDate[1].toLowerCase();
+    out.nextDate = mDate[2];
   }
 
   return out;
 }
 
 async function fetchNextDrawInfo() {
-  // On passe direct par des proxies CORS — le site euro-millions.com ne renvoie
-  // pas de header CORS permissif, donc un appel direct depuis le navigateur échouerait.
   const strategies = [
     'https://corsproxy.io/?url=' + encodeURIComponent(NEXT_DRAW_URL),
     'https://api.allorigins.win/raw?url=' + encodeURIComponent(NEXT_DRAW_URL),
@@ -2258,7 +2266,7 @@ async function fetchNextDrawInfo() {
       const html = await res.text();
       const parsed = parseNextDraw(html);
       if (parsed.amountEur) return parsed;
-      throw new Error('montant introuvable dans la page');
+      throw new Error('montant introuvable dans la page FDJ');
     } catch (err) {
       lastErr = err;
     }
@@ -2271,19 +2279,25 @@ async function renderNextDraw() {
   if (!el) return;
   try {
     const info = await fetchNextDrawInfo();
-    const dayLabel = info.nextDay ? info.nextDay.charAt(0).toUpperCase() + info.nextDay.slice(1) : 'Prochain tirage';
-    let meta = dayLabel;
-    if (info.rolloverCount !== null) {
-      meta += ' · <span class="nd-rollover">' + info.rolloverCount + '× rollover</span>';
+    let meta = '';
+    if (info.nextDay) {
+      meta = info.nextDay.charAt(0).toUpperCase() + info.nextDay.slice(1);
+      if (info.nextDate) meta += ' ' + info.nextDate;
     }
+    // Si c'est le minimum garanti (17 M€), on ajoute un contexte discret
+    const isFresh = Math.round(info.amountEur / 1e6) === 17;
+    if (isFresh) {
+      meta += (meta ? ' · ' : '') + '<span class="nd-rollover" style="border-color:var(--green); color:var(--green);">jackpot frais (repart à 17 M€)</span>';
+    }
+
     el.innerHTML =
       '<div class="next-draw-body">' +
         '<div class="next-draw-amount">' + info.amountText + '</div>' +
-        '<div class="next-draw-meta">' + meta + '</div>' +
+        '<div class="next-draw-meta">' + (meta || '&nbsp;') + '</div>' +
       '</div>';
   } catch (err) {
     console.warn('[EuroAffûté] next draw :', err.message);
-    el.innerHTML = '<div class="next-draw-err">Cagnotte indisponible (scraping euro-millions.com via proxy CORS).</div>';
+    el.innerHTML = '<div class="next-draw-err">Cagnotte indisponible (scraping fdj.fr via proxy CORS).</div>';
   }
 }
 
@@ -2400,8 +2414,13 @@ function renderLatest() {
     const jp = latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
     let jpLine;
     if (jp && jp.winners > 0) {
+      // L'API Pedro Mealha scrape euro-millions.com qui affiche une part par gagnant
+      // dans une juridiction donnée — pas le jackpot global divisé par le nb de gagnants.
+      // On affiche donc la part par gagnant + le nombre, sans multiplier pour faire un faux total.
       jpLine = '<div class="latest-prize-main">' + formatMoney(jp.prize) + '</div>' +
-        '<div class="latest-prize-sub">' + (jp.winners === 1 ? 'un seul gagnant' : jp.winners + ' gagnants') + ' au rang 5+2</div>';
+        '<div class="latest-prize-sub">par gagnant · ' +
+        (jp.winners === 1 ? '1 seul gagnant' : jp.winners + ' gagnants') +
+        ' au rang 5+2</div>';
     } else if (jp) {
       jpLine = '<div class="latest-prize-main" style="color:var(--text-dim)">Aucun gagnant</div>' +
         '<div class="latest-prize-sub">la cagnotte repart pour le prochain tirage</div>';
@@ -2417,7 +2436,8 @@ function renderLatest() {
 
     prizesEl.innerHTML = jpLine +
       '<div class="latest-prize-total">' +
-      '<strong>' + formatMoney(totalPaid) + '</strong> distribués à ' + fmt(totalWinners) + ' gagnants tous rangs' +
+      '<strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus' +
+      '<div style="margin-top:0.4rem; font-size:0.7rem; color:var(--text-faint); font-style:italic;">Gains par gagnant issus d\'agrégats européens. Le vrai montant FDJ peut différer (part par juridiction).</div>' +
       '</div>';
   } else {
     prizesEl.innerHTML = '<div class="latest-prize-main" style="color:var(--text-dim); font-size:1rem">Données indisponibles</div>';
@@ -2436,7 +2456,7 @@ function renderGains() {
   const tSub = document.getElementById('gainTotalSub');
   if (total > 0) {
     tEl.textContent = formatMoney(total);
-    tSub.textContent = 'répartis sur ' + fmt(nDraws) + ' tirages · moyenne ' + formatMoney(total / nDraws) + ' / tirage';
+    tSub.innerHTML = 'sur ' + fmt(nDraws) + ' tirages · agrégats européens (peuvent différer des chiffres FDJ)';
   } else {
     tEl.textContent = '—';
     tSub.textContent = 'données de gains indisponibles';
@@ -2446,7 +2466,7 @@ function renderGains() {
   const bSub = document.getElementById('gainBiggestSub');
   if (big.draw) {
     bEl.textContent = formatMoney(big.amount);
-    bSub.textContent = 'le ' + big.draw.date + ' · balles ' + big.draw.balls.join('·') + ' ✦ ' + big.draw.stars.join('·');
+    bSub.textContent = 'par gagnant · le ' + big.draw.date + ' · ' + big.draw.balls.join('·') + ' ✦ ' + big.draw.stars.join('·');
   } else {
     bEl.textContent = '—';
     bSub.textContent = '';
@@ -2781,6 +2801,7 @@ function runAudit() {
         '<div class="vw-row"><span class="vw-label">Bilan net</span><span class="vw-value ' + balanceClass + '">' +
           (balance >= 0 ? '+' : '') + formatMoney(balance) + '</span></div>' +
         '<div class="vw-best">' + bestLine + '</div>' +
+        '<div style="margin-top:0.6rem; font-size:0.7rem; color:var(--text-faint); font-style:italic;">Estimation basée sur les gains par gagnant rapportés par euro-millions.com (agrégats européens). Le vrai bilan FDJ peut varier.</div>' +
       '</div>';
   }
 
