@@ -2147,7 +2147,7 @@ function formatMoney(eur) {
 const CACHE_KEYS = {
   DRAWS: 'euroaffute:draws:v1',
   JACKPOT: 'euroaffute:jackpot:v1:',  // préfixe, suivi de la date ISO
-  NEXT_DRAW: 'euroaffute:nextDraw:v1',
+  NEXT_DRAW: 'euroaffute:nextDraw:v2',
 };
 
 // TTL (en ms) pour chaque type de donnée
@@ -2695,9 +2695,8 @@ function parseNextDraw(html) {
     const num = parseFloat(m[1].replace(',', '.'));
     if (!isNaN(num)) {
       out.amountEur = num * 1e6;
-      // Formatage propre
-      const display = (num === Math.floor(num)) ? String(Math.floor(num)) : num.toFixed(1).replace('.', ',');
-      out.amountText = display + ' M€';
+      // Format long avec séparateurs (17 000 000 €) plutôt que compact (17 M€)
+      out.amountText = fmt(Math.round(out.amountEur)) + ' €';
     }
   }
 
@@ -3558,47 +3557,57 @@ async function renderJackpotTimeline() {
     chartEl.innerHTML = '<div class="jt-status err">' + msg + '</div>';
   };
 
-  // Scraping pour les tirages NON gagnés (le site liste le jackpot annoncé qui
-  // a été reporté). Pour les tirages gagnés, le scraping renvoie la part par
-  // gagnant — pas ce qu'on veut — donc on utilise l'API à la place.
-  let recent = {};
-  try {
-    recent = await fetchRecentJackpots();
-    console.log('[EuroAffûté] timeline : ' + Object.keys(recent).length + ' jackpots récents scrapés');
-  } catch (err) {
-    console.warn('[EuroAffûté] timeline : scraping échoué', err.message);
-  }
-
+  // On fetch chaque tirage individuellement : les pages par-date (secretsdujeu
+  // puis euro-millions.com) sont plus fiables que le parse de la liste globale,
+  // qui a un format instable. Cache per-date 24h, donc après la 1re visite les
+  // 15 appels sont quasi instantanés.
   const sortedDraws = state.draws.slice().sort((a, b) => a.date.localeCompare(b.date));
   const last15 = sortedDraws.slice(-15);
+
+  chartEl.innerHTML = '<div class="jt-status">Récupération des jackpots des 15 derniers tirages…</div>';
+  const scraped = await Promise.all(
+    last15.map(d => fetchSingleDrawJackpot(d.date).catch(err => {
+      console.warn('[EuroAffûté] timeline : scrape ' + d.date + ' échoué', err.message);
+      return null;
+    }))
+  );
+
   const data = [];
-  for (const d of last15) {
+  for (let i = 0; i < last15.length; i++) {
+    const d = last15[i];
+    const s = scraped[i];
     const won = d.hasWinner === true;
     const p52 = d.prizes && d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
     const winners = (p52 && p52.winners) || 0;
     let jackpot = null;
 
-    if (won) {
-      // Le scraping euro-millions.com donne le montant PAR GAGNANT pour les
-      // tirages gagnés. On multiplie par le nombre de gagnants (API) pour
-      // obtenir le total distribué. L'API seule est peu fiable pour le 5+2
-      // (bug de moyennage taxées/non-taxées qui peut diviser par 2).
-      if (recent[d.date] && recent[d.date].jackpot && winners > 0) {
-        jackpot = recent[d.date].jackpot * winners;
-      } else if (p52 && p52.prize && winners > 0) {
-        // Fallback API (imparfait mais mieux que rien)
-        jackpot = p52.prize * winners;
+    if (s) {
+      if (won) {
+        // Tirage gagné : on veut le TOTAL distribué, pas la part par gagnant.
+        // secretsdujeu renvoie les deux, euro-millions.com juste la part.
+        if (s.jackpotPerWinner && s.jackpotWinners) {
+          jackpot = s.jackpotPerWinner * s.jackpotWinners;
+        } else if (s.jackpot && winners > 0) {
+          // `s.jackpot` ici est la part par gagnant (euro-millions.com) →
+          // × winners = total
+          jackpot = s.jackpot * winners;
+        }
+      } else if (s.jackpot) {
+        // Tirage reporté : `s.jackpot` est le jackpot annoncé
+        jackpot = s.jackpot;
       }
-    } else if (recent[d.date] && recent[d.date].jackpot) {
-      // Tirage reporté : le scraping donne directement le jackpot annoncé
-      jackpot = recent[d.date].jackpot;
+    }
+
+    // Dernier recours : API (imparfait pour le 5+2 à cause du bug de moyennage)
+    if (jackpot === null && won && p52 && p52.prize && winners > 0) {
+      jackpot = p52.prize * winners;
     }
 
     if (jackpot !== null && jackpot > 0) {
       data.push({ date: d.date, jackpot, won });
     }
   }
-  console.log('[EuroAffûté] timeline : ' + data.length + ' points de données construits');
+  console.log('[EuroAffûté] timeline : ' + data.length + ' / ' + last15.length + ' tirages exploitables');
 
   if (data.length < 2) {
     console.warn('[EuroAffûté] timeline : pas assez de données (' + data.length + ')');
