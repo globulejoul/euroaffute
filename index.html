@@ -866,7 +866,226 @@
     font-style: italic;
   }
 
-  /* GAINS */
+  /* LATEST DRAW */
+  .latest {
+    margin: 3rem 0 4rem;
+    padding: 2.5rem 2.5rem 2rem;
+    background: linear-gradient(135deg, var(--bg-elev) 0%, var(--bg-card) 100%);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--gold);
+    position: relative;
+    overflow: hidden;
+  }
+  .latest::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(232, 196, 88, 0.08), transparent 70%);
+    pointer-events: none;
+  }
+
+  .latest-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+  }
+
+  .latest-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .latest-eyebrow::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  .latest-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2rem;
+    font-weight: 400;
+    font-style: italic;
+    line-height: 1;
+  }
+
+  .latest-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .latest-balls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 1rem 0 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .latest-ball {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    background: radial-gradient(circle at 30% 25%, #f5d97c, var(--gold-deep));
+    color: #1a1a1e;
+    box-shadow:
+      0 4px 16px rgba(232, 196, 88, 0.25),
+      inset -3px -4px 8px rgba(0,0,0,0.25),
+      inset 2px 2px 4px rgba(255,255,255,0.3);
+  }
+  .latest-ball.star {
+    background: radial-gradient(circle at 30% 25%, #ff8575, var(--star));
+    color: var(--text);
+    box-shadow:
+      0 4px 16px rgba(232, 93, 80, 0.3),
+      inset -3px -4px 8px rgba(0,0,0,0.25),
+      inset 2px 2px 4px rgba(255,255,255,0.25);
+  }
+  .latest-sep {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--text-faint);
+    font-size: 1.3rem;
+    margin: 0 0.25rem;
+  }
+
+  .latest-bottom {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 2rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--line);
+    position: relative;
+    z-index: 1;
+  }
+
+  .latest-profile h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+  }
+  .latest-profile-items {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+  }
+  .latest-profile-items > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .latest-profile-items .li-label { color: var(--text-dim); }
+  .latest-profile-items .li-val { color: var(--text); font-weight: 500; }
+
+  .latest-audit {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  .latest-audit-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .latest-audit-row.pass { color: var(--green); }
+  .latest-audit-row.fail { color: var(--red); }
+
+  .latest-verdict {
+    margin-top: 1rem;
+    font-family: 'Instrument Serif', serif;
+    font-size: 1rem;
+    font-style: italic;
+    color: var(--text-dim);
+  }
+  .latest-verdict .tag {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    margin-left: 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
+  }
+  .latest-verdict .tag.pass { color: var(--green); }
+  .latest-verdict .tag.fail { color: var(--red); }
+
+  .latest-prizes h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+  }
+  .latest-prize-main {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.75rem;
+    font-style: italic;
+    color: var(--gold);
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+  .latest-prize-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+  .latest-prize-total {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text);
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--line);
+    margin-top: 0.75rem;
+  }
+  .latest-prize-total strong { color: var(--gold); }
+
+  @media (max-width: 640px) {
+    .latest { padding: 1.5rem; margin: 1.5rem 0 2.5rem; }
+    .latest-ball { width: 44px; height: 44px; font-size: 0.9rem; }
+  }
+
   .gains-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1000,6 +1219,35 @@
       en filtres. Rien n'est codé en dur : si un nouveau tirage bouscule une règle,
       l'outil l'abandonne automatiquement.
     </p>
+  </section>
+
+  <section class="latest" id="latest" style="display:none">
+    <div class="latest-head">
+      <div>
+        <div class="latest-eyebrow">Dernier tirage</div>
+        <div class="latest-title" id="latestTitle"></div>
+      </div>
+      <div class="latest-date" id="latestDate"></div>
+    </div>
+
+    <div class="latest-balls" id="latestBalls"></div>
+
+    <div class="latest-verdict" id="latestVerdict"></div>
+
+    <div class="latest-bottom">
+      <div class="latest-profile">
+        <h4>Profil du tirage</h4>
+        <div class="latest-profile-items" id="latestProfile"></div>
+      </div>
+      <div class="latest-profile">
+        <h4>Passe nos filtres ?</h4>
+        <div class="latest-audit" id="latestAudit"></div>
+      </div>
+      <div class="latest-prizes">
+        <h4>Gains de ce tirage</h4>
+        <div id="latestPrizes"></div>
+      </div>
+    </div>
   </section>
 
   <div class="section-head">
@@ -1540,6 +1788,7 @@ async function loadDraws() {
 
     renderRules();
     renderAnomaly();
+    renderLatest();
     renderGains();
     renderFrequencies();
     document.getElementById('generateBtn').disabled = false;
@@ -1889,6 +2138,143 @@ function renderRules() {
 
   renderBlock(document.getElementById('rulesHard'), absolute);
   renderBlock(document.getElementById('rulesCore'), core);
+}
+
+// --- rendu du dernier tirage ----------------------------------------
+
+function renderLatest() {
+  const box = document.getElementById('latest');
+  if (!state.draws || state.draws.length === 0) { box.style.display = 'none'; return; }
+
+  // On recherche le dernier en date (l'API peut renvoyer dans l'ordre qu'elle veut)
+  const latest = state.draws.reduce((best, d) => {
+    if (!best) return d;
+    return d.date > best.date ? d : best;
+  }, null);
+  if (!latest) { box.style.display = 'none'; return; }
+
+  box.style.display = 'block';
+
+  // Date FR
+  const parts = latest.date.split('-');
+  const dateFr = parts.length === 3 ? (parts[2] + '/' + parts[1] + '/' + parts[0]) : latest.date;
+  document.getElementById('latestTitle').textContent = dateFr;
+
+  // Durée depuis le tirage
+  const daysAgo = Math.floor((new Date() - new Date(latest.date)) / 86400000);
+  let ago = '';
+  if (daysAgo === 0) ago = 'aujourd\'hui';
+  else if (daysAgo === 1) ago = 'hier';
+  else if (daysAgo < 7) ago = 'il y a ' + daysAgo + ' jours';
+  else if (daysAgo < 30) ago = 'il y a ' + Math.floor(daysAgo/7) + ' semaine' + (daysAgo>=14?'s':'');
+  else ago = 'il y a ' + Math.floor(daysAgo/30) + ' mois';
+  document.getElementById('latestDate').textContent = ago;
+
+  // Balles et étoiles
+  const ballsEl = document.getElementById('latestBalls');
+  ballsEl.innerHTML = '';
+  for (const n of latest.balls) {
+    const el = document.createElement('div');
+    el.className = 'latest-ball';
+    el.textContent = n;
+    ballsEl.appendChild(el);
+  }
+  const sep = document.createElement('div');
+  sep.className = 'latest-sep';
+  sep.textContent = '✦';
+  ballsEl.appendChild(sep);
+  for (const n of latest.stars) {
+    const el = document.createElement('div');
+    el.className = 'latest-ball star';
+    el.textContent = n;
+    ballsEl.appendChild(el);
+  }
+
+  // Profil
+  const s = sum(latest.balls);
+  const r = range(latest.balls);
+  const pairs = evenCount(latest.balls);
+  const dc = decadesCovered(latest.balls);
+  const mg = maxGap(latest.balls);
+  const ss = sum(latest.stars);
+  const lh = lowerHalfCount(latest.balls);
+
+  const prof = document.getElementById('latestProfile');
+  prof.innerHTML =
+    '<div><span class="li-label">Somme</span><span class="li-val">' + s + '</span></div>' +
+    '<div><span class="li-label">Range</span><span class="li-val">' + r + '</span></div>' +
+    '<div><span class="li-label">Parité</span><span class="li-val">' + pairs + 'p/' + (5-pairs) + 'i</span></div>' +
+    '<div><span class="li-label">Dizaines</span><span class="li-val">' + dc + '</span></div>' +
+    '<div><span class="li-label">Bas/Haut</span><span class="li-val">' + lh + '/' + (5-lh) + '</span></div>' +
+    '<div><span class="li-label">Max gap</span><span class="li-val">' + mg + '</span></div>' +
+    '<div><span class="li-label">Étoiles ∑</span><span class="li-val">' + ss + '</span></div>' +
+    '<div><span class="li-label">Écart ★</span><span class="li-val">' + (latest.stars[1]-latest.stars[0]) + '</span></div>';
+
+  // Audit : on fait passer le tirage à travers nos filtres
+  // (sauf le "pas déjà tirée" bien sûr, vu que c'est LE tirage)
+  const f = state.filters;
+  const auditCombo = { balls: latest.balls, stars: latest.stars };
+  const tests = [];
+  tests.push({ ok: s >= f.sumP10 && s <= f.sumP90,   l: 'Somme cœur' });
+  tests.push({ ok: r >= f.rangeP10 && r <= f.rangeP90, l: 'Range cœur' });
+  tests.push({ ok: pairs >= 1 && pairs <= 4,          l: 'Parité mixte' });
+  tests.push({ ok: dc >= 3 && dc <= 4,                l: '3–4 dizaines' });
+  tests.push({ ok: latest.balls[4] > 31,              l: '≥ 1 balle > 31' });
+  tests.push({ ok: latest.balls[0] <= 31,             l: '≥ 1 balle ≤ 31' });
+  tests.push({ ok: maxConsecutiveRun(latest.balls) < 3, l: 'Pas 3 consécutifs' });
+  tests.push({ ok: consecutivePairs(latest.balls) < 2, l: 'Max 1 paire' });
+  tests.push({ ok: maxBallsPerDecade(latest.balls) < 4, l: 'Max 3/dizaine' });
+  tests.push({ ok: mg < 30,                           l: 'Pas gap ≥ 30' });
+  tests.push({ ok: lh >= 1 && lh <= 4,                l: 'Équilibre bas/haut' });
+  tests.push({ ok: ss >= f.starSumP5 && ss <= f.starSumP95, l: 'Somme ★ cœur' });
+
+  const auditEl = document.getElementById('latestAudit');
+  auditEl.innerHTML = tests.map(t =>
+    '<div class="latest-audit-row ' + (t.ok ? 'pass' : 'fail') + '">' +
+    (t.ok ? '✓' : '✗') + ' ' + t.l + '</div>'
+  ).join('');
+
+  // Verdict
+  const passed = tests.filter(t => t.ok).length;
+  const verdictEl = document.getElementById('latestVerdict');
+  if (passed === tests.length) {
+    verdictEl.innerHTML = 'Un tirage totalement dans le cœur de distribution.' +
+      '<span class="tag pass">' + passed + '/' + tests.length + '</span>';
+  } else {
+    verdictEl.innerHTML = 'Ce tirage violerait ' + (tests.length - passed) +
+      ' de nos ' + tests.length + ' règles cœur — ' +
+      (passed >= tests.length * 0.75 ? 'globalement typique' : 'plutôt atypique') + '.' +
+      '<span class="tag fail">' + passed + '/' + tests.length + '</span>';
+  }
+
+  // Gains du tirage
+  const prizesEl = document.getElementById('latestPrizes');
+  if (latest.prizes && latest.prizes.length) {
+    const jp = latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
+    let jpLine;
+    if (jp && jp.winners > 0) {
+      jpLine = '<div class="latest-prize-main">' + formatMoney(jp.prize) + '</div>' +
+        '<div class="latest-prize-sub">' + (jp.winners === 1 ? 'un seul gagnant' : jp.winners + ' gagnants') + ' au rang 5+2</div>';
+    } else if (jp) {
+      jpLine = '<div class="latest-prize-main" style="color:var(--text-dim)">Aucun gagnant</div>' +
+        '<div class="latest-prize-sub">la cagnotte repart pour le prochain tirage</div>';
+    } else {
+      jpLine = '<div class="latest-prize-main" style="color:var(--text-dim)">—</div>';
+    }
+
+    let totalPaid = 0, totalWinners = 0;
+    for (const p of latest.prizes) {
+      totalPaid += (p.prize || 0) * (p.winners || 0);
+      totalWinners += (p.winners || 0);
+    }
+
+    prizesEl.innerHTML = jpLine +
+      '<div class="latest-prize-total">' +
+      '<strong>' + formatMoney(totalPaid) + '</strong> distribués à ' + fmt(totalWinners) + ' gagnants tous rangs' +
+      '</div>';
+  } else {
+    prizesEl.innerHTML = '<div class="latest-prize-main" style="color:var(--text-dim); font-size:1rem">Données indisponibles</div>';
+  }
 }
 
 // --- rendu des gains totaux -----------------------------------------
