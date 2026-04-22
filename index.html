@@ -2211,8 +2211,10 @@ function renderRules() {
 // --- scraping : cagnotte prochain tirage (FDJ) ----------------------
 
 const NEXT_DRAW_URL = 'https://www.fdj.fr/jeux-de-tirage/euromillions-my-million/';
-// Page avec les vrais jackpots (en €) des tirages récents
-const RESULTS_PAGE_URL = 'https://www.euro-millions.com/fr/resultats';
+// Page avec les vrais jackpots (en €) des tirages récents.
+// On utilise la version anglaise /results car elle expose des chiffres précis
+// au format "Jackpot: €48,175,066" dès que le tirage est connu.
+const RESULTS_PAGE_URL = 'https://www.euro-millions.com/results';
 
 // Helper générique : tente l'appel direct puis plusieurs proxies CORS
 async function fetchViaProxy(targetUrl) {
@@ -2320,20 +2322,19 @@ async function renderNextDraw() {
 
 // --- scraping : vrais jackpots en € (euro-millions.com/fr/resultats) ---
 
-// Parse la page de résultats pour extraire { 'YYYY-MM-DD': { jackpot, won } }
+// Parse la page de résultats (anglaise) pour extraire { 'YYYY-MM-DD': { jackpot, won } }
 // pour tous les tirages affichés (~60 derniers jours).
+// Format anglais : "Jackpot: €48,175,066" et "Jackpot Won!"
 function parseRecentJackpots(html) {
   const out = {};
-  // 1. Repérer toutes les occurrences de liens vers /fr/resultats/DD-MM-YYYY
-  const linkRe = /\/fr\/resultats\/(\d{2})-(\d{2})-(\d{4})/g;
+  // Les liens dans la page anglaise : /results/DD-MM-YYYY (absolus ou relatifs)
+  const linkRe = /results\/(\d{2})-(\d{2})-(\d{4})/g;
   const positions = [];
   let m;
   while ((m = linkRe.exec(html)) !== null) {
     positions.push({ iso: m[3] + '-' + m[2] + '-' + m[1], start: m.index });
   }
-  // 2. Pour chaque tirage, on analyse le segment [position_actuelle, position_suivante]
-  //    et on garde le DERNIER montant avant la phrase "Répartition des gains" ou "Jackpot gagné",
-  //    ce qui nous protège contre les menus/pubs parasites.
+  console.log('[EuroAffûté] ' + positions.length + ' liens de dates trouvés dans le HTML');
   for (let i = 0; i < positions.length; i++) {
     const date = positions[i].iso;
     if (out[date]) continue;
@@ -2341,21 +2342,20 @@ function parseRecentJackpots(html) {
     const to = (i + 1 < positions.length) ? positions[i + 1].start : from + 5000;
     const block = html.substring(from, to);
 
-    // Tous les montants en € dans le bloc
-    const amtRe = /(\d[\d\s\u00a0\u202f]{5,20})\s*€/g;
+    // Montants au format €X,XXX,XXX (anglais avec virgules) ou €X XXX XXX (français avec espaces)
+    const amtRe = /€\s*([\d,\s\u00a0\u202f]{5,25})/g;
     const matches = [];
     let mA;
     while ((mA = amtRe.exec(block)) !== null) {
-      const num = parseInt(mA[1].replace(/[\s\u00a0\u202f]/g, ''), 10);
-      if (!isNaN(num) && num >= 1e6 && num <= 300e6) {  // entre 1M et 300M (cap jackpot EM)
-        matches.push({ num, at: mA.index });
+      const num = parseInt(mA[1].replace(/[,\s\u00a0\u202f]/g, ''), 10);
+      if (!isNaN(num) && num >= 1e6 && num <= 300e6) {
+        matches.push({ num });
       }
     }
     if (matches.length === 0) continue;
-    // On prend le plus gros (le jackpot, par opposition aux petits montants qui traînent)
-    matches.sort((a, b) => b.num - a.num);
+    // On prend le PREMIER montant rencontré dans le bloc (le plus proche du lien de date)
     const jackpot = matches[0].num;
-    const won = /Jackpot\s+gagné/i.test(block);
+    const won = /Jackpot\s+(Won|gagné)/i.test(block);
     out[date] = { jackpot, won };
   }
   return out;
@@ -2364,6 +2364,62 @@ function parseRecentJackpots(html) {
 async function fetchRecentJackpots() {
   const html = await fetchViaProxy(RESULTS_PAGE_URL);
   return parseRecentJackpots(html);
+}
+
+// Scrape la page spécifique d'un tirage pour y trouver le vrai jackpot.
+// Utilise la page anglaise /results/DD-MM-YYYY qui expose :
+//   Jackpot: €48,175,066          (montant par gagnant, précis)
+//   Total Winners: 1,967,227      (tous rangs confondus)
+//   Outcome: Jackpot Won!         (ou absent si non gagné)
+function parseSingleDrawPage(html, isoDate) {
+  // Jackpot en format "€48,175,066" ou "€145,000,000" (précis)
+  const preciseRe = /Jackpot\s*:?\s*€\s*([\d,]+(?:\.\d+)?)/i;
+  // Fallback arrondi : "145 million" ou "€145 million"
+  const roundRe = /€?\s*(\d+(?:[.,]\d+)?)\s*[Mm]illion/i;
+
+  let jackpot = null;
+  let precise = false;
+  const mP = preciseRe.exec(html);
+  if (mP) {
+    const num = parseInt(mP[1].replace(/[,\s]/g, ''), 10);
+    if (!isNaN(num) && num >= 1e6 && num <= 300e6) { jackpot = num; precise = true; }
+  }
+  if (!jackpot) {
+    const mR = roundRe.exec(html);
+    if (mR) {
+      const num = parseFloat(mR[1].replace(',', '.')) * 1e6;
+      if (!isNaN(num) && num >= 1e6 && num <= 300e6) jackpot = Math.round(num);
+    }
+  }
+  if (!jackpot) return null;
+
+  // "Jackpot Won!" (en) ou "Jackpot gagné" (fr)
+  const won = /Jackpot\s+(Won|gagné)/i.test(html);
+
+  // Total Winners: 1,967,227 (cette ligne n'existe que pour les tirages complets)
+  let totalWinners = null;
+  const twRe = /Total\s+Winners\s*:?\s*([\d,\s\u00a0\u202f]+)/i;
+  const mTw = twRe.exec(html);
+  if (mTw) {
+    const n = parseInt(mTw[1].replace(/[,\s\u00a0\u202f]/g, ''), 10);
+    if (!isNaN(n) && n > 0) totalWinners = n;
+  }
+
+  return { jackpot, won, precise, totalWinners };
+}
+
+async function fetchSingleDrawJackpot(isoDate) {
+  // URL format anglais : /results/DD-MM-YYYY
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return null;
+  const url = 'https://www.euro-millions.com/results/' + parts[2] + '-' + parts[1] + '-' + parts[0];
+  try {
+    const html = await fetchViaProxy(url);
+    return parseSingleDrawPage(html, isoDate);
+  } catch (err) {
+    console.warn('[EuroAffûté] scrape page individuelle ' + url + ' échoué :', err.message);
+    return null;
+  }
 }
 
 // --- rendu du dernier tirage ----------------------------------------
@@ -2481,14 +2537,23 @@ async function renderLatest() {
   let realJackpot = null;
   try {
     console.log('[EuroAffûté] recherche du vrai jackpot pour la date', latest.date);
-    const recent = await fetchRecentJackpots();
-    const dates = Object.keys(recent);
-    console.log('[EuroAffûté] ' + dates.length + ' jackpots scrapés. Dates :', dates.slice(0, 5).join(', ') + (dates.length > 5 ? '…' : ''));
-    if (recent[latest.date]) {
-      realJackpot = recent[latest.date];
-      console.log('[EuroAffûté] ✓ jackpot trouvé pour', latest.date, ':', realJackpot);
+    // 1. On tente d'abord la page spécifique du tirage (plus fiable et à jour)
+    const single = await fetchSingleDrawJackpot(latest.date);
+    if (single) {
+      realJackpot = single;
+      console.log('[EuroAffûté] ✓ jackpot via page individuelle :', realJackpot);
     } else {
-      console.warn('[EuroAffûté] ✗ pas de jackpot pour', latest.date, '(la date n\'est pas dans la liste scrapée)');
+      // 2. Fallback : la liste globale des résultats
+      console.log('[EuroAffûté] page individuelle sans données, essai de la liste globale…');
+      const recent = await fetchRecentJackpots();
+      const dates = Object.keys(recent);
+      console.log('[EuroAffûté] ' + dates.length + ' jackpots scrapés. Dates :', dates.slice(0, 5).join(', ') + (dates.length > 5 ? '…' : ''));
+      if (recent[latest.date]) {
+        realJackpot = recent[latest.date];
+        console.log('[EuroAffûté] ✓ jackpot via liste :', realJackpot);
+      } else {
+        console.warn('[EuroAffûté] ✗ pas de jackpot pour', latest.date, '(la date n\'est pas dans la liste scrapée)');
+      }
     }
   } catch (err) {
     console.warn('[EuroAffûté] scraping jackpot échoué :', err.message);
@@ -2499,28 +2564,31 @@ async function renderLatest() {
     const apiJp = latest.prizes && latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
     let line;
     if (realJackpot.won && apiJp && apiJp.winners > 0) {
-      const perWinner = realJackpot.jackpot / apiJp.winners;
-      line = '<div class="latest-prize-main">' + formatMoney(realJackpot.jackpot) + '</div>' +
-        '<div class="latest-prize-sub">Jackpot gagné ! ' +
+      const perWinner = realJackpot.jackpot;  // le scraping donne déjà la part par gagnant
+      const totalJackpot = realJackpot.jackpot * apiJp.winners;
+      line = '<div class="latest-prize-main">' + formatMoney(perWinner) + '</div>' +
+        '<div class="latest-prize-sub">Jackpot gagné ! Part par gagnant · ' +
         (apiJp.winners === 1 ? '1 seul gagnant' : apiJp.winners + ' gagnants') +
-        ' au rang 5+2 · ≈ ' + formatMoney(perWinner) + ' par personne</div>';
+        ' au rang 5+2 (≈ ' + formatMoney(totalJackpot) + ' au total)</div>';
     } else if (realJackpot.won) {
       line = '<div class="latest-prize-main">' + formatMoney(realJackpot.jackpot) + '</div>' +
-        '<div class="latest-prize-sub">Jackpot gagné ! (nombre de gagnants indisponible)</div>';
+        '<div class="latest-prize-sub">Jackpot gagné ! (part par gagnant · nombre indisponible)</div>';
     } else {
       line = '<div class="latest-prize-main" style="color:var(--text-dim)">' + formatMoney(realJackpot.jackpot) + '</div>' +
         '<div class="latest-prize-sub">Jackpot en jeu · cagnotte reportée au tirage suivant (aucun 5+2)</div>';
     }
 
-    let extra = '';
-    if (latest.prizes && latest.prizes.length) {
-      let totalWinners = 0;
+    // Nombre total de gagnants : priorité au chiffre scrapé, fallback sur la somme API
+    let totalWinners = realJackpot.totalWinners;
+    if (!totalWinners && latest.prizes && latest.prizes.length) {
+      totalWinners = 0;
       for (const p of latest.prizes) totalWinners += (p.winners || 0);
-      if (totalWinners > 0) {
-        extra = '<div class="latest-prize-total">' +
-          '<strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus' +
-          '</div>';
-      }
+    }
+    let extra = '';
+    if (totalWinners > 0) {
+      extra = '<div class="latest-prize-total">' +
+        '<strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus' +
+        '</div>';
     }
     prizesEl.innerHTML = line + extra;
   } else if (latest.prizes && latest.prizes.length) {
