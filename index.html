@@ -2327,7 +2327,7 @@ async function renderNextDraw() {
 // Format anglais : "Jackpot: €48,175,066" et "Jackpot Won!"
 function parseRecentJackpots(html) {
   const out = {};
-  // Les liens dans la page anglaise : /results/DD-MM-YYYY (absolus ou relatifs)
+  // On cherche les positions des liens dans le HTML BRUT (les URLs sont stables)
   const linkRe = /results\/(\d{2})-(\d{2})-(\d{4})/g;
   const positions = [];
   let m;
@@ -2335,25 +2335,27 @@ function parseRecentJackpots(html) {
     positions.push({ iso: m[3] + '-' + m[2] + '-' + m[1], start: m.index });
   }
   console.log('[EuroAffûté] ' + positions.length + ' liens de dates trouvés dans le HTML');
+
   for (let i = 0; i < positions.length; i++) {
     const date = positions[i].iso;
     if (out[date]) continue;
     const from = positions[i].start;
     const to = (i + 1 < positions.length) ? positions[i + 1].start : from + 5000;
-    const block = html.substring(from, to);
+    // On convertit juste ce bloc en texte pour chercher le montant
+    const block = htmlToText(html.substring(from, to));
 
-    // Montants au format €X,XXX,XXX (anglais avec virgules) ou €X XXX XXX (français avec espaces)
-    const amtRe = /€\s*([\d,\s\u00a0\u202f]{5,25})/g;
+    // On cherche le premier montant €X,XXX,XXX ou €X XXX XXX (entre 1M et 300M)
+    const amtRe = /€\s*([\d,\s]{5,25})/g;
     const matches = [];
     let mA;
     while ((mA = amtRe.exec(block)) !== null) {
-      const num = parseInt(mA[1].replace(/[,\s\u00a0\u202f]/g, ''), 10);
+      const num = parseInt(mA[1].replace(/[,\s]/g, ''), 10);
       if (!isNaN(num) && num >= 1e6 && num <= 300e6) {
         matches.push({ num });
       }
     }
     if (matches.length === 0) continue;
-    // On prend le PREMIER montant rencontré dans le bloc (le plus proche du lien de date)
+    // Premier montant rencontré (le plus proche du lien de date)
     const jackpot = matches[0].num;
     const won = /Jackpot\s+(Won|gagné)/i.test(block);
     out[date] = { jackpot, won };
@@ -2366,28 +2368,51 @@ async function fetchRecentJackpots() {
   return parseRecentJackpots(html);
 }
 
+// Convertit le HTML brut en texte lisible en enlevant balises et en normalisant les espaces.
+// Ça rend les regex suivantes beaucoup plus simples et fiables.
+function htmlToText(html) {
+  // Enlève script, style, balises, puis normalise espaces multiples.
+  let t = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ');
+  // Décode quelques entités HTML courantes
+  t = t.replace(/&euro;/g, '€')
+       .replace(/&#8364;/g, '€')
+       .replace(/&nbsp;/g, ' ')
+       .replace(/&amp;/g, '&')
+       .replace(/&lt;/g, '<')
+       .replace(/&gt;/g, '>')
+       .replace(/&quot;/g, '"');
+  // Normalise les espaces (retours à la ligne, tabs, espaces multiples → un seul espace)
+  t = t.replace(/\s+/g, ' ');
+  return t;
+}
+
 // Scrape la page spécifique d'un tirage pour y trouver le vrai jackpot.
 // Utilise la page anglaise /results/DD-MM-YYYY qui expose :
 //   Jackpot: €48,175,066          (montant par gagnant, précis)
 //   Total Winners: 1,967,227      (tous rangs confondus)
 //   Outcome: Jackpot Won!         (ou absent si non gagné)
 function parseSingleDrawPage(html, isoDate) {
-  // Entre "Jackpot" et le montant "€", il peut y avoir plein de balises HTML
-  // (e.g. "Jackpot:</dt>\n<dd>€48,175,066</dd>"). On est permissif mais avec
-  // une distance max pour éviter de matcher un € du menu ou une pub Mega Millions.
-  const preciseRe = /Jackpot[\s\S]{0,300}?€\s*([\d,]+(?:\.\d+)?)/i;
-  // Fallback arrondi : "Jackpot ... 145 million" (€ optionnel avant le chiffre)
-  const roundRe = /Jackpot[\s\S]{0,300}?€?\s*(\d+(?:[.,]\d+)?)\s*[Mm]illion/i;
+  const text = htmlToText(html);
+
+  // Cherche "Jackpot: €XXX,XXX,XXX" (format précis)
+  // Note: après htmlToText, "Jackpot:" et "€48,175,066" sont séparés par au plus
+  // quelques espaces (labels des autres champs éventuellement), mais on reste prudent.
+  const preciseRe = /Jackpot\s*:?\s*€\s*([\d,]+)/i;
+  // Fallback arrondi : "Jackpot: X million" ou "Jackpot: €X million"
+  const roundRe = /Jackpot\s*:?\s*€?\s*(\d+(?:[.,]\d+)?)\s*[Mm]illion/i;
 
   let jackpot = null;
   let precise = false;
-  const mP = preciseRe.exec(html);
+  const mP = preciseRe.exec(text);
   if (mP) {
-    const num = parseInt(mP[1].replace(/[,\s]/g, ''), 10);
+    const num = parseInt(mP[1].replace(/,/g, ''), 10);
     if (!isNaN(num) && num >= 1e6 && num <= 300e6) { jackpot = num; precise = true; }
   }
   if (!jackpot) {
-    const mR = roundRe.exec(html);
+    const mR = roundRe.exec(text);
     if (mR) {
       const num = parseFloat(mR[1].replace(',', '.')) * 1e6;
       if (!isNaN(num) && num >= 1e6 && num <= 300e6) jackpot = Math.round(num);
@@ -2396,15 +2421,15 @@ function parseSingleDrawPage(html, isoDate) {
   if (!jackpot) return null;
 
   // "Jackpot Won!" (en) ou "Jackpot gagné" (fr)
-  const won = /Jackpot\s+(Won|gagné)/i.test(html);
+  const won = /Jackpot\s+(Won|gagné)/i.test(text);
 
-  // Total Winners: 1,967,227 — même problème avec les balises HTML
+  // Total Winners: 1,967,227
   let totalWinners = null;
-  const twRe = /Total\s+Winners[\s\S]{0,200}?([\d,]+)/i;
-  const mTw = twRe.exec(html);
+  const twRe = /Total\s+Winners\s*:?\s*([\d,]+)/i;
+  const mTw = twRe.exec(text);
   if (mTw) {
-    const n = parseInt(mTw[1].replace(/[,\s]/g, ''), 10);
-    if (!isNaN(n) && n > 100) totalWinners = n;  // filtre les petits chiffres parasites
+    const n = parseInt(mTw[1].replace(/,/g, ''), 10);
+    if (!isNaN(n) && n > 100) totalWinners = n;
   }
 
   return { jackpot, won, precise, totalWinners };
