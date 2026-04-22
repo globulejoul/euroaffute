@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EuroAffûté — Filtres appris depuis 20 ans de tirages</title>
 <meta name="description" content="Un outil qui analyse tous les tirages EuroMillions depuis 2004 et en déduit des règles statistiques pour filtrer les combinaisons.">
+
+<!-- OpenGraph / Twitter -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="EuroAffûté">
+<meta property="og:title" content="EuroAffûté — L'EuroMillions passé au crible statistique">
+<meta property="og:description" content="20 ans de tirages analysés, règles déduites, filtres statistiques. Générez des grilles dans le cœur de distribution ou contre-tendance.">
+<meta property="og:url" content="https://globulejoul.github.io/euroaffute/">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="EuroAffûté — L'EuroMillions passé au crible statistique">
+<meta name="twitter:description" content="20 ans de tirages analysés, règles déduites, filtres statistiques. Générez des grilles cœur de distribution ou contre-tendance.">
+<meta name="theme-color" content="#C9A94E">
+
+<!-- Favicon : un trèfle en SVG inline, pas de requête externe -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230E0E10'/><text x='50' y='72' text-anchor='middle' font-size='68' font-family='serif' font-style='italic' fill='%23C9A94E'>€</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -21,6 +36,7 @@
     --star: #E85D50;
     --green: #7FB04F;
     --red: #C73E3E;
+    --blue: #5B9BD5;
     --line: #242428;
   }
 
@@ -658,7 +674,7 @@
   .portfolio.backup .portfolio-tag { color: var(--star); }
   .portfolio-tag.alt { color: var(--green); }
   .portfolio.contrarian h3 em { color: var(--green); }
-  .portfolio.contrarian { border-color: color-mix(in srgb, var(--green) 25%, var(--border)); }
+  /* Même bordure que les autres cartes — pas de mise en valeur excessive */
 
   .contrarian-note {
     margin-top: 1.25rem;
@@ -679,6 +695,33 @@
     letter-spacing: 0.15em;
     color: var(--green);
     font-weight: 500;
+  }
+  .contrarian-rules {
+    list-style: none;
+    padding: 0;
+    margin: 0.6rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .contrarian-rules li {
+    padding: 0.4rem 0.7rem;
+    background: color-mix(in srgb, var(--green) 3%, transparent);
+    border-left: 2px solid color-mix(in srgb, var(--green) 50%, transparent);
+    font-size: 0.78rem;
+  }
+  .contrarian-rules code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--green);
+    padding: 0 0.25em;
+  }
+  .contrarian-rules em { font-style: italic; color: var(--text); }
+  .contrarian-foot {
+    margin-top: 0.8rem;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    font-style: italic;
   }
 
   .portfolio h3 {
@@ -707,13 +750,42 @@
 
   .grid-row {
     display: grid;
-    grid-template-columns: 32px 1fr auto;
+    grid-template-columns: 32px 1fr auto auto;
     gap: 1rem;
     align-items: center;
     padding: 0.7rem 1rem;
     background: var(--bg);
     border: 1px solid var(--line);
     animation: slide 0.3s ease-out both;
+  }
+
+  .grid-copy {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-faint);
+    padding: 0.35rem 0.45rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+  .grid-copy:hover {
+    color: var(--gold);
+    border-color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 8%, transparent);
+  }
+  .grid-copy.copied {
+    color: var(--green);
+    border-color: var(--green);
+    background: color-mix(in srgb, var(--green) 10%, transparent);
+  }
+  .grid-copy.copied svg { animation: pop 0.25s ease; }
+  @keyframes pop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.25); }
+    100% { transform: scale(1); }
   }
 
   @keyframes slide {
@@ -969,6 +1041,47 @@
   }
   .outcome-badge .flag { font-size: 0.9em; }
 
+  /* --- Top rangs (visible par défaut) ---------------------------- */
+  .rank-breakdown {
+    margin-top: 1.1rem;
+    padding-top: 0.9rem;
+    border-top: 1px dashed var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+  }
+  .rank-breakdown-title {
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.65rem;
+    margin-bottom: 0.5rem;
+  }
+  .rank-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .rank-table th {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    color: var(--text-faint);
+    font-weight: 400;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid var(--border);
+  }
+  .rank-table th:nth-child(2), .rank-table td:nth-child(2),
+  .rank-table th:nth-child(3), .rank-table td:nth-child(3),
+  .rank-table th:last-child, .rank-table td:last-child { text-align: right; }
+  .rank-table td {
+    padding: 0.4rem 0.6rem;
+    color: var(--text-dim);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  }
+  .rank-table td.rank-label strong { color: var(--gold); font-weight: 500; }
+  .rank-table td.rank-total { color: var(--text); font-weight: 500; }
+  .rank-table tr:last-child td { border-bottom: none; }
+
   /* --- Timeline des jackpots ------------------------------------- */
   .jackpot-timeline {
     max-width: 1100px;
@@ -1018,53 +1131,45 @@
   .dot-green { background: var(--green); box-shadow: 0 0 6px color-mix(in srgb, var(--green) 50%, transparent); }
   .dot-blue  { background: var(--star); }
   .jackpot-timeline-chart {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.35rem;
-    height: 220px;
-    padding: 0.5rem 0 2.4rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .jt-bar {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-    position: relative;
-    min-width: 0;
-  }
-  .jt-bar-fill {
     width: 100%;
-    max-width: 48px;
-    margin: 0 auto;
-    background: var(--star);
-    border-radius: 4px 4px 0 0;
-    position: relative;
-    transition: transform 0.2s ease;
+    margin-top: 0.5rem;
+    min-height: 120px;
   }
-  .jt-bar.won .jt-bar-fill {
-    background: linear-gradient(to top, var(--green), color-mix(in srgb, var(--green) 40%, transparent));
-    box-shadow: 0 0 12px color-mix(in srgb, var(--green) 30%, transparent);
-  }
-  .jt-bar:hover .jt-bar-fill { transform: translateY(-2px); }
-  .jt-bar-amount {
-    position: absolute;
-    top: -1.35rem;
+  .jt-status {
+    padding: 2rem 0;
+    text-align: center;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    white-space: nowrap;
-  }
-  .jt-bar-date {
-    position: absolute;
-    bottom: -2rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
+    font-size: 0.75rem;
     color: var(--text-faint);
-    transform: rotate(-45deg);
-    transform-origin: top right;
-    white-space: nowrap;
+    font-style: italic;
+  }
+  .jt-status.err { color: var(--text-dim); }
+  .jt-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .jt-label-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    fill: var(--text);
+    font-weight: 500;
+  }
+  .jt-label-x {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    fill: var(--text-faint);
+  }
+  .jt-label-y {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    fill: var(--text-faint);
+  }
+  .jt-grid {
+    stroke: var(--border);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+    opacity: 0.5;
   }
   .jackpot-timeline-note {
     margin-top: 1.5rem;
@@ -1075,9 +1180,8 @@
 
   @media (max-width: 640px) {
     .jackpot-timeline { padding: 1.5rem 1rem; }
-    .jackpot-timeline-chart { gap: 0.2rem; height: 180px; }
-    .jt-bar-amount { font-size: 0.55rem; top: -1.1rem; }
-    .jt-bar-date { font-size: 0.5rem; }
+    .jt-label-val { font-size: 9px; }
+    .jt-label-x, .jt-label-y { font-size: 8px; }
   }
 
   .latest-title {
@@ -1189,6 +1293,29 @@
   .latest-audit-row.pass { color: var(--green); }
   .latest-audit-row.fail { color: var(--red); }
 
+  /* Variante contre-tendance : teinte bleu-acier pour les distinguer du vert/rouge "coeur" */
+  .latest-audit-row.contrarian.pass { color: var(--blue); }
+  .latest-audit-row.contrarian.fail { color: color-mix(in srgb, var(--blue) 50%, var(--text-faint)); }
+
+  #latestAudit .audit-separator {
+    grid-column: 1 / -1;
+    margin-top: 0.7rem;
+    padding-top: 0.6rem;
+    border-top: 1px dashed var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--blue);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  #latestAudit .audit-separator span {
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+
   .latest-verdict {
     margin-top: 1rem;
     font-family: 'Instrument Serif', serif;
@@ -1209,6 +1336,12 @@
   }
   .latest-verdict .tag.pass { color: var(--green); }
   .latest-verdict .tag.fail { color: var(--red); }
+  .latest-verdict .tag.contrarian-tag {
+    color: var(--blue);
+    border-color: color-mix(in srgb, var(--blue) 40%, var(--border));
+    background: color-mix(in srgb, var(--blue) 6%, transparent);
+    margin-left: 0.4rem;
+  }
 
   .latest-prizes h4 {
     font-family: 'JetBrains Mono', monospace;
@@ -1479,7 +1612,7 @@
     </div>
   </section>
 
-  <section class="jackpot-timeline" id="jackpotTimeline" style="display:none">
+  <section class="jackpot-timeline" id="jackpotTimeline">
     <div class="jackpot-timeline-head">
       <div>
         <div class="jackpot-timeline-eyebrow">Dynamique récente</div>
@@ -1490,7 +1623,9 @@
         <span><span class="dot-blue"></span> Reporté</span>
       </div>
     </div>
-    <div class="jackpot-timeline-chart" id="jackpotChart"></div>
+    <div class="jackpot-timeline-chart" id="jackpotChart">
+      <div class="jt-status">Chargement des jackpots récents…</div>
+    </div>
     <p class="jackpot-timeline-note">
       Chaque barre = un tirage. Le jackpot enfle tant que personne ne rafle le 5+2,
       puis retombe à 17 M€ dès qu'un gagnant s'en empare.
@@ -1671,9 +1806,19 @@
         <div class="grid-empty">Cliquez sur « Tirer 10 grilles »</div>
       </div>
       <div class="contrarian-note">
-        <strong>À savoir</strong> — environ 20 à 30 % des joueurs choisissent des numéros ≤ 31 (dates).
-        Une grille qui les évite réduit de façon mesurable le risque de partage.
-        On applique aussi nos filtres "cœur de distribution" pour garder un profil statistique sain.
+        <strong>Les 6 règles appliquées</strong>
+        <ul class="contrarian-rules">
+          <li><code>&lt; 4</code> numéros ≤ 31 — évite la signature <em>dates de naissance</em> (20-30 % des joueurs)</li>
+          <li>Pas de <em>suite arithmétique</em> de 3+ numéros — bloque 5-10-15-20-25, 3-8-13-18-23, etc.</li>
+          <li><code>≤ 2</code> multiples de 7 — évite le chiffre porte-bonheur sur-joué</li>
+          <li><code>≤ 2</code> multiples de 5 — évite les numéros "ronds"</li>
+          <li>Pas <code>3+</code> numéros alignés sur une colonne ou ligne de la grille FDJ (10×5)</li>
+          <li>Au moins une étoile <code>&gt; 7</code> — évite le combo étoiles "petits chiffres" très joué</li>
+        </ul>
+        <p class="contrarian-foot">
+          Ces règles s'appliquent <strong>en plus</strong> des filtres statistiques appris
+          (somme, range, parité, etc.). Environ 15 % des combinaisons aléatoires passent l'ensemble.
+        </p>
       </div>
     </div>
 
@@ -1743,9 +1888,7 @@
   <footer>
     Données publiques fournies par
     <a href="https://github.com/pedro-mealha/euromillions-api" target="_blank" rel="noopener">l'API EuroMillions de Pedro Mealha</a>,
-    actualisée automatiquement après chaque tirage.<br>
-    Le jeu peut être dangereux : pertes d'argent, isolement, dépendance.
-    <a href="https://www.joueurs-info-service.fr/" target="_blank" rel="noopener">Appelez le 09 74 75 13 13</a>.
+    actualisée automatiquement après chaque tirage.
   </footer>
 
 </div>
@@ -2907,6 +3050,42 @@ function parseSecretsDuJeuPage(html, isoDate) {
 
 // --- rendu du dernier tirage ----------------------------------------
 
+// Construit la mini-table "Top 5 rangs par montant distribué" affichée
+// sous les gains. Le 5+2 de l'API ayant un bug de valeur, on accepte en
+// override le vrai jackpot scrapé (total et part par gagnant).
+function buildTopRanksTable(prizes, jackpot52) {
+  if (!prizes || !prizes.length) return '';
+  const jpTotal = (jackpot52 && jackpot52.jackpotTotal) || 0;
+  const jpPer = (jackpot52 && jackpot52.jackpotPerWinner) || 0;
+  const rankTotals = prizes.map(p => {
+    const is52 = p.matched_numbers === 5 && p.matched_stars === 2;
+    const total = is52 ? jpTotal : (p.prize || 0) * (p.winners || 0);
+    return {
+      label: p.matched_numbers + '+' + p.matched_stars,
+      winners: p.winners || 0,
+      perWinner: is52 && jpPer ? jpPer : (p.prize || 0),
+      total: total,
+    };
+  });
+  const top5 = rankTotals.filter(r => r.total > 0).sort((a, b) => b.total - a.total).slice(0, 5);
+  if (!top5.length) return '';
+  let html = '<div class="rank-breakdown">' +
+    '<div class="rank-breakdown-title">Top rangs par montant distribué</div>' +
+    '<table class="rank-table"><thead>' +
+    '<tr><th>Rang</th><th>Total distribué</th><th>Gagnants</th><th>Par gagnant</th></tr>' +
+    '</thead><tbody>';
+  for (const r of top5) {
+    html += '<tr>' +
+      '<td class="rank-label"><strong>' + r.label + '</strong></td>' +
+      '<td class="rank-total">' + formatMoney(r.total) + '</td>' +
+      '<td>' + fmt(r.winners) + '</td>' +
+      '<td>' + formatMoney(r.perWinner) + '</td>' +
+      '</tr>';
+  }
+  html += '</tbody></table></div>';
+  return html;
+}
+
 async function renderLatest() {
   const box = document.getElementById('latest');
   if (!state.draws || state.draws.length === 0) { box.style.display = 'none'; return; }
@@ -2998,22 +3177,46 @@ async function renderLatest() {
   tests.push({ ok: ss >= f.starSumP5 && ss <= f.starSumP95, l: 'Somme ★ cœur' });
 
   const auditEl = document.getElementById('latestAudit');
-  auditEl.innerHTML = tests.map(t =>
+
+  // Tests "cœur de distribution" (jaune)
+  const coreHtml = tests.map(t =>
     '<div class="latest-audit-row ' + (t.ok ? 'pass' : 'fail') + '">' +
     (t.ok ? '✓' : '✗') + ' ' + t.l + '</div>'
   ).join('');
 
+  // Tests "contre-tendance" (vert) — évaluent la grille gagnante sur les
+  // règles anti-patterns populaires. Utile pour voir si ce tirage aurait
+  // "frustré" les joueurs qui jouent des dates, multiples de 7, etc.
+  const contrarianTests = [
+    { ok: !hasBirthdayPattern(latest.balls),    l: '< 4 n° ≤ 31 (dates)' },
+    { ok: !hasArithmeticRun(latest.balls),      l: 'Pas de suite arithmétique' },
+    { ok: !tooManyMultiplesOf7(latest.balls),   l: '≤ 2 multiples de 7' },
+    { ok: !tooManyMultiplesOf5(latest.balls),   l: '≤ 2 multiples de 5' },
+    { ok: !hasGridAlignment(latest.balls),      l: 'Pas d\'alignement grille' },
+    { ok: !hasPopularStars(latest.stars),       l: '≥ 1 étoile > 7' },
+  ];
+  const passedContrarian = contrarianTests.filter(t => t.ok).length;
+  const contrarianHtml =
+    '<div class="audit-separator">Contre-tendance <span>' + passedContrarian + '/' + contrarianTests.length + '</span></div>' +
+    contrarianTests.map(t =>
+      '<div class="latest-audit-row contrarian ' + (t.ok ? 'pass' : 'fail') + '">' +
+      (t.ok ? '✓' : '✗') + ' ' + t.l + '</div>'
+    ).join('');
+
+  auditEl.innerHTML = coreHtml + contrarianHtml;
+
   // Verdict
   const passed = tests.filter(t => t.ok).length;
   const verdictEl = document.getElementById('latestVerdict');
+  const contrarianNote = ' <span class="tag contrarian-tag">contre-tendance ' + passedContrarian + '/' + contrarianTests.length + '</span>';
   if (passed === tests.length) {
     verdictEl.innerHTML = 'Un tirage totalement dans le cœur de distribution.' +
-      '<span class="tag pass">' + passed + '/' + tests.length + '</span>';
+      '<span class="tag pass">' + passed + '/' + tests.length + '</span>' + contrarianNote;
   } else {
     verdictEl.innerHTML = 'Ce tirage violerait ' + (tests.length - passed) +
       ' de nos ' + tests.length + ' règles cœur — ' +
       (passed >= tests.length * 0.75 ? 'globalement typique' : 'plutôt atypique') + '.' +
-      '<span class="tag fail">' + passed + '/' + tests.length + '</span>';
+      '<span class="tag fail">' + passed + '/' + tests.length + '</span>' + contrarianNote;
   }
 
   // Gains du tirage — on tente d'abord de récupérer les vrais chiffres depuis
@@ -3149,7 +3352,13 @@ async function renderLatest() {
         '<strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus' +
         '</div>';
     }
-    prizesEl.innerHTML = line + extra;
+    // ---- Top 5 des rangs par montant distribué ----
+    const topRanks = buildTopRanksTable(latest.prizes, {
+      jackpotTotal: isWon ? jackpotTotal : 0,
+      jackpotPerWinner: isWon ? jackpotPerWinner : 0,
+    });
+
+    prizesEl.innerHTML = line + extra + topRanks;
   } else if (latest.prizes && latest.prizes.length) {
     // Pas de vrai jackpot scrapé : fallback API complet (données imparfaites)
     const jp = latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
@@ -3174,11 +3383,15 @@ async function renderLatest() {
         '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Distribués aux rangs secondaires</div>' +
         '<div class="latest-prize-sub">Jackpot non remporté · reporté au tirage suivant</div>';
     }
+    const topRanks = buildTopRanksTable(latest.prizes, {
+      jackpotTotal: apiJackpotTotal,
+      jackpotPerWinner: (jp && jp.winners > 0) ? jp.prize : 0,
+    });
     prizesEl.innerHTML = jpLine +
       '<div class="latest-prize-total">' +
       '<strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus' +
       '<div style="margin-top:0.4rem; font-size:0.7rem; color:var(--text-faint); font-style:italic;">Chiffres issus de l\'API (agrégats européens).</div>' +
-      '</div>';
+      '</div>' + topRanks;
   } else {
     prizesEl.innerHTML = '<div class="latest-prize-main" style="color:var(--text-dim); font-size:1rem">Données indisponibles</div>';
   }
@@ -3333,58 +3546,143 @@ async function renderJackpotTimeline() {
   const chartEl = document.getElementById('jackpotChart');
   if (!section || !chartEl) return;
 
-  // Récupère les jackpots récents (avec cache automatique de euro-millions.com)
-  let recent;
+  console.log('[EuroAffûté] timeline : début du rendu');
+
+  const showStatus = msg => {
+    chartEl.innerHTML = '<div class="jt-status err">' + msg + '</div>';
+  };
+
+  // Scraping pour les tirages NON gagnés (le site liste le jackpot annoncé qui
+  // a été reporté). Pour les tirages gagnés, le scraping renvoie la part par
+  // gagnant — pas ce qu'on veut — donc on utilise l'API à la place.
+  let recent = {};
   try {
     recent = await fetchRecentJackpots();
+    console.log('[EuroAffûté] timeline : ' + Object.keys(recent).length + ' jackpots récents scrapés');
   } catch (err) {
     console.warn('[EuroAffûté] timeline : scraping échoué', err.message);
-    return;  // on cache la section
   }
 
-  // On combine avec les tirages de l'API pour récupérer l'ordre chronologique
-  // et croiser les dates. Si on n'a pas de jackpot pour une date, on skip.
-  const dated = [];
   const sortedDraws = state.draws.slice().sort((a, b) => a.date.localeCompare(b.date));
-  for (const d of sortedDraws) {
-    if (recent[d.date]) {
-      dated.push({
-        date: d.date,
-        jackpot: recent[d.date].jackpot,
-        won: recent[d.date].won,
-      });
+  const last15 = sortedDraws.slice(-15);
+  const data = [];
+  for (const d of last15) {
+    const won = d.hasWinner === true;
+    const p52 = d.prizes && d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
+    const winners = (p52 && p52.winners) || 0;
+    let jackpot = null;
+
+    if (won) {
+      // Le scraping euro-millions.com donne le montant PAR GAGNANT pour les
+      // tirages gagnés. On multiplie par le nombre de gagnants (API) pour
+      // obtenir le total distribué. L'API seule est peu fiable pour le 5+2
+      // (bug de moyennage taxées/non-taxées qui peut diviser par 2).
+      if (recent[d.date] && recent[d.date].jackpot && winners > 0) {
+        jackpot = recent[d.date].jackpot * winners;
+      } else if (p52 && p52.prize && winners > 0) {
+        // Fallback API (imparfait mais mieux que rien)
+        jackpot = p52.prize * winners;
+      }
+    } else if (recent[d.date] && recent[d.date].jackpot) {
+      // Tirage reporté : le scraping donne directement le jackpot annoncé
+      jackpot = recent[d.date].jackpot;
+    }
+
+    if (jackpot !== null && jackpot > 0) {
+      data.push({ date: d.date, jackpot, won });
     }
   }
+  console.log('[EuroAffûté] timeline : ' + data.length + ' points de données construits');
 
-  // On garde les 15 derniers
-  const data = dated.slice(-15);
-  if (data.length === 0) return;
+  if (data.length < 2) {
+    console.warn('[EuroAffûté] timeline : pas assez de données (' + data.length + ')');
+    showStatus('Pas assez de tirages récents exploitables (' + data.length + '). Réessayer plus tard.');
+    return;
+  }
 
-  section.style.display = 'block';
+  // --- Génère un SVG area chart ---
+  const W = 1000;        // viewBox width (scale avec le conteneur)
+  const H = 260;         // viewBox height
+  const PAD_L = 50, PAD_R = 20, PAD_T = 30, PAD_B = 50;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
 
-  // Échelle basée sur le max pour hauteur relative
   const maxJp = Math.max.apply(null, data.map(d => d.jackpot));
-  chartEl.innerHTML = '';
-  data.forEach((d, i) => {
-    const bar = document.createElement('div');
-    bar.className = 'jt-bar' + (d.won ? ' won' : '');
-    const heightPct = Math.max(8, (d.jackpot / maxJp) * 100);
+  const yScale = v => PAD_T + plotH - (v / maxJp) * plotH;
+  const xScale = i => PAD_L + (i / (data.length - 1)) * plotW;
 
+  // Path pour la courbe (smooth via monotone cubic)
+  const points = data.map((d, i) => ({ x: xScale(i), y: yScale(d.jackpot) }));
+  let linePath = 'M ' + points[0].x + ',' + points[0].y;
+  for (let i = 1; i < points.length; i++) {
+    const p0 = points[i - 1], p1 = points[i];
+    const midX = (p0.x + p1.x) / 2;
+    linePath += ' C ' + midX + ',' + p0.y + ' ' + midX + ',' + p1.y + ' ' + p1.x + ',' + p1.y;
+  }
+  // Path pour l'area (même courbe, refermée en bas)
+  const areaPath = linePath + ' L ' + points[points.length - 1].x + ',' + (PAD_T + plotH) +
+                   ' L ' + points[0].x + ',' + (PAD_T + plotH) + ' Z';
+
+  // Lignes d'échelle (horizontales, 4 niveaux)
+  const ticks = [];
+  const tickCount = 4;
+  for (let i = 0; i <= tickCount; i++) {
+    const v = (maxJp / tickCount) * i;
+    const y = yScale(v);
+    const label = v >= 1e6 ? (v / 1e6).toFixed(0) + ' M€' : '0 €';
+    ticks.push({ y, label });
+  }
+
+  // Points colorés + labels
+  const dots = data.map((d, i) => {
+    const x = xScale(i), y = yScale(d.jackpot);
+    const amountLabel = (d.jackpot / 1e6).toFixed(0) + ' M€';
+    const color = d.won ? 'var(--green)' : 'var(--star)';
+    const glow = d.won ? '<circle cx="' + x + '" cy="' + y + '" r="10" fill="var(--green)" opacity="0.18" />' : '';
+    return glow +
+      '<circle cx="' + x + '" cy="' + y + '" r="4.5" fill="' + color + '" stroke="var(--bg)" stroke-width="2" />' +
+      '<text x="' + x + '" y="' + (y - 12) + '" text-anchor="middle" class="jt-label-val">' + amountLabel + '</text>';
+  }).join('');
+
+  // Labels X (dates)
+  const xLabels = data.map((d, i) => {
+    const x = xScale(i);
     const parts = d.date.split('-');
     const dateLabel = parts.length === 3 ? (parts[2] + '/' + parts[1]) : d.date;
-    const amountLabel = d.jackpot >= 1e6
-      ? (d.jackpot / 1e6).toFixed(0) + ' M€'
-      : (d.jackpot / 1e3).toFixed(0) + ' k€';
+    return '<text x="' + x + '" y="' + (H - 18) + '" text-anchor="middle" class="jt-label-x">' + dateLabel + '</text>';
+  }).join('');
 
-    bar.innerHTML =
-      '<div class="jt-bar-amount">' + amountLabel + '</div>' +
-      '<div class="jt-bar-fill" style="height:' + heightPct + '%"></div>' +
-      '<div class="jt-bar-date">' + dateLabel + '</div>';
-    bar.title = parts.length === 3
-      ? parts[2] + '/' + parts[1] + '/' + parts[0] + ' — ' + fmt(d.jackpot) + ' € · ' + (d.won ? 'Gagné' : 'Reporté')
-      : amountLabel;
-    chartEl.appendChild(bar);
-  });
+  // Labels Y
+  const yLabels = ticks.map(t =>
+    '<text x="' + (PAD_L - 10) + '" y="' + (t.y + 4) + '" text-anchor="end" class="jt-label-y">' + t.label + '</text>' +
+    '<line x1="' + PAD_L + '" x2="' + (W - PAD_R) + '" y1="' + t.y + '" y2="' + t.y + '" class="jt-grid" />'
+  ).join('');
+
+  // Tooltip via title sur zones invisibles au-dessus de chaque point
+  const hitZones = data.map((d, i) => {
+    const x = xScale(i);
+    const parts = d.date.split('-');
+    const dateFull = parts.length === 3 ? (parts[2] + '/' + parts[1] + '/' + parts[0]) : d.date;
+    return '<rect x="' + (x - 30) + '" y="' + PAD_T + '" width="60" height="' + plotH + '" fill="transparent">' +
+      '<title>' + dateFull + ' — ' + fmt(d.jackpot) + ' € · ' + (d.won ? 'Gagné' : 'Reporté') + '</title>' +
+      '</rect>';
+  }).join('');
+
+  chartEl.innerHTML =
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" class="jt-svg" preserveAspectRatio="xMidYMid meet">' +
+      '<defs>' +
+        '<linearGradient id="jt-grad" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0%" stop-color="var(--gold)" stop-opacity="0.35" />' +
+          '<stop offset="100%" stop-color="var(--gold)" stop-opacity="0" />' +
+        '</linearGradient>' +
+      '</defs>' +
+      yLabels +
+      '<path d="' + areaPath + '" fill="url(#jt-grad)" />' +
+      '<path d="' + linePath + '" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round" />' +
+      dots +
+      xLabels +
+      hitZones +
+    '</svg>';
 }
 
 // --- rendu de l'anomalie --------------------------------------------
@@ -3789,13 +4087,36 @@ function renderGridList(containerId, grids) {
     const starsHtml = g.stars.map(n => '<span class="grid-star">' + n + '</span>').join('');
     const dc = decadesCovered(g.balls);
     const pairs = evenCount(g.balls);
+    const copyText = g.balls.join(' - ') + '  ★  ' + g.stars.join(' - ');
 
     row.innerHTML =
-      '<div class="grid-num">' + String(i+1).padStart(2, '0') + '</div>' +
+      '<div class="grid-num">' + String(i + 1).padStart(2, '0') + '</div>' +
       '<div class="grid-numbers">' + ballsHtml +
         '<span class="row-sep">✦</span>' + starsHtml + '</div>' +
       '<div class="grid-profile">s=' + sum(g.balls) + ' · r=' + range(g.balls) +
-        ' · ' + pairs + 'p/' + (5-pairs) + 'i · ' + dc + ' diz.</div>';
+        ' · ' + pairs + 'p/' + (5 - pairs) + 'i · ' + dc + ' diz.</div>' +
+      '<button class="grid-copy" type="button" title="Copier la grille" aria-label="Copier la grille">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
+          '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+        '</svg>' +
+      '</button>';
+
+    const btn = row.querySelector('.grid-copy');
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(copyText);
+        btn.classList.add('copied');
+        btn.setAttribute('title', 'Copié !');
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.setAttribute('title', 'Copier la grille');
+        }, 1500);
+      } catch (err) {
+        console.warn('Copie impossible :', err);
+      }
+    });
+
     el.appendChild(row);
   });
 }
