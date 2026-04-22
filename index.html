@@ -2796,15 +2796,21 @@ function parseRecentJackpots(html) {
 }
 
 async function fetchRecentJackpots() {
-  const CACHE_KEY = 'euroaffute:recentJackpots:v1';
+  // v2 : v1 avait pu cacher un {} vide (scraping échoué en prod) valable 24h.
+  const CACHE_KEY = 'euroaffute:recentJackpots:v2';
   const cached = cacheGet(CACHE_KEY, CACHE_TTL.JACKPOT);
-  if (cached) {
-    console.log('[EuroAffûté] jackpots récents depuis cache');
+  if (cached && Object.keys(cached).length > 0) {
+    console.log('[EuroAffûté] jackpots récents depuis cache (' + Object.keys(cached).length + ' entrées)');
     return cached;
   }
   const html = await fetchViaProxy(RESULTS_PAGE_URL);
   const parsed = parseRecentJackpots(html);
-  cacheSet(CACHE_KEY, parsed);
+  // Ne cache que si le parse a réellement abouti à quelque chose.
+  if (Object.keys(parsed).length > 0) {
+    cacheSet(CACHE_KEY, parsed);
+  } else {
+    console.warn('[EuroAffûté] jackpots récents : parse vide, on ne cache pas');
+  }
   return parsed;
 }
 
