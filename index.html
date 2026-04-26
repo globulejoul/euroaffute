@@ -423,6 +423,21 @@ function switchGame(game) {
     if (el) el.disabled = true;
   });
 
+  // Réinitialise les sections de grilles générées
+  const combo = document.getElementById('combo');
+  if (combo) combo.innerHTML = '<span class="combo-placeholder">en attente…</span>';
+  const comboMeta = document.getElementById('comboMeta');
+  if (comboMeta) comboMeta.innerHTML = '&nbsp;';
+  const comboProfile = document.getElementById('comboProfile');
+  if (comboProfile) comboProfile.innerHTML = '';
+  ['coreGrids', 'contrarianGrids'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="grid-empty">Cliquez sur « Tirer 10 grilles »</div>';
+  });
+  // Réinitialise l'audit
+  const auditResult = document.getElementById('auditResult');
+  if (auditResult) auditResult.classList.remove('show');
+
   loadDraws();
 }
 
@@ -867,9 +882,9 @@ async function loadDraws() {
     if (parsed.length === 0) throw new Error('Aucun tirage parsé');
 
     state.draws = parsed;
+    state.cache[game] = { draws: parsed, config: json.config };
     state.filters = learnFilters(parsed);
     state.ready = true;
-    state.cache[game] = { draws: parsed, config: json.config };
 
     dot.classList.add('live');
     const gameNames = { euromillions: 'EuroMillions', loto: 'LOTO', eurodreams: 'EuroDreams' };
@@ -2784,15 +2799,20 @@ function validateInputs(balls, stars) {
 }
 
 function nearestDraw(combo, draws) {
-  // Similarité = nb balles communes + 0.5 × nb étoiles communes
+  // Similarité = nb balles communes + 0.5 × nb étoiles/bonus communs
   const ballSet = new Set(combo.balls);
-  const starSet = new Set(combo.stars);
+  const starSet = combo.stars ? new Set(combo.stars) : null;
+  const comboBonus = combo.bonus;
   let best = null;
   let bestScore = -1;
   for (const d of draws) {
     let score = 0;
     for (const b of d.balls) if (ballSet.has(b)) score++;
-    for (const s of d.stars) if (starSet.has(s)) score += 0.5;
+    if (d.stars && starSet) {
+      for (const s of d.stars) if (starSet.has(s)) score += 0.5;
+    } else if (d.bonus !== undefined && comboBonus !== undefined) {
+      if (d.bonus === comboBonus) score += 0.5;
+    }
     if (score > bestScore) { bestScore = score; best = d; }
   }
   return { draw: best, shared: bestScore };
@@ -2880,7 +2900,11 @@ function runAudit() {
         '<div class="vw-row"><span class="vw-label">Bilan net</span><span class="vw-value ' + balanceClass + '">' +
           (balance >= 0 ? '+' : '') + formatMoney(balance) + '</span></div>' +
         '<div class="vw-best">' + bestLine + '</div>' +
-        '<div style="margin-top:0.6rem; font-size:0.7rem; color:var(--text-faint); font-style:italic;">Estimation basée sur les gains par gagnant rapportés par euro-millions.com (agrégats européens). Le vrai bilan FDJ peut varier.</div>' +
+        '<div style="margin-top:0.6rem; font-size:0.7rem; color:var(--text-faint); font-style:italic;">' +
+        (state.currentGame === 'euromillions'
+          ? 'Estimation basée sur les gains par gagnant rapportés par euro-millions.com (agrégats européens). Le vrai bilan FDJ peut varier.'
+          : 'Estimation basée sur les données de gains des archives FDJ.') +
+        '</div>' +
       '</div>';
   }
 
