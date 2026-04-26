@@ -176,7 +176,7 @@
 
   <div class="section-head">
     <div class="section-eyebrow" id="gainsEyebrow">Gains · historique</div>
-    <h2 class="section-title">Les <em>milliards</em> distribués.</h2>
+    <h2 class="section-title" id="gainsTitle">Les <em>milliards</em> distribués.</h2>
     <p class="section-lede" id="gainsLede">
       Calculs effectués en direct sur l'intégralité des tirages historiques,
       en sommant chaque rang multiplié par le nombre de gagnants.
@@ -912,9 +912,10 @@ async function loadDraws() {
       renderJackpotTimeline();
       renderNextDraw();
     } else {
-      // EuroDreams : pas de cagnotte (rente mensuelle, pas de jackpot cumulé)
+      // EuroDreams : pas de timeline jackpot, mais on affiche le prochain tirage
       if (timeline) timeline.style.display = 'none';
-      if (nextDrawSection) nextDrawSection.style.display = 'none';
+      if (nextDrawSection) nextDrawSection.style.display = '';
+      renderNextDraw();
     }
     document.getElementById('generateBtn').disabled = false;
     document.getElementById('auditBtn').disabled = false;
@@ -1458,16 +1459,69 @@ async function fetchNextDrawInfo() {
   return parsed;
 }
 
+// Calcule la date du prochain tirage à partir d'aujourd'hui
+function getNextDrawDate() {
+  const game = state.currentGame;
+  // Jours de tirage : 0=dim, 1=lun, 2=mar, 3=mer, 4=jeu, 5=ven, 6=sam
+  const drawDaysMap = {
+    euromillions: [2, 5],     // mardi, vendredi
+    loto: [1, 3, 6],          // lundi, mercredi, samedi
+    eurodreams: [1, 4],        // lundi, jeudi
+  };
+  const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const drawDays = drawDaysMap[game] || [2, 5];
+  const now = new Date();
+  // On considère qu'un tirage a lieu en soirée (~21h). Avant 21h le jour du tirage = "Aujourd'hui"
+  const cutoffHour = 21;
+
+  for (let offset = 0; offset <= 7; offset++) {
+    const candidate = new Date(now);
+    candidate.setDate(candidate.getDate() + offset);
+    const dow = candidate.getDay();
+    if (drawDays.indexOf(dow) >= 0) {
+      // Si c'est aujourd'hui mais après le tirage, passer au suivant
+      if (offset === 0 && now.getHours() >= cutoffHour) continue;
+      const dd = String(candidate.getDate()).padStart(2, '0');
+      const mm = String(candidate.getMonth() + 1).padStart(2, '0');
+      const yyyy = candidate.getFullYear();
+      let label;
+      if (offset === 0) label = 'Aujourd\'hui';
+      else if (offset === 1) label = 'Demain';
+      else label = dayNames[dow] + ' ' + dd + '/' + mm + '/' + yyyy;
+      return { label, dayName: dayNames[dow], date: dd + '/' + mm + '/' + yyyy };
+    }
+  }
+  return null;
+}
+
 async function renderNextDraw() {
   const el = document.getElementById('nextDrawBody');
+  const headEl = document.querySelector('.next-draw-head');
   if (!el) return;
   const game = state.currentGame;
-  if (!NEXT_DRAW_URLS[game]) return;
+
+  // Toujours afficher la date du prochain tirage
+  const nextDate = getNextDrawDate();
+  const dateTag = nextDate ? '<span class="nd-date">' + nextDate.label + '</span>' : '';
+
+  // EuroDreams : pas de cagnotte, juste la date
+  if (!NEXT_DRAW_URLS[game]) {
+    if (headEl) headEl.innerHTML = 'Prochain tirage';
+    el.innerHTML = '<div class="next-draw-body">' +
+      '<div class="next-draw-amount">' + (nextDate ? nextDate.label : '—') + '</div>' +
+      '<div class="next-draw-meta">Rente à vie de 20 000 €/mois</div>' +
+      '</div>';
+    return;
+  }
+
+  if (headEl) headEl.innerHTML = 'Prochain tirage · cagnotte estimée';
 
   try {
     const info = await fetchNextDrawInfo();
     let meta = '';
-    if (info.nextDay) {
+    if (nextDate) {
+      meta = dateTag;
+    } else if (info.nextDay) {
       meta = info.nextDay.charAt(0).toUpperCase() + info.nextDay.slice(1);
       if (info.nextDate) meta += ' ' + info.nextDate;
     }
@@ -1485,7 +1539,11 @@ async function renderNextDraw() {
       '</div>';
   } catch (err) {
     console.warn('[EuroAffûté] next draw ' + game + ' :', err.message);
-    el.innerHTML = '<div class="next-draw-err">Cagnotte indisponible (scraping fdj.fr via proxy CORS).</div>';
+    // Même si la cagnotte échoue, on affiche la date
+    el.innerHTML = '<div class="next-draw-body">' +
+      '<div class="next-draw-amount">' + (nextDate ? nextDate.label : '—') + '</div>' +
+      '<div class="next-draw-meta">Cagnotte indisponible</div>' +
+      '</div>';
   }
 }
 
@@ -2095,6 +2153,14 @@ function renderGains() {
   const noJp = drawsWithoutJackpot(state.draws);
   const nDraws = state.draws.length;
   const isED = state.currentGame === 'eurodreams';
+
+  // Titre dynamique (milliards vs millions)
+  const gainsTitle = document.getElementById('gainsTitle');
+  if (gainsTitle) {
+    gainsTitle.innerHTML = total >= 1e9
+      ? 'Les <em>milliards</em> distribués.'
+      : 'Les <em>millions</em> distribués.';
+  }
 
   // Labels dynamiques
   const bigLabel = document.getElementById('gainBiggestLabel');

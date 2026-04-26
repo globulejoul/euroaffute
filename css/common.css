@@ -1589,6 +1589,10 @@ footer a:hover { color: var(--accent); }
   color: var(--text-dim);
   line-height: 1.6;
 }
+.next-draw-meta .nd-date {
+  color: var(--accent);
+  font-weight: 500;
+}
 .next-draw-meta .nd-rollover {
   display: inline-block;
   margin-top: 0.25rem;
