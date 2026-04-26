@@ -1,0 +1,17 @@
+/* =====================================================================
+   Thème LOTO — Bleu & Rouge (identité FDJ)
+   ===================================================================== */
+
+[data-game="loto"] {
+  --accent: #009ED8;
+  --accent-deep: #009ED8;
+  --accent2: #EA3946;
+  --gold: #009ED8;
+  --gold-deep: #0082B3;
+  --star: #EA3946;
+}
+
+/* Ajustement de la barre de fréquences pour le bleu */
+[data-game="loto"] .freq-scale-bar {
+  background: linear-gradient(90deg, var(--text-faint) 0%, var(--bg) 50%, var(--accent) 100%);
+}

@@ -23,1537 +23,28 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/common.css">
+<link rel="stylesheet" href="css/euromillions.css">
+<link rel="stylesheet" href="css/loto.css">
+<link rel="stylesheet" href="css/eurodreams.css">
 <style>
-  :root {
-    --bg: #0E0E10;
-    --bg-elev: #18181C;
-    --bg-card: #141418;
-    --text: #F5F1E8;
-    --text-dim: #8A8578;
-    --text-faint: #4A4842;
-    --gold: #E8C458;
-    --gold-deep: #D4AF37;
-    --star: #E85D50;
-    --green: #7FB04F;
-    --red: #C73E3E;
-    --blue: #5B9BD5;
-    --line: #242428;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Manrope', system-ui, sans-serif;
-    font-weight: 300;
-    line-height: 1.6;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(circle at 15% 20%, rgba(232, 196, 88, 0.08), transparent 50%),
-      radial-gradient(circle at 85% 75%, rgba(232, 93, 80, 0.05), transparent 50%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.5;
-  }
-
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 2rem;
-    position: relative;
-    z-index: 1;
-  }
-
-  header {
-    padding: 2rem 0;
-    border-bottom: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 2rem;
-    flex-wrap: wrap;
-  }
-
-  .logo {
-    font-family: 'Instrument Serif', serif;
-    font-size: 1.5rem;
-    font-style: italic;
-    font-weight: 400;
-    letter-spacing: -0.02em;
-  }
-  .logo span {
-    color: var(--gold);
-    font-style: normal;
-    margin-right: 0.3em;
-  }
-
-  .meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-  }
-
-  .meta-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--text-faint);
-    margin-right: 0.5rem;
-    vertical-align: middle;
-    transition: background 0.3s;
-    animation: pulse 2s infinite;
-  }
-  .meta-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
-  .meta-dot.err { background: var(--red); animation: none; }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  .hero {
-    padding: 6rem 0 4rem;
-    max-width: 900px;
-  }
-
-  .eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--gold);
-    text-transform: uppercase;
-    letter-spacing: 0.25em;
-    margin-bottom: 2rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-  .eyebrow::before {
-    content: '';
-    width: 40px;
-    height: 1px;
-    background: var(--gold);
-  }
-
-  h1 {
-    font-family: 'Instrument Serif', serif;
-    font-size: clamp(2.75rem, 9vw, 6.5rem);
-    line-height: 0.95;
-    font-weight: 400;
-    letter-spacing: -0.035em;
-    margin-bottom: 2.5rem;
-  }
-  h1 em {
-    font-style: italic;
-    color: var(--gold);
-  }
-
-  .lede {
-    font-size: 1.15rem;
-    color: var(--text-dim);
-    max-width: 640px;
-    line-height: 1.6;
-  }
-  .lede strong { color: var(--text); font-weight: 500; }
-
-  .section-head {
-    max-width: 800px;
-    margin: 5rem 0 2.5rem;
-  }
-  .section-eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--gold);
-    text-transform: uppercase;
-    letter-spacing: 0.25em;
-    margin-bottom: 1rem;
-  }
-  .section-title {
-    font-family: 'Instrument Serif', serif;
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    line-height: 1;
-    font-weight: 400;
-    margin-bottom: 1rem;
-  }
-  .section-title em { font-style: italic; color: var(--gold); }
-  .section-lede {
-    color: var(--text-dim);
-    max-width: 600px;
-  }
-
-  .rules {
-    border: 1px solid var(--line);
-    background: var(--bg-elev);
-  }
-
-  .rule {
-    display: grid;
-    grid-template-columns: 40px 1fr auto;
-    gap: 1.5rem;
-    align-items: center;
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--line);
-  }
-  .rule:last-child { border-bottom: none; }
-
-  .rule-status {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1rem;
-    font-weight: 700;
-  }
-  .rule-status.active { color: var(--green); }
-  .rule-status.rejected { color: var(--red); }
-
-  .rule-name {
-    font-family: 'Manrope', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: var(--text);
-  }
-
-  .rule-name small {
-    display: block;
-    font-weight: 300;
-    color: var(--text-dim);
-    font-size: 0.8rem;
-    margin-top: 0.2rem;
-  }
-
-  .rule-evidence {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    text-align: right;
-    white-space: nowrap;
-  }
-  .rule-evidence strong { color: var(--text); }
-
-  .rules-head {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--gold);
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    margin: 2.5rem 0 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--line);
-    display: flex;
-    align-items: baseline;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  .rules-head:first-of-type { margin-top: 0; }
-  .rules-head small {
-    color: var(--text-dim);
-    font-family: 'Manrope', sans-serif;
-    font-weight: 300;
-    font-size: 0.8rem;
-    text-transform: none;
-    letter-spacing: 0;
-  }
-
-  .anomaly {
-    margin: 4rem 0;
-    padding: 2.5rem;
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    border-left: 3px solid var(--star);
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 2.5rem;
-    align-items: center;
-  }
-  .anomaly-mark {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    font-size: 4rem;
-    color: var(--star);
-    line-height: 1;
-  }
-  .anomaly h3 {
-    font-family: 'Instrument Serif', serif;
-    font-size: 1.6rem;
-    font-weight: 400;
-    margin-bottom: 0.75rem;
-  }
-  .anomaly p { color: var(--text-dim); }
-  .anomaly-balls {
-    margin-top: 1rem;
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  .mini-ball {
-    display: inline-flex;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 25%, #f5d97c, var(--gold-deep));
-    color: #1a1a1e;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 0.85rem;
-    align-items: center;
-    justify-content: center;
-    box-shadow: inset -2px -3px 6px rgba(0,0,0,0.2), inset 1px 1px 2px rgba(255,255,255,0.3);
-  }
-  .anomaly-dates {
-    display: flex;
-    gap: 1.5rem;
-    margin-top: 1rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--text);
-    flex-wrap: wrap;
-  }
-  .anomaly-dates span { color: var(--text-dim); }
-
-  .generator {
-    padding: 5rem 0;
-    text-align: center;
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-    margin: 4rem 0;
-    background: linear-gradient(180deg, rgba(232,196,88,0.025), transparent 60%);
-  }
-
-  .combo-display {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.75rem;
-    margin: 3rem 0 2rem;
-    flex-wrap: wrap;
-    min-height: 90px;
-  }
-
-  .ball {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 1.4rem;
-    background: radial-gradient(circle at 30% 25%, #f5d97c, var(--gold-deep));
-    color: #1a1a1e;
-    box-shadow:
-      0 6px 24px rgba(232, 196, 88, 0.25),
-      inset -4px -6px 12px rgba(0,0,0,0.25),
-      inset 3px 3px 6px rgba(255,255,255,0.3);
-    animation: drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  }
-  .ball.star {
-    background: radial-gradient(circle at 30% 25%, #ff8575, var(--star));
-    color: var(--text);
-    box-shadow:
-      0 6px 24px rgba(232, 93, 80, 0.3),
-      inset -4px -6px 12px rgba(0,0,0,0.25),
-      inset 3px 3px 6px rgba(255,255,255,0.25);
-  }
-
-  .separator {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    color: var(--text-faint);
-    font-size: 1.5rem;
-    margin: 0 0.25rem;
-    letter-spacing: 0.2em;
-  }
-
-  .combo-placeholder {
-    color: var(--text-faint);
-    font-style: italic;
-    font-family: 'Instrument Serif', serif;
-    font-size: 1.25rem;
-  }
-
-  @keyframes drop {
-    0%   { transform: translateY(-40px) scale(0.7); opacity: 0; }
-    60%  { transform: translateY(4px) scale(1.05); opacity: 1; }
-    100% { transform: translateY(0) scale(1); opacity: 1; }
-  }
-
-  .btn {
-    background: var(--gold);
-    color: #1a1a1e;
-    border: none;
-    padding: 1rem 2.5rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s, opacity 0.3s;
-    margin-top: 1rem;
-    border-radius: 2px;
-  }
-  .btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(232, 196, 88, 0.35);
-  }
-  .btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-  .btn-ghost {
-    background: transparent;
-    color: var(--gold);
-    border: 1px solid var(--gold);
-  }
-  .btn-ghost:hover:not(:disabled) {
-    background: var(--gold);
-    color: #1a1a1e;
-  }
-
-  .combo-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    margin-top: 2rem;
-    min-height: 1.2em;
-  }
-  .combo-meta .hl { color: var(--gold); }
-
-  .combo-profile {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    margin-top: 1.5rem;
-    flex-wrap: wrap;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-  }
-  .combo-profile span strong { color: var(--text); }
-
-  .audit-box {
-    border: 1px solid var(--line);
-    background: var(--bg-elev);
-    padding: 2.5rem;
-  }
-
-  .audit-inputs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    align-items: center;
-    justify-content: center;
-    margin: 2rem 0;
-  }
-
-  .audit-input-group {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .audit-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-right: 0.5rem;
-  }
-
-  .audit-input {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 1.05rem;
-    text-align: center;
-    outline: none;
-    transition: border-color 0.2s, background 0.2s;
-    -moz-appearance: textfield;
-  }
-  .audit-input::-webkit-outer-spin-button,
-  .audit-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  .audit-input:focus { border-color: var(--gold); }
-  .audit-input.star:focus { border-color: var(--star); }
-  .audit-input.invalid { border-color: var(--red); background: rgba(199,62,62,0.1); }
-
-  .audit-separator {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    font-size: 1.5rem;
-    color: var(--text-faint);
-  }
-
-  .audit-actions {
-    text-align: center;
-    display: flex;
-    justify-content: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .audit-result {
-    margin-top: 2rem;
-    border-top: 1px solid var(--line);
-    padding-top: 2rem;
-    display: none;
-  }
-  .audit-result.show { display: block; }
-
-  .audit-verdict {
-    font-family: 'Instrument Serif', serif;
-    font-size: 2.25rem;
-    font-style: italic;
-    line-height: 1.2;
-    margin-bottom: 0.5rem;
-  }
-  .audit-verdict.pass { color: var(--green); }
-  .audit-verdict.fail { color: var(--red); }
-
-  .audit-checks {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 0.5rem;
-    margin-top: 1.5rem;
-  }
-
-  .audit-check {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-start;
-    padding: 0.75rem 1rem;
-    background: var(--bg);
-    border-left: 2px solid var(--line);
-    font-size: 0.85rem;
-  }
-  .audit-check.pass { border-left-color: var(--green); }
-  .audit-check.fail { border-left-color: var(--red); }
-  .audit-check-icon {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    color: var(--text-dim);
-    flex-shrink: 0;
-  }
-  .audit-check.pass .audit-check-icon { color: var(--green); }
-  .audit-check.fail .audit-check-icon { color: var(--red); }
-  .audit-check-body { flex: 1; color: var(--text-dim); }
-  .audit-check-body strong { color: var(--text); font-weight: 500; }
-
-  .similarity-panel {
-    margin-top: 1.5rem;
-    padding: 1.25rem 1.5rem;
-    background: var(--bg);
-    border: 1px dashed var(--line);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--text-dim);
-  }
-  .similarity-panel .hl { color: var(--gold); }
-  .similarity-panel > div + div { margin-top: 0.5rem; }
-
-  .reality {
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    padding: 2.5rem;
-    margin: 5rem 0 3rem;
-    border-left: 3px solid var(--gold);
-  }
-  .reality-eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--gold);
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    margin-bottom: 1rem;
-  }
-  .reality h3 {
-    font-family: 'Instrument Serif', serif;
-    font-size: 1.75rem;
-    font-weight: 400;
-    font-style: italic;
-    margin-bottom: 1rem;
-  }
-  .reality p { color: var(--text-dim); margin-bottom: 0.75rem; }
-  .reality p:last-child { margin-bottom: 0; }
-  .reality strong { color: var(--text); font-weight: 500; }
-  .reality em { color: var(--gold); font-style: italic; }
-
-  footer {
-    padding: 3rem 0;
-    border-top: 1px solid var(--line);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--text-faint);
-    text-align: center;
-    line-height: 1.8;
-    letter-spacing: 0.05em;
-  }
-  footer a {
-    color: var(--text-dim);
-    text-decoration: none;
-    border-bottom: 1px dotted var(--text-faint);
-  }
-  footer a:hover { color: var(--gold); }
-
-  .error-msg {
-    background: rgba(199, 62, 62, 0.1);
-    border: 1px solid rgba(199, 62, 62, 0.3);
-    padding: 1rem 1.5rem;
-    margin: 2rem 0;
-    color: var(--red);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-  }
-
-  .loading-inline {
-    color: var(--text-faint);
-    font-style: italic;
-  }
-
-  /* PORTFOLIOS */
-  .portfolios { margin: 2rem 0 3rem; }
-
-  .portfolio {
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    padding: 2rem 2.5rem;
-    margin-bottom: 1.5rem;
-  }
-  .portfolio.jackpot { border-left: 3px solid var(--gold); }
-  .portfolio.backup { border-left: 3px solid var(--star); }
-  .portfolio.core { border-left: 3px solid var(--gold); }
-
-  .portfolio-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 1.5rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .portfolio-tag {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--gold);
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    display: block;
-    margin-bottom: 0.3rem;
-  }
-  .portfolio.backup .portfolio-tag { color: var(--star); }
-  .portfolio-tag.alt { color: var(--green); }
-  .portfolio.contrarian h3 em { color: var(--green); }
-  /* Même bordure que les autres cartes — pas de mise en valeur excessive */
-
-  .contrarian-note {
-    margin-top: 1.25rem;
-    padding: 0.9rem 1.1rem;
-    background: color-mix(in srgb, var(--green) 5%, transparent);
-    border-left: 2px solid var(--green);
-    border-radius: 0 6px 6px 0;
-    font-size: 0.82rem;
-    color: var(--text-dim);
-    line-height: 1.55;
-  }
-  .contrarian-note strong {
-    display: block;
-    margin-bottom: 0.35rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--green);
-    font-weight: 500;
-  }
-  .contrarian-rules {
-    list-style: none;
-    padding: 0;
-    margin: 0.6rem 0 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-  .contrarian-rules li {
-    padding: 0.4rem 0.7rem;
-    background: color-mix(in srgb, var(--green) 3%, transparent);
-    border-left: 2px solid color-mix(in srgb, var(--green) 50%, transparent);
-    font-size: 0.78rem;
-  }
-  .contrarian-rules code {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--green);
-    padding: 0 0.25em;
-  }
-  .contrarian-rules em { font-style: italic; color: var(--text); }
-  .contrarian-foot {
-    margin-top: 0.8rem;
-    font-size: 0.75rem;
-    color: var(--text-faint);
-    font-style: italic;
-  }
-
-  .portfolio h3 {
-    font-family: 'Instrument Serif', serif;
-    font-size: 2rem;
-    font-weight: 400;
-    line-height: 1;
-  }
-  .portfolio h3 em { font-style: italic; color: var(--gold); }
-  .portfolio.backup h3 em { color: var(--star); }
-
-  .portfolio-desc {
-    color: var(--text-dim);
-    max-width: 640px;
-    margin-bottom: 1.5rem;
-    font-size: 0.95rem;
-  }
-  .portfolio-desc strong { color: var(--text); font-weight: 500; }
-
-  .grid-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    margin-top: 1.25rem;
-  }
-
-  .grid-row {
-    display: grid;
-    grid-template-columns: 32px 1fr auto auto;
-    gap: 1rem;
-    align-items: center;
-    padding: 0.7rem 1rem;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    animation: slide 0.3s ease-out both;
-  }
-
-  .grid-copy {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-faint);
-    padding: 0.35rem 0.45rem;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s ease;
-  }
-  .grid-copy:hover {
-    color: var(--gold);
-    border-color: var(--gold);
-    background: color-mix(in srgb, var(--gold) 8%, transparent);
-  }
-  .grid-copy.copied {
-    color: var(--green);
-    border-color: var(--green);
-    background: color-mix(in srgb, var(--green) 10%, transparent);
-  }
-  .grid-copy.copied svg { animation: pop 0.25s ease; }
-  @keyframes pop {
-    0%   { transform: scale(1); }
-    50%  { transform: scale(1.25); }
-    100% { transform: scale(1); }
-  }
-
-  @keyframes slide {
-    from { opacity: 0; transform: translateX(-6px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-
-  .grid-num {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-faint);
-    font-weight: 500;
-  }
-
-  .grid-numbers {
-    display: flex;
-    gap: 0.3rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .grid-numbers .row-sep {
-    color: var(--text-faint);
-    margin: 0 0.3rem;
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    font-size: 0.95rem;
-  }
-
-  .grid-ball, .grid-star {
-    display: inline-flex;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    color: #1a1a1e;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 0.72rem;
-    align-items: center;
-    justify-content: center;
-    box-shadow: inset -2px -2px 4px rgba(0,0,0,0.18);
-  }
-  .grid-ball {
-    background: radial-gradient(circle at 30% 25%, #f5d97c, var(--gold-deep));
-  }
-  .grid-star {
-    background: radial-gradient(circle at 30% 25%, #ff8575, var(--star));
-    color: var(--text);
-  }
-
-  .grid-profile {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    white-space: nowrap;
-    letter-spacing: 0.02em;
-  }
-
-  .portfolio-cost {
-    margin-top: 2rem;
-    padding: 1.1rem 1.5rem;
-    border-left: 2px solid var(--gold);
-    background: rgba(232, 196, 88, 0.04);
-    color: var(--text-dim);
-    font-size: 0.85rem;
-  }
-  .portfolio-cost strong {
-    color: var(--gold);
-    font-family: 'JetBrains Mono', monospace;
-    text-transform: uppercase;
-    font-size: 0.7rem;
-    letter-spacing: 0.18em;
-    margin-right: 0.6rem;
-    font-weight: 700;
-  }
-
-  .grid-empty {
-    padding: 2rem;
-    text-align: center;
-    color: var(--text-faint);
-    font-style: italic;
-    font-family: 'Instrument Serif', serif;
-    border: 1px dashed var(--line);
-  }
-
-  /* FREQUENCES / HEATMAP */
-  .frequencies {
-    margin: 2rem 0 3rem;
-  }
-  .freq-block { margin-bottom: 2.5rem; }
-  .freq-block:last-child { margin-bottom: 0; }
-
-  .freq-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: baseline;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  .freq-title small {
-    font-family: 'Manrope', sans-serif;
-    font-size: 0.8rem;
-    color: var(--text-faint);
-    font-weight: 300;
-    letter-spacing: 0;
-    text-transform: none;
-  }
-
-  .freq-grid {
-    display: grid;
-    gap: 3px;
-    margin-bottom: 0.75rem;
-  }
-  .freq-grid.balls  { grid-template-columns: repeat(10, 1fr); max-width: 680px; }
-  .freq-grid.stars  { grid-template-columns: repeat(12, 1fr); max-width: 540px; }
-
-  .freq-cell {
-    aspect-ratio: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-family: 'JetBrains Mono', monospace;
-    border: 1px solid transparent;
-    position: relative;
-    transition: transform 0.15s, box-shadow 0.15s;
-    cursor: help;
-  }
-  .freq-cell:hover {
-    transform: scale(1.15);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-    z-index: 5;
-    border-color: var(--text-dim);
-  }
-  .freq-cell .freq-num {
-    font-size: 0.85rem;
-    font-weight: 700;
-    line-height: 1;
-  }
-  .freq-cell .freq-count {
-    font-size: 0.55rem;
-    opacity: 0.7;
-    line-height: 1;
-    margin-top: 2px;
-  }
-
-  .freq-scale {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-  .freq-scale-bar {
-    width: 140px;
-    height: 10px;
-    background: linear-gradient(90deg, #2a4566 0%, #1a1a1e 50%, var(--gold) 100%);
-    border: 1px solid var(--line);
-  }
-
-  .freq-caveat {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--text-faint);
-    margin-top: 0.75rem;
-    font-style: italic;
-  }
-
-  /* LATEST DRAW */
-  .latest {
-    margin: 3rem 0 4rem;
-    padding: 2.5rem 2.5rem 2rem;
-    background: linear-gradient(135deg, var(--bg-elev) 0%, var(--bg-card) 100%);
-    border: 1px solid var(--line);
-    border-top: 3px solid var(--gold);
-    position: relative;
-    overflow: hidden;
-  }
-  .latest::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(232, 196, 88, 0.08), transparent 70%);
-    pointer-events: none;
-  }
-
-  .latest-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 2rem;
-    gap: 1rem;
-    flex-wrap: wrap;
-    position: relative;
-    z-index: 1;
-  }
-
-  .latest-eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--gold);
-    text-transform: uppercase;
-    letter-spacing: 0.25em;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-  .latest-eyebrow::before {
-    content: '';
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-    animation: pulse 2s infinite;
-  }
-
-  .outcome-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4em;
-    padding: 0.25em 0.7em;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    border-radius: 999px;
-    border: 1px solid;
-    line-height: 1;
-    animation: none;
-  }
-  .outcome-badge::before { content: none; }
-  .outcome-badge.won {
-    color: var(--green);
-    border-color: var(--green);
-    background: color-mix(in srgb, var(--green) 10%, transparent);
-  }
-  .outcome-badge.not-won {
-    color: var(--text-dim);
-    border-color: var(--border);
-    background: transparent;
-  }
-  .outcome-badge .flag { font-size: 0.9em; }
-
-  /* --- Top rangs (visible par défaut) ---------------------------- */
-  .rank-breakdown {
-    margin-top: 1.1rem;
-    padding-top: 0.9rem;
-    border-top: 1px dashed var(--border);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-  }
-  .rank-breakdown-title {
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.65rem;
-    margin-bottom: 0.5rem;
-  }
-  .rank-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  .rank-table th {
-    text-align: left;
-    padding: 0.4rem 0.6rem;
-    color: var(--text-faint);
-    font-weight: 400;
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    border-bottom: 1px solid var(--border);
-  }
-  .rank-table th:nth-child(2), .rank-table td:nth-child(2),
-  .rank-table th:nth-child(3), .rank-table td:nth-child(3),
-  .rank-table th:last-child, .rank-table td:last-child { text-align: right; }
-  .rank-table td {
-    padding: 0.4rem 0.6rem;
-    color: var(--text-dim);
-    border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
-  }
-  .rank-table td.rank-label strong { color: var(--gold); font-weight: 500; }
-  .rank-table td.rank-total { color: var(--text); font-weight: 500; }
-  .rank-table tr:last-child td { border-bottom: none; }
-
-  /* --- Timeline des jackpots ------------------------------------- */
-  .jackpot-timeline {
-    max-width: 1100px;
-    margin: 4rem auto;
-    padding: 2rem 2.25rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-  }
-  .jackpot-timeline-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-bottom: 1.5rem;
-  }
-  .jackpot-timeline-eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--gold);
-    text-transform: uppercase;
-    letter-spacing: 0.25em;
-    margin-bottom: 0.35rem;
-  }
-  .jackpot-timeline-title {
-    font-family: 'Instrument Serif', serif;
-    font-size: 1.9rem;
-    font-weight: 400;
-    line-height: 1.1;
-  }
-  .jackpot-timeline-title em { font-style: italic; color: var(--gold); }
-  .jackpot-timeline-legend {
-    display: flex;
-    gap: 1.2rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-  }
-  .jackpot-timeline-legend span { display: inline-flex; align-items: center; gap: 0.4em; }
-  .dot-green, .dot-blue {
-    width: 9px; height: 9px; border-radius: 50%;
-    display: inline-block;
-  }
-  .dot-green { background: var(--green); box-shadow: 0 0 6px color-mix(in srgb, var(--green) 50%, transparent); }
-  .dot-blue  { background: var(--star); }
-  .jackpot-timeline-chart {
-    width: 100%;
-    margin-top: 0.5rem;
-    min-height: 120px;
-  }
-  .jt-status {
-    padding: 2rem 0;
-    text-align: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-faint);
-    font-style: italic;
-  }
-  .jt-status.err { color: var(--text-dim); }
-  .jt-svg {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-  .jt-label-val {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    fill: var(--text);
-    font-weight: 500;
-  }
-  .jt-label-x {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    fill: var(--text-faint);
-  }
-  .jt-label-y {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    fill: var(--text-faint);
-  }
-  .jt-grid {
-    stroke: var(--border);
-    stroke-width: 1;
-    stroke-dasharray: 2 3;
-    opacity: 0.5;
-  }
-  .jackpot-timeline-note {
-    margin-top: 1.5rem;
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    font-style: italic;
-  }
-
-  @media (max-width: 640px) {
-    .jackpot-timeline { padding: 1.5rem 1rem; }
-    .jt-label-val { font-size: 9px; }
-    .jt-label-x, .jt-label-y { font-size: 8px; }
-  }
-
-  .latest-title {
-    font-family: 'Instrument Serif', serif;
-    font-size: 2rem;
-    font-weight: 400;
-    font-style: italic;
-    line-height: 1;
-  }
-
-  .latest-date {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-
-  .latest-balls {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-    margin: 1rem 0 2rem;
-    position: relative;
-    z-index: 1;
-  }
-
-  .latest-ball {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 1.1rem;
-    background: radial-gradient(circle at 30% 25%, #f5d97c, var(--gold-deep));
-    color: #1a1a1e;
-    box-shadow:
-      0 4px 16px rgba(232, 196, 88, 0.25),
-      inset -3px -4px 8px rgba(0,0,0,0.25),
-      inset 2px 2px 4px rgba(255,255,255,0.3);
-  }
-  .latest-ball.star {
-    background: radial-gradient(circle at 30% 25%, #ff8575, var(--star));
-    color: var(--text);
-    box-shadow:
-      0 4px 16px rgba(232, 93, 80, 0.3),
-      inset -3px -4px 8px rgba(0,0,0,0.25),
-      inset 2px 2px 4px rgba(255,255,255,0.25);
-  }
-  .latest-sep {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    color: var(--text-faint);
-    font-size: 1.3rem;
-    margin: 0 0.25rem;
-  }
-
-  .latest-bottom {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 2rem;
-    padding-top: 1.75rem;
-    border-top: 1px solid var(--line);
-    position: relative;
-    z-index: 1;
-  }
-
-  .latest-profile h4 {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    margin-bottom: 0.75rem;
-    font-weight: 500;
-  }
-  .latest-profile-items {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem 1rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-  }
-  .latest-profile-items > div {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-  }
-  .latest-profile-items .li-label { color: var(--text-dim); }
-  .latest-profile-items .li-val { color: var(--text); font-weight: 500; }
-
-  .latest-audit {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-  }
-  .latest-audit-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .latest-audit-row.pass { color: var(--green); }
-  .latest-audit-row.fail { color: var(--red); }
-
-  /* Variante contre-tendance : teinte bleu-acier pour les distinguer du vert/rouge "coeur" */
-  .latest-audit-row.contrarian.pass { color: var(--blue); }
-  .latest-audit-row.contrarian.fail { color: color-mix(in srgb, var(--blue) 50%, var(--text-faint)); }
-
-  #latestAudit .audit-separator {
-    grid-column: 1 / -1;
-    margin-top: 0.7rem;
-    padding-top: 0.6rem;
-    border-top: 1px dashed var(--border);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: var(--blue);
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-  }
-  #latestAudit .audit-separator span {
-    color: var(--text-faint);
-    font-weight: 500;
-  }
-
-  .latest-verdict {
-    margin-top: 1rem;
-    font-family: 'Instrument Serif', serif;
-    font-size: 1rem;
-    font-style: italic;
-    color: var(--text-dim);
-  }
-  .latest-verdict .tag {
-    display: inline-block;
-    padding: 0.15rem 0.5rem;
-    margin-left: 0.4rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-style: normal;
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    border: 1px solid currentColor;
-  }
-  .latest-verdict .tag.pass { color: var(--green); }
-  .latest-verdict .tag.fail { color: var(--red); }
-  .latest-verdict .tag.contrarian-tag {
-    color: var(--blue);
-    border-color: color-mix(in srgb, var(--blue) 40%, var(--border));
-    background: color-mix(in srgb, var(--blue) 6%, transparent);
-    margin-left: 0.4rem;
-  }
-
-  .latest-prizes h4 {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    margin-bottom: 0.75rem;
-    font-weight: 500;
-  }
-  .latest-prize-main {
-    font-family: 'Instrument Serif', serif;
-    font-size: 1.75rem;
-    font-style: italic;
-    color: var(--gold);
-    line-height: 1;
-    margin-bottom: 0.3rem;
-  }
-  .latest-prize-sub {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    margin-bottom: 0.5rem;
-  }
-  .latest-prize-total {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text);
-    padding-top: 0.5rem;
-    border-top: 1px dashed var(--line);
-    margin-top: 0.75rem;
-  }
-  .latest-prize-total strong { color: var(--gold); }
-
-  /* NEXT DRAW BANNER */
-  .next-draw {
-    margin-top: 2rem;
-    padding-top: 1.75rem;
-    border-top: 1px solid var(--line);
-    position: relative;
-    z-index: 1;
-  }
-  .next-draw-head {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    margin-bottom: 0.75rem;
-    font-weight: 500;
-  }
-  .next-draw-body {
-    display: flex;
-    align-items: baseline;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-  }
-  .next-draw-amount {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    font-size: clamp(2.5rem, 6vw, 4rem);
-    line-height: 1;
-    color: var(--gold);
-    font-weight: 400;
-  }
-  .next-draw-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    line-height: 1.6;
-  }
-  .next-draw-meta .nd-rollover {
-    display: inline-block;
-    margin-top: 0.25rem;
-    padding: 0.15rem 0.6rem;
-    border: 1px solid var(--star);
-    color: var(--star);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 0.7rem;
-  }
-  .next-draw-loading {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    color: var(--text-faint);
-    font-size: 1.1rem;
-  }
-  .next-draw-err {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-faint);
-    font-style: italic;
-  }
-
-  @media (max-width: 640px) {
-    .latest { padding: 1.5rem; margin: 1.5rem 0 2.5rem; }
-    .latest-ball { width: 44px; height: 44px; font-size: 0.9rem; }
-  }
-
-  .gains-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1px;
-    background: var(--line);
-    border: 1px solid var(--line);
-    margin: 1rem 0 3rem;
-  }
-  .gain-stat {
-    background: var(--bg);
-    padding: 2rem 1.75rem;
-    transition: background 0.3s;
-  }
-  .gain-stat:hover { background: var(--bg-elev); }
-  .gain-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    margin-bottom: 1rem;
-  }
-  .gain-value {
-    font-family: 'Instrument Serif', serif;
-    font-size: clamp(2.25rem, 4vw, 3rem);
-    line-height: 1;
-    color: var(--gold);
-    font-style: italic;
-    font-weight: 400;
-  }
-  .gain-sub {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--text-faint);
-    margin-top: 0.75rem;
-  }
-
-  /* AUDIT - panel de gains virtuels */
-  .virtual-winnings {
-    margin-top: 1rem;
-    padding: 1.25rem 1.5rem;
-    background: var(--bg);
-    border: 1px dashed var(--gold);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--text-dim);
-  }
-  .virtual-winnings .vw-head {
-    color: var(--gold);
-    text-transform: uppercase;
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
-    margin-bottom: 0.75rem;
-  }
-  .virtual-winnings .vw-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.3rem 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .virtual-winnings .vw-row:last-child { border-bottom: none; }
-  .virtual-winnings .vw-label { color: var(--text-dim); }
-  .virtual-winnings .vw-value { color: var(--text); }
-  .virtual-winnings .vw-value.positive { color: var(--green); }
-  .virtual-winnings .vw-value.negative { color: var(--red); }
-  .virtual-winnings .vw-best {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--line);
-    color: var(--text-dim);
-    font-style: italic;
-  }
-  .virtual-winnings .vw-best strong { color: var(--gold); font-style: normal; }
-
-  @media (max-width: 640px) {
-    .container { padding: 0 1.25rem; }
-    .hero { padding: 3rem 0 2rem; }
-    .ball { width: 54px; height: 54px; font-size: 1.1rem; }
-    .separator { font-size: 1.1rem; }
-    .audit-input { width: 48px; height: 48px; font-size: 0.95rem; }
-    .generator { padding: 3rem 0; margin: 2rem 0; }
-    .section-head { margin: 3rem 0 1.5rem; }
-    .anomaly {
-      grid-template-columns: 1fr;
-      padding: 1.5rem;
-      gap: 1rem;
-    }
-    .anomaly-mark { font-size: 2.5rem; }
-    .rule {
-      grid-template-columns: 30px 1fr;
-      gap: 1rem;
-    }
-    .rule-evidence {
-      grid-column: 2;
-      text-align: left;
-      margin-top: 0.3rem;
-    }
-    .audit-box { padding: 1.5rem; }
-    .reality { padding: 1.5rem; }
-    .portfolio { padding: 1.5rem; }
-    .grid-row {
-      grid-template-columns: 24px 1fr;
-      gap: 0.5rem;
-      padding: 0.6rem 0.75rem;
-    }
-    .grid-profile { grid-column: 2; margin-top: 0.2rem; font-size: 0.65rem; }
-    .grid-ball, .grid-star { width: 26px; height: 26px; font-size: 0.7rem; }
-    .freq-cell .freq-num { font-size: 0.7rem; }
-    .freq-cell .freq-count { font-size: 0.5rem; }
-  }
+  /* Minimal overrides — l'essentiel est dans css/*.css */
 </style>
 </head>
-<body>
+<body data-game="euromillions">
+
+<!-- Clip-paths formes spéciales (étoile EuroMillions, goutte EuroDreams) -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <clipPath id="starClip" clipPathUnits="objectBoundingBox"
+              transform="scale(0.0476, 0.0488)">
+      <path fill-rule="evenodd" d="M20.423 8.033a1.045 1.045 0 0 0-.832-.734l-5.661-.86-2.532-5.365a1.028 1.028 0 0 0-.924-.601c-.393 0-.751.233-.925.6L7.018 6.44l-5.661.86c-.389.06-.712.344-.833.734s-.02.82.26 1.106l4.097 4.176-.967 5.897c-.066.404.093.814.41 1.055a.994.994 0 0 0 1.087.082l5.063-2.784 5.063 2.784a.996.996 0 0 0 1.086-.082c.317-.241.476-.65.41-1.055l-.967-5.897 4.096-4.176c.281-.287.382-.716.261-1.106Z"/>
+    </clipPath>
+    <clipPath id="dreamDrop" clipPathUnits="objectBoundingBox">
+      <path d="M0.977 0.446C0.977 0.775 0.5 1 0.5 1S0.023 0.775 0.023 0.446C0.023 0.15 0.251 0 0.5 0S0.977 0.15 0.977 0.446Z"/>
+    </clipPath>
+  </defs>
+</svg>
 
 <div class="container">
 
@@ -1561,15 +52,28 @@
     <div class="logo"><span>◊</span>EuroAffûté</div>
     <div class="meta">
       <span class="meta-dot" id="statusDot"></span>
-      <span id="statusText">Connexion à l'API…</span>
+      <span id="statusText">Chargement des données…</span>
     </div>
   </header>
 
+  <nav class="game-tabs" id="gameTabs" aria-label="Jeux">
+    <button class="game-tab active" data-game="euromillions">
+      <span class="tab-dot"></span>EuroMillions
+    </button>
+    <button class="game-tab" data-game="loto">
+      <span class="tab-dot"></span>LOTO
+    </button>
+    <button class="game-tab" data-game="eurodreams">
+      <span class="tab-dot"></span>EuroDreams
+    </button>
+  </nav>
+
+  <main>
   <section class="hero">
     <div class="eyebrow">Filtres empiriques, honnêteté statistique</div>
-    <h1>Vos grilles, <em>affûtées</em> par vingt ans de tirages.</h1>
+    <h1>Vos grilles, <em>affûtées</em> par des années de tirages.</h1>
     <p class="lede">
-      Au chargement, on télécharge l'intégralité des tirages EuroMillions depuis 2004.
+      Au chargement, on télécharge l'intégralité des tirages depuis les archives FDJ.
       On en déduit <strong>ce qui ne s'est jamais produit</strong>, et on transforme ces observations
       en filtres. Rien n'est codé en dur : si un nouveau tirage bouscule une règle,
       l'outil l'abandonne automatiquement.
@@ -1626,7 +130,7 @@
     <div class="jackpot-timeline-chart" id="jackpotChart">
       <div class="jt-status">Chargement des jackpots récents…</div>
     </div>
-    <p class="jackpot-timeline-note">
+    <p class="jackpot-timeline-note" id="timelineNote">
       Chaque barre = un tirage. Le jackpot enfle tant que personne ne rafle le 5+2,
       puis retombe à 17 M€ dès qu'un gagnant s'en empare.
     </p>
@@ -1642,7 +146,7 @@
     </p>
   </div>
 
-  <div class="rules-head">Règles dures <small>— ce qui n'est jamais arrivé en 20 ans</small></div>
+  <div class="rules-head">Règles dures <small id="rulesHardSub">— ce qui n'est jamais arrivé</small></div>
   <div class="rules" id="rulesHard">
     <div class="rule">
       <div class="rule-status loading-inline">…</div>
@@ -1671,11 +175,11 @@
   </div>
 
   <div class="section-head">
-    <div class="section-eyebrow">Gains · depuis 2004</div>
+    <div class="section-eyebrow" id="gainsEyebrow">Gains · historique</div>
     <h2 class="section-title">Les <em>milliards</em> distribués.</h2>
-    <p class="section-lede">
+    <p class="section-lede" id="gainsLede">
       Calculs effectués en direct sur l'intégralité des tirages historiques,
-      en sommant chaque rang (du 2+1 au jackpot) multiplié par le nombre de gagnants.
+      en sommant chaque rang multiplié par le nombre de gagnants.
       Un petit ordre de grandeur utile pour relativiser l'échelle du jeu.
     </p>
   </div>
@@ -1687,12 +191,12 @@
       <div class="gain-sub" id="gainTotalSub"></div>
     </div>
     <div class="gain-stat">
-      <div class="gain-label">Plus gros jackpot touché</div>
+      <div class="gain-label" id="gainBiggestLabel">Plus gros jackpot touché</div>
       <div class="gain-value" id="gainBiggest">—</div>
       <div class="gain-sub" id="gainBiggestSub"></div>
     </div>
     <div class="gain-stat">
-      <div class="gain-label">Tirages sans gagnant jackpot</div>
+      <div class="gain-label" id="gainNoJackpotLabel">Tirages sans gagnant jackpot</div>
       <div class="gain-value" id="gainNoJackpot">—</div>
       <div class="gain-sub" id="gainNoJackpotSub"></div>
     </div>
@@ -1722,22 +226,7 @@
   </div>
 
   <div class="audit-box">
-    <div class="audit-inputs">
-      <div class="audit-input-group">
-        <span class="audit-label">5 nums (1–50)</span>
-        <input type="number" class="audit-input" min="1" max="50" placeholder="·" data-kind="ball">
-        <input type="number" class="audit-input" min="1" max="50" placeholder="·" data-kind="ball">
-        <input type="number" class="audit-input" min="1" max="50" placeholder="·" data-kind="ball">
-        <input type="number" class="audit-input" min="1" max="50" placeholder="·" data-kind="ball">
-        <input type="number" class="audit-input" min="1" max="50" placeholder="·" data-kind="ball">
-      </div>
-      <span class="audit-separator">✦</span>
-      <div class="audit-input-group">
-        <span class="audit-label">2 étoiles (1–12)</span>
-        <input type="number" class="audit-input star" min="1" max="12" placeholder="·" data-kind="star">
-        <input type="number" class="audit-input star" min="1" max="12" placeholder="·" data-kind="star">
-      </div>
-    </div>
+    <div class="audit-inputs" id="auditInputs"></div>
 
     <div class="audit-actions">
       <button class="btn btn-ghost" id="auditBtn" disabled>Auditer</button>
@@ -1760,7 +249,7 @@
       Dix combinaisons tirées au hasard <strong>puis filtrées par toutes les règles
       apprises</strong> — y compris les règles cœur. On évite les extrêmes, les
       patterns absents de l'histoire, et on reste dans la zone qui a produit
-      <strong>80%+ des tirages réels</strong> depuis 2004.
+      <strong>80%+ des tirages réels</strong>.
     </p>
   </div>
 
@@ -1806,14 +295,14 @@
         <div class="grid-empty">Cliquez sur « Tirer 10 grilles »</div>
       </div>
       <div class="contrarian-note">
-        <strong>Les 6 règles appliquées</strong>
+        <strong id="contrarianRulesCount">Les 6 règles appliquées</strong>
         <ul class="contrarian-rules">
           <li><code>&lt; 4</code> numéros ≤ 31 — évite la signature <em>dates de naissance</em> (20-30 % des joueurs)</li>
           <li>Pas de <em>suite arithmétique</em> de 3+ numéros — bloque 5-10-15-20-25, 3-8-13-18-23, etc.</li>
           <li><code>≤ 2</code> multiples de 7 — évite le chiffre porte-bonheur sur-joué</li>
           <li><code>≤ 2</code> multiples de 5 — évite les numéros "ronds"</li>
           <li>Pas <code>3+</code> numéros alignés sur une colonne ou ligne de la grille FDJ (10×5)</li>
-          <li>Au moins une étoile <code>&gt; 7</code> — évite le combo étoiles "petits chiffres" très joué</li>
+          <li id="contrarianStarRule">Au moins une étoile <code>&gt; 7</code> — évite le combo étoiles "petits chiffres" très joué</li>
         </ul>
         <p class="contrarian-foot">
           Ces règles s'appliquent <strong>en plus</strong> des filtres statistiques appris
@@ -1822,18 +311,16 @@
       </div>
     </div>
 
-    <div class="portfolio-cost">
+    <div class="portfolio-cost" id="portfolioCost">
       <strong>Rappel coût</strong>
-      10 grilles × 2,50 € = 25 € par tirage. Deux tirages par semaine = 2 600 € par an.
-      L'espérance mathématique de gain à l'EuroMillions se situe autour de 50 % de la mise —
-      vous perdrez statistiquement ~1 300 € par an.
+      <span id="portfolioCostText"></span>
     </div>
 
   </div>
 
   <div class="section-head">
     <div class="section-eyebrow">Fréquences</div>
-    <h2 class="section-title">Vingt ans de <em>régularité</em>.</h2>
+    <h2 class="section-title" id="freqTitle">Des années de <em>régularité</em>.</h2>
     <p class="section-lede">
       Chaque boule devrait sortir environ <strong id="freqExpectedBall">—</strong> fois
       sur l'ensemble des tirages. Les écarts visibles ci-dessous sont à <strong>95% du bruit
@@ -1846,7 +333,7 @@
   <div class="frequencies" id="frequencies">
     <div class="freq-block">
       <div class="freq-title">
-        Les 50 boules
+        <span id="freqBallsTitle">Les 50 boules</span>
         <small>nombre de sorties observées</small>
       </div>
       <div class="freq-grid balls" id="freqBalls"></div>
@@ -1858,7 +345,7 @@
     </div>
 
     <div class="freq-block">
-      <div class="freq-title">
+      <div class="freq-title" id="freqStarsTitle">
         Les 12 étoiles
         <small>fréquences ajustées par période de disponibilité</small>
       </div>
@@ -1867,44 +354,82 @@
     </div>
   </div>
 
-  <div class="reality">
+  <div class="reality" id="realityBox">
     <div class="reality-eyebrow">Note d'honnêteté</div>
     <h3>Ça ne va toujours <em>pas</em> vous faire gagner.</h3>
-    <p>
-      L'EuroMillions compte <strong>139 838 160</strong> combinaisons possibles. Même
-      avec nos filtres, il reste <strong id="remainingCombos">… combinaisons</strong>
-      en lice : la réduction est <strong>marginale</strong> — on reste à une
-      chance sur des dizaines de millions d'empocher le jackpot.
-    </p>
+    <p id="realityText1"></p>
     <p>
       <strong>En revanche</strong>, il y a une vraie stratégie validée par les maths :
-      <em>éviter les numéros populaires</em> — dates d'anniversaire ≤ 31, suites visuelles
+      <em>éviter les numéros populaires</em> — dates d'anniversaire, suites visuelles
       sur la grille, multiples de 7, chiffres porte-bonheur. Ça ne change pas votre probabilité de gagner,
       ça change ce que vous touchez <em>si</em> vous gagnez, parce que vous partagerez
       avec moins de monde. Nos filtres appris vont très exactement dans ce sens.
     </p>
   </div>
 
+  <div class="remaining-combos">
+    <span id="remainingCombos"></span>
+  </div>
+
+  </main>
+
   <footer>
-    Données publiques fournies par
-    <a href="https://github.com/pedro-mealha/euromillions-api" target="_blank" rel="noopener">l'API EuroMillions de Pedro Mealha</a>,
-    actualisée automatiquement après chaque tirage.
+    Données publiques issues des archives CSV de la
+    <a href="https://www.fdj.fr" target="_blank" rel="noopener">Française des Jeux</a>,
+    mises à jour automatiquement via GitHub Actions après chaque tirage.
   </footer>
 
 </div>
 
 <script>
 // =====================================================================
-// EuroAffûté v2 — filtres appris depuis l'historique
+// EuroAffûté v3 — multi-jeux, données FDJ, filtres appris
 // =====================================================================
 
-const API_URL = 'https://euromillions.api.pedromealha.dev/v1/draws';
+// Sources de données (JSON générés par scripts/update-data.js)
+const DATA_URLS = {
+  euromillions: 'data/euromillions.json',
+  loto: 'data/loto.json',
+  eurodreams: 'data/eurodreams.json',
+};
 
 const state = {
+  currentGame: 'euromillions',
   draws: [],
   filters: null,
   ready: false,
+  cache: {},  // { game: { draws, config } }
 };
+
+// --- gestion des onglets ---------------------------------------------
+
+function switchGame(game) {
+  if (game === state.currentGame && state.ready) return;
+  state.currentGame = game;
+  state.ready = false;
+  _freqColors = null; // invalider le cache couleurs fréquences
+
+  // Met à jour l'attribut data-game sur <body> pour le thème CSS
+  document.body.setAttribute('data-game', game);
+
+  // Met à jour les onglets actifs
+  document.querySelectorAll('.game-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.game === game);
+  });
+
+  // Désactive les boutons pendant le chargement
+  ['generateBtn', 'auditBtn', 'fillRandomBtn', 'genCoreBtn', 'genContrarianBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+
+  loadDraws();
+}
+
+document.getElementById('gameTabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.game-tab');
+  if (tab && tab.dataset.game) switchGame(tab.dataset.game);
+});
 
 // --- utilitaires -----------------------------------------------------
 
@@ -1912,8 +437,8 @@ const fmt = n => n.toLocaleString('fr-FR').replace(/\s/g, ' ');
 const sortAsc = a => [...a].sort((x, y) => x - y);
 const sum = a => a.reduce((x, y) => x + y, 0);
 
-const comboKey = (balls, stars) =>
-  sortAsc(balls).join('-') + '|' + sortAsc(stars).join('-');
+const comboKey = (balls, starsOrBonus) =>
+  sortAsc(balls).join('-') + '|' + (Array.isArray(starsOrBonus) ? sortAsc(starsOrBonus).join('-') : starsOrBonus);
 const ballKey = balls => sortAsc(balls).join('-');
 
 function isAP(sorted) {
@@ -1998,7 +523,7 @@ function maxGap(sorted) {
 }
 
 // Combien de balles dans la moitié basse (1-25)
-function lowerHalfCount(balls) { return balls.filter(b => b <= 25).length; }
+function lowerHalfCount(balls, halfPoint) { return balls.filter(b => b <= (halfPoint || 25)).length; }
 
 // --- fréquences ------------------------------------------------------
 
@@ -2007,65 +532,132 @@ function lowerHalfCount(balls) { return balls.filter(b => b <= 25).length; }
 const STAR_12_ERA_START = '2016-09-24';
 
 function computeFrequencies(draws) {
-  const ballFreq = new Array(51).fill(0);  // index 0 inutilisé
+  const game = state.currentGame;
+  const cfg = (state.cache[game] && state.cache[game].config) || {};
+  const ballMax = cfg.ballMax || 50;
+  const ballCount = cfg.ballCount || 5;
+
+  const ballFreq = new Array(ballMax + 1).fill(0);
   const starFreq = new Array(13).fill(0);
-  let drawsEra11 = 0;  // tirages avec 11 étoiles dans le pool
-  let drawsEra12 = 0;  // tirages avec 12 étoiles dans le pool
+  const bonusFreq = {};
+  let drawsEra11 = 0, drawsEra12 = 0;
+
   for (const d of draws) {
-    for (const b of d.balls) ballFreq[b]++;
-    for (const s of d.stars) starFreq[s]++;
-    if (d.date && d.date >= STAR_12_ERA_START) drawsEra12++;
-    else drawsEra11++;
+    for (const b of d.balls) if (b <= ballMax) ballFreq[b]++;
+    if (d.stars) {
+      for (const s of d.stars) starFreq[s]++;
+      if (d.date && d.date >= STAR_12_ERA_START) drawsEra12++;
+      else drawsEra11++;
+    }
+    if (d.bonus !== undefined) {
+      bonusFreq[d.bonus] = (bonusFreq[d.bonus] || 0) + 1;
+    }
   }
-  // Attendus
-  const ballExpected = draws.length * 5 / 50;
+
+  const ballExpected = draws.length * ballCount / ballMax;
+
+  // Étoiles (EuroMillions)
   const starExpected = new Array(13).fill(0);
-  for (let n = 1; n <= 11; n++) {
-    // étoiles 1-11 : toujours dans le pool
-    starExpected[n] = drawsEra11 * 2 / 11 + drawsEra12 * 2 / 12;
+  if (game === 'euromillions') {
+    for (let n = 1; n <= 11; n++) {
+      starExpected[n] = drawsEra11 * 2 / 11 + drawsEra12 * 2 / 12;
+    }
+    starExpected[12] = drawsEra12 * 2 / 12;
   }
-  // étoile 12 : seulement depuis sept. 2016
-  starExpected[12] = drawsEra12 * 2 / 12;
-  return { ballFreq, starFreq, ballExpected, starExpected, drawsEra11, drawsEra12 };
+
+  return { ballFreq, starFreq, bonusFreq, ballExpected, starExpected, drawsEra11, drawsEra12, ballMax, ballCount };
 }
 
 // Couleur divergente : froid (bleu) → neutre → chaud (or)
+// Cache des couleurs de fréquence (invalidé à chaque changement de jeu)
+let _freqColors = null;
+function getFreqColors() {
+  if (_freqColors) return _freqColors;
+  const parse = c => {
+    const d = document.createElement('div');
+    d.style.color = c.trim();
+    document.body.appendChild(d);
+    const rgb = getComputedStyle(d).color.match(/\d+/g).map(Number);
+    d.remove();
+    return rgb;
+  };
+  const cs = getComputedStyle(document.body);
+  _freqColors = {
+    cold: parse(cs.getPropertyValue('--text-faint') || '#B0B0B0'),
+    mid:  parse(cs.getPropertyValue('--bg') || '#F2F2F2'),
+    hot:  parse(cs.getPropertyValue('--accent') || '#021466'),
+  };
+  return _freqColors;
+}
 function colorForDelta(delta, maxAbs) {
+  const { cold, mid, hot } = getFreqColors();
   const t = Math.max(-1, Math.min(1, delta / maxAbs));
   const lerp = (a, b, u) => Math.round(a + (b - a) * u);
   if (t >= 0) {
-    // du neutre (#1a1a1e) vers l'or (#E8C458)
-    return 'rgb(' + lerp(26, 232, t) + ',' + lerp(26, 196, t) + ',' + lerp(30, 88, t) + ')';
+    return 'rgb(' + lerp(mid[0], hot[0], t) + ',' + lerp(mid[1], hot[1], t) + ',' + lerp(mid[2], hot[2], t) + ')';
   } else {
     const u = -t;
-    // du neutre vers un bleu froid #2A4566
-    return 'rgb(' + lerp(26, 42, u) + ',' + lerp(26, 69, u) + ',' + lerp(30, 102, u) + ')';
+    return 'rgb(' + lerp(mid[0], cold[0], u) + ',' + lerp(mid[1], cold[1], u) + ',' + lerp(mid[2], cold[2], u) + ')';
   }
 }
-// Si la couleur de fond est claire (côté or), on met du texte sombre.
 function textForDelta(delta, maxAbs) {
   const t = delta / maxAbs;
-  return t > 0.3 ? '#1a1a1e' : 'var(--text)';
+  // Texte clair sur fond foncé (accent), texte foncé sinon
+  return t > 0.4 ? '#FFFFFF' : '#1A1A1A';
 }
 
 // --- gains et matching historique -----------------------------------
 
-const GRID_COST = 2.50;  // prix d'une grille FDJ en France (sans Étoile+)
+function getGridCost() {
+  const cfg = state.cache[state.currentGame] && state.cache[state.currentGame].config;
+  return cfg ? cfg.gridCost : 2.50;
+}
 
 // Pour une grille donnée et un tirage historique, compte les concordances
 function matchesAgainst(userCombo, draw) {
   const ballSet = new Set(draw.balls);
-  const starSet = new Set(draw.stars);
   const mn = userCombo.balls.filter(b => ballSet.has(b)).length;
-  const ms = userCombo.stars.filter(s => starSet.has(s)).length;
+  let ms = 0;
+  if (userCombo.stars && draw.stars) {
+    const starSet = new Set(draw.stars);
+    ms = userCombo.stars.filter(s => starSet.has(s)).length;
+  } else if (userCombo.bonus !== undefined && draw.bonus !== undefined) {
+    ms = userCombo.bonus === draw.bonus ? 1 : 0;
+  }
   return { mn, ms };
 }
 
-// Cherche le prix correspondant à (mn, ms) dans la table des rangs du tirage
+// Table officielle FDJ : (boules matchées, étoiles/bonus matchés) → rang
+// EuroMillions : 13 rangs, 5 boules + 2 étoiles
+const RANK_TABLE_EM = {
+  '5+2': 1, '5+1': 2, '5+0': 3, '4+2': 4, '4+1': 5, '3+2': 6,
+  '4+0': 7, '2+2': 8, '3+1': 9, '3+0': 10, '1+2': 11, '2+1': 12, '2+0': 13,
+};
+// LOTO : 9 rangs, 5 boules + 1 bonus (N° Chance)
+const RANK_TABLE_LOTO = {
+  '5+1': 1, '5+0': 2, '4+1': 3, '4+0': 4, '3+1': 5, '3+0': 6,
+  '2+1': 7, '2+0': 8, '1+1': 9,
+};
+// EuroDreams : 6 rangs, 6 boules + 1 bonus (N° Dream)
+const RANK_TABLE_ED = {
+  '6+1': 1, '6+0': 2, '5+1': 3, '5+0': 4, '4+1': 5, '4+0': 6,
+};
+
 function findPrize(draw, mn, ms) {
   if (!draw.prizes) return null;
-  const entry = draw.prizes.find(p => p.matched_numbers === mn && p.matched_stars === ms);
-  return entry && entry.prize > 0 ? { prize: entry.prize, winners: entry.winners } : null;
+  const game = state.currentGame;
+  const table = game === 'euromillions' ? RANK_TABLE_EM
+              : game === 'loto' ? RANK_TABLE_LOTO
+              : RANK_TABLE_ED;
+  const key = mn + '+' + ms;
+  const rank = table[key];
+  if (!rank) return null;
+  const entry = draw.prizes.find(p => p.rank === rank);
+  if (entry && entry.prize > 0) {
+    const winners = entry.winners || entry.winnersEu || 0;
+    return { prize: entry.prize, winners };
+  }
+  return null;
 }
 
 // Simule "j'ai joué cette grille à tous les tirages" : total gagné + meilleur coup
@@ -2093,19 +685,25 @@ function totalDistributed(draws) {
   for (const d of draws) {
     if (!d.prizes) continue;
     for (const p of d.prizes) {
-      total += (p.prize || 0) * (p.winners || 0);
+      // Format FDJ : winners ou winnersEu ; ancien format API : winners
+      const winners = p.winners || p.winnersEu || 0;
+      total += (p.prize || 0) * winners;
     }
   }
   return total;
 }
 
-// Le plus gros jackpot jamais gagné
+// Le plus gros jackpot jamais gagné (rang 1)
 function biggestJackpot(draws) {
   let best = 0, bestDraw = null;
   for (const d of draws) {
     if (!d.prizes) continue;
-    const jp = d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
-    if (jp && jp.winners > 0 && jp.prize > best) {
+    // Format FDJ : le jackpot est au rang 1
+    const jp = d.prizes.find(p => p.rank === 1)
+            || d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
+    if (!jp) continue;
+    const winners = jp.winners || jp.winnersEu || 0;
+    if (winners > 0 && jp.prize > best) {
       best = jp.prize;
       bestDraw = d;
     }
@@ -2119,33 +717,62 @@ function drawsWithoutJackpot(draws) {
   for (const d of draws) {
     if (d.hasWinner === false) { count++; continue; }
     if (d.prizes) {
-      const jp = d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
-      if (!jp || !jp.winners) count++;
+      const jp = d.prizes.find(p => p.rank === 1)
+              || d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
+      const winners = jp ? (jp.winners || jp.winnersEu || 0) : 0;
+      if (!winners) count++;
     }
   }
   return count;
 }
 
-// Formatage lisible des montants en euros
+// Formatage lisible des montants en euros (avec décimales exactes)
 function formatMoney(eur) {
   const abs = Math.abs(eur);
   const sign = eur < 0 ? '-' : '';
   if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2).replace('.', ',') + ' Md€';
   if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1).replace('.', ',') + ' M€';
-  if (abs >= 1e3) return sign + fmt(Math.round(abs / 1e3)) + ' k€';
+  // En dessous de 1 M€ : montant exact avec centimes si nécessaire
+  const hasDecimals = abs % 1 !== 0;
+  if (hasDecimals) {
+    // Affiche 2 décimales max, supprime le 0 final (4,40 → 4,40 ; 17901,60 → 17 901,60)
+    const fixed = abs.toFixed(2);
+    const [intPart, decPart] = fixed.split('.');
+    const formattedInt = parseInt(intPart, 10).toLocaleString('fr-FR').replace(/\s/g, ' ');
+    return sign + formattedInt + ',' + decPart + ' €';
+  }
   return sign + fmt(Math.round(abs)) + ' €';
+}
+
+// Mapping rang FDJ → notation combinatoire (numéros bons + bonus bons)
+const RANK_LABELS = {
+  euromillions: {
+    1: '5+2', 2: '5+1', 3: '5+0', 4: '4+2', 5: '4+1',
+    6: '3+2', 7: '4+0', 8: '2+2', 9: '3+1', 10: '3+0',
+    11: '1+2', 12: '2+1', 13: '2+0',
+  },
+  loto: {
+    1: '5+1', 2: '5+0', 3: '4+1', 4: '4+0', 5: '3+1',
+    6: '3+0', 7: '2+1', 8: '2+0', 9: '1+1',
+  },
+  eurodreams: {
+    1: '6+1', 2: '6+0', 3: '5+1', 4: '5+0', 5: '4+1',
+    6: '4+0',
+  },
+};
+
+function rankLabel(rank) {
+  const labels = RANK_LABELS[state.currentGame];
+  return (labels && labels[rank]) || ('Rang ' + rank);
 }
 
 // --- chargement (avec fallbacks CORS) --------------------------------
 
-// On tente plusieurs stratégies dans l'ordre : appel direct, puis deux
-// proxies CORS publics au cas où l'API refuse des origines comme github.io.
 // --- Cache localStorage ---------------------------------------------
-// On stocke les tirages et les jackpots scrapés localement pour accélérer
-// les visites suivantes. Invalidation : changement de date (nouveau tirage attendu).
+// On stocke les données scrapées (jackpots, prochain tirage) localement.
 
 const CACHE_KEYS = {
-  DRAWS: 'euroaffute:draws:v1',
+  DRAWS: 'euroaffute:draws:v2:',  // préfixe, suivi du nom du jeu
   JACKPOT: 'euroaffute:jackpot:v1:',  // préfixe, suivi de la date ISO
   NEXT_DRAW: 'euroaffute:nextDraw:v2',
 };
@@ -2180,86 +807,100 @@ function cacheSet(key, value) {
 }
 
 async function fetchDrawsJson() {
-  // 1. Check cache local d'abord
-  const cached = cacheGet(CACHE_KEYS.DRAWS, CACHE_TTL.DRAWS);
-  if (cached && Array.isArray(cached.data)) {
-    console.log('[EuroAffûté] tirages depuis le cache (' + cached.data.length + ' entrées)');
-    return { data: cached.data, via: cached.via + ' (cache)' };
-  }
+  const game = state.currentGame;
+  const url = DATA_URLS[game];
+  if (!url) throw new Error('Jeu inconnu : ' + game);
 
-  // 2. Sinon, on fetch en vrai
-  const base = API_URL;
-  const strategies = [
-    { name: 'direct',     url: base },
-    { name: 'corsproxy',  url: 'https://corsproxy.io/?url=' + encodeURIComponent(base) },
-    { name: 'allorigins', url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(base) },
-  ];
-
-  let lastError = null;
-  for (const s of strategies) {
-    try {
-      console.log('[EuroAffûté] Tentative ' + s.name + '…');
-      const res = await fetch(s.url);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      console.log('[EuroAffûté] Succès via ' + s.name);
-      // Mise en cache pour la prochaine visite
-      cacheSet(CACHE_KEYS.DRAWS, { data, via: s.name });
-      return { data, via: s.name };
-    } catch (err) {
-      console.warn('[EuroAffûté] Échec ' + s.name + ' : ' + err.message);
-      lastError = err;
-    }
-  }
-  throw lastError || new Error('Tous les endpoints ont échoué');
+  console.log('[EuroAffûté] Chargement ' + game + ' depuis ' + url + '…');
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' pour ' + url);
+  const json = await res.json();
+  console.log('[EuroAffûté] ' + game + ' : ' + json.totalDraws + ' tirages chargés');
+  return json;
 }
 
 async function loadDraws() {
   const dot = document.getElementById('statusDot');
   const txt = document.getElementById('statusText');
+  const game = state.currentGame;
+
+  // Reset visuel
+  dot.classList.remove('live', 'err');
+  txt.textContent = 'Chargement ' + game + '…';
 
   try {
-    const { data, via } = await fetchDrawsJson();
+    const json = await fetchDrawsJson();
 
-    // L'API de Pedro Mealha renvoie directement un tableau d'objets
-    // de forme { date, numbers: ["1","2"…], stars: ["3","4"], prizes:[…] }
-    if (!Array.isArray(data)) {
-      throw new Error('Format JSON inattendu (tableau attendu)');
+    if (!json.draws || !Array.isArray(json.draws)) {
+      throw new Error('Format JSON inattendu');
     }
 
+    // Normalise les tirages selon le jeu
     const parsed = [];
-    for (const d of data) {
-      const balls = (d.numbers || []).map(n => parseInt(n, 10)).filter(n => !isNaN(n) && n >= 1 && n <= 50);
-      const stars = (d.stars || []).map(n => parseInt(n, 10)).filter(n => !isNaN(n) && n >= 1 && n <= 12);
-      if (balls.length === 5 && stars.length === 2) {
-        parsed.push({
-          date: d.date || '',
-          balls: sortAsc(balls),
-          stars: sortAsc(stars),
-          hasWinner: d.has_winner,
-          prizes: Array.isArray(d.prizes) ? d.prizes : null,
-        });
+    for (const d of json.draws) {
+      const entry = {
+        date: d.date || '',
+        balls: sortAsc(d.balls || []),
+        prizes: d.prizes || null,
+      };
+
+      if (game === 'euromillions') {
+        entry.stars = sortAsc(d.stars || []);
+        entry.hasWinner = d.hasWinner || false;
+        if (entry.balls.length !== 5 || (entry.stars || []).length !== 2) continue;
+      } else if (game === 'loto') {
+        entry.bonus = d.bonus;
+        // Détermine hasWinner depuis les prizes (rang 1, winners > 0)
+        const r1 = (d.prizes || []).find(p => p.rank === 1);
+        entry.hasWinner = r1 ? r1.winners > 0 : false;
+        if (entry.balls.length !== 5 || !entry.bonus) continue;
+      } else if (game === 'eurodreams') {
+        entry.bonus = d.bonus;
+        const r1 = (d.prizes || []).find(p => p.rank === 1);
+        entry.hasWinner = r1 ? (r1.winnersEu || 0) > 0 : false;
+        if (entry.balls.length !== 6 || !entry.bonus) continue;
       }
+
+      parsed.push(entry);
     }
 
-    if (parsed.length === 0) throw new Error('Aucun tirage parsé depuis la réponse');
+    if (parsed.length === 0) throw new Error('Aucun tirage parsé');
 
     state.draws = parsed;
     state.filters = learnFilters(parsed);
     state.ready = true;
+    state.cache[game] = { draws: parsed, config: json.config };
 
     dot.classList.add('live');
-    const suffix = via === 'direct' ? '' : ' · via ' + via;
-    txt.textContent = fmt(parsed.length) + ' tirages chargés' + suffix;
+    const gameNames = { euromillions: 'EuroMillions', loto: 'LOTO', eurodreams: 'EuroDreams' };
+    txt.textContent = fmt(parsed.length) + ' tirages ' + (gameNames[game] || game) + ' chargés';
 
+    buildAuditInputs();
     renderRules();
     renderAnomaly();
     renderLatest();
     renderGains();
     renderFrequencies();
-    renderRemainingCombos();  // estimation Monte Carlo du nb de combos survivantes
-    renderJackpotTimeline();  // sparkline des 15 derniers jackpots (async)
-    renderNextDraw();  // async, non bloquant
+    renderRemainingCombos();
+    updateDynamicTexts();
+    // Sections conditionnelles selon le jeu
+    const timeline = document.getElementById('jackpotTimeline');
+    const nextDrawSection = document.querySelector('.next-draw');
+    if (game === 'euromillions') {
+      if (timeline) timeline.style.display = '';
+      if (nextDrawSection) nextDrawSection.style.display = '';
+      renderJackpotTimeline();
+      renderNextDraw();
+    } else if (game === 'loto') {
+      if (timeline) timeline.style.display = '';
+      if (nextDrawSection) nextDrawSection.style.display = '';
+      renderJackpotTimeline();
+      renderNextDraw();
+    } else {
+      // EuroDreams : pas de cagnotte (rente mensuelle, pas de jackpot cumulé)
+      if (timeline) timeline.style.display = 'none';
+      if (nextDrawSection) nextDrawSection.style.display = 'none';
+    }
     document.getElementById('generateBtn').disabled = false;
     document.getElementById('auditBtn').disabled = false;
     document.getElementById('fillRandomBtn').disabled = false;
@@ -2273,9 +914,8 @@ async function loadDraws() {
     const rulesHard = document.getElementById('rulesHard');
     const rulesCore = document.getElementById('rulesCore');
     const msg = '<div class="error-msg">' +
-      '<strong>Impossible de joindre l\'API EuroMillions.</strong><br><br>' +
-      'Trois stratégies ont été tentées (appel direct + 2 proxies CORS), toutes ont échoué. ' +
-      'Ouvrez la console (F12 → Console) pour voir le détail des erreurs.<br><br>' +
+      '<strong>Impossible de charger les données.</strong><br><br>' +
+      'Vérifiez que les fichiers data/*.json existent (lancez <code>node scripts/update-data.js</code>).<br><br>' +
       '<code>' + err.message + '</code>' +
       '</div>';
     if (rulesHard) rulesHard.innerHTML = msg;
@@ -2288,78 +928,123 @@ async function loadDraws() {
 function learnFilters(draws) {
   const sums = draws.map(d => sum(d.balls));
   const ranges = draws.map(d => range(d.balls));
-  const starSums = draws.map(d => sum(d.stars));
+  const starSums = draws.map(d => d.stars ? sum(d.stars) : (d.bonus || 0));
 
-  const anyAP = draws.some(d => isAP(d.balls));
-  const anySameDecade = draws.some(d => sameDecade(d.balls));
-  const anyAllEven = draws.some(d => d.balls.every(b => b % 2 === 0));
-  const anyAllOdd = draws.some(d => d.balls.every(b => b % 2 === 1));
-  const anyBirthday = draws.some(d => d.balls[4] <= 31);
+  // Seuil pour les règles "dures" : on rejette un pattern même s'il est déjà
+  // arrivé 1 ou 2 fois — c'est statistiquement négligeable sur 2000+ tirages.
+  const HARD_THRESHOLD = 2;
+  const countAP = draws.filter(d => isAP(d.balls)).length;
+  const countSameDecade = draws.filter(d => sameDecade(d.balls)).length;
+  const countAllEven = draws.filter(d => d.balls.every(b => b % 2 === 0)).length;
+  const countAllOdd = draws.filter(d => d.balls.every(b => b % 2 === 1)).length;
+  const anyBirthday = draws.some(d => d.balls[d.balls.length - 1] <= 31);
 
   const seenFull = new Set();
-  const ballCount = new Map();
+  const ballOccurrences = new Map();
   const dupeFull = [];
 
   for (const d of draws) {
-    const k = comboKey(d.balls, d.stars);
+    const k = comboKey(d.balls, d.stars || d.bonus);
     if (seenFull.has(k)) dupeFull.push(d);
     seenFull.add(k);
     const bk = ballKey(d.balls);
-    if (!ballCount.has(bk)) ballCount.set(bk, []);
-    ballCount.get(bk).push(d);
+    if (!ballOccurrences.has(bk)) ballOccurrences.set(bk, []);
+    ballOccurrences.get(bk).push(d);
   }
 
   const dupeBalls = [];
-  for (const [, occurrences] of ballCount.entries()) {
+  for (const [, occurrences] of ballOccurrences.entries()) {
     if (occurrences.length > 1) dupeBalls.push(occurrences);
   }
 
+  // --- Config adaptative par jeu ---
+  const game = state.currentGame;
+  const cfg = (state.cache[game] && state.cache[game].config) || {};
+  const ballCount = cfg.ballCount || 5;
+  const ballMax = cfg.ballMax || 50;
+  const hasStars = game === 'euromillions';
+
+  // --- Seuils adaptatifs par jeu (calibrés sur les données historiques) ---
+  // EuroMillions (5/50) : gap P95=28, paires 2+ = 4.4%, same dec 4+ = 2%
+  // LOTO (5/49)         : gap P95=27, paires 2+ = 4.9% mais 3+ = 0.3%, same dec 4+ = 2%
+  // EuroDreams (6/40)   : gap P95=19, paires 2+ = 12% (normal à 15% densité), same dec 4+ = 7.8%
+  const gapThreshold = game === 'eurodreams' ? 22 : game === 'euromillions' ? 28 : 30;
+  const pairsThreshold = game === 'eurodreams' ? 3 : game === 'loto' ? 3 : 2;
+  const sameDecThreshold = game === 'eurodreams' ? 5 : 4;
+
+  // Seuil consécutifs : 3+ est normal en EuroDreams (3.9%), rejeter seulement 4+
+  const consecThreshold = game === 'eurodreams' ? 4 : 3;
+
+  // Dizaines acceptées : EM peut avoir 5 dizaines (4.6%), ED n'en a que 4 max
+  const minDecades = game === 'eurodreams' ? 2 : 3;
+  const maxDecades = game === 'eurodreams' ? 4 : 5;
+
+  // Même chiffre unité : avec 6 boules (ED), 3+ = 5.4% → seuil à 4
+  const sameUnitThreshold = game === 'eurodreams' ? 4 : 4;
+
+  // Moitié basse adaptée : dépend de ballMax
+  const halfPoint = Math.floor(ballMax / 2);
+
   return {
     totalDraws: draws.length,
+    game,
+    ballCount,
+    ballMax,
+    hasStars,
+    gapThreshold,
+    pairsThreshold,
+    sameDecThreshold,
+    consecThreshold,
+    minDecades,
+    maxDecades,
+    sameUnitThreshold,
+    halfPoint,
     minSum: Math.min(...sums),
     maxSum: Math.max(...sums),
     minRange: Math.min(...ranges),
     maxRange: Math.max(...ranges),
-    // NEW — bornes "cœur de distribution" (p10 - p90)
     sumP10: quantile(sums, 0.10),
     sumP90: quantile(sums, 0.90),
     rangeP10: quantile(ranges, 0.10),
     rangeP90: quantile(ranges, 0.90),
     medianSum: quantile(sums, 0.50),
     medianRange: quantile(ranges, 0.50),
-    // Bornes étoiles (plus permissif : p5-p95)
-    starSumP5: quantile(starSums, 0.05),
-    starSumP95: quantile(starSums, 0.95),
-    // Nouvelles statistiques de fréquence (filtres rares)
-    pct3Consec: draws.filter(d => maxConsecutiveRun(d.balls) >= 3).length / draws.length,
-    pct2Pairs: draws.filter(d => consecutivePairs(d.balls) >= 2).length / draws.length,
-    pct4SameDec: draws.filter(d => maxBallsPerDecade(d.balls) >= 4).length / draws.length,
-    pct4SameUnit: draws.filter(d => maxBallsPerUnit(d.balls) >= 4).length / draws.length,
-    pctBigGap: draws.filter(d => maxGap(d.balls) >= 30).length / draws.length,
+    // Bornes étoiles (EuroMillions uniquement)
+    starSumP5: hasStars ? quantile(starSums, 0.05) : 0,
+    starSumP95: hasStars ? quantile(starSums, 0.95) : 99,
+    // Statistiques de fréquence des patterns rares (appris depuis les données)
+    pct3Consec: draws.filter(d => maxConsecutiveRun(d.balls) >= consecThreshold).length / draws.length,
+    pct2Pairs: draws.filter(d => consecutivePairs(d.balls) >= pairsThreshold).length / draws.length,
+    pct4SameDec: draws.filter(d => maxBallsPerDecade(d.balls) >= sameDecThreshold).length / draws.length,
+    pct4SameUnit: draws.filter(d => maxBallsPerUnit(d.balls) >= sameUnitThreshold).length / draws.length,
+    pctBigGap: draws.filter(d => maxGap(d.balls) >= gapThreshold).length / draws.length,
     pctHalfExtreme: draws.filter(d => {
-      const l = lowerHalfCount(d.balls);
-      return l === 0 || l === 5;
+      const l = d.balls.filter(b => b <= halfPoint).length;
+      return l === 0 || l === d.balls.length;
     }).length / draws.length,
-    pctStarsOppose: draws.filter(d => d.stars[1] - d.stars[0] >= 11).length / draws.length,
-    // Statistiques de fréquence
+    pctStarsOppose: hasStars
+      ? draws.filter(d => d.stars && d.stars[1] - d.stars[0] >= 11).length / draws.length
+      : 0,
     pctParityExtreme: draws.filter(d => {
       const e = evenCount(d.balls);
-      return e === 0 || e === 5;
+      return e === 0 || e === d.balls.length;
     }).length / draws.length,
     pctDecadesCommon: draws.filter(d => {
       const dc = decadesCovered(d.balls);
-      return dc === 3 || dc === 4;
+      return dc >= minDecades && dc <= maxDecades;
     }).length / draws.length,
-    pctBirthdayOnly: draws.filter(d => d.balls[4] <= 31).length / draws.length,
+    pctBirthdayOnly: draws.filter(d => d.balls[d.balls.length - 1] <= 31).length / draws.length,
     pctAllAbove31: draws.filter(d => d.balls[0] > 31).length / draws.length,
-    rejectAP: !anyAP,
-    rejectSameDecade: !anySameDecade,
-    rejectAllEven: !anyAllEven,
-    rejectAllOdd: !anyAllOdd,
+    rejectAP: countAP <= HARD_THRESHOLD,
+    countAP,
+    rejectSameDecade: countSameDecade <= HARD_THRESHOLD,
+    countSameDecade,
+    rejectAllEven: countAllEven <= HARD_THRESHOLD,
+    rejectAllOdd: countAllOdd <= HARD_THRESHOLD,
     rejectBirthday: !anyBirthday,
     pctAllEven: draws.filter(d => d.balls.every(b => b%2===0)).length / draws.length,
     pctAllOdd: draws.filter(d => d.balls.every(b => b%2===1)).length / draws.length,
-    pctBirthday: draws.filter(d => d.balls[4] <= 31).length / draws.length,
+    pctBirthday: draws.filter(d => d.balls[d.balls.length - 1] <= 31).length / draws.length,
     seenFull,
     dupeFull,
     dupeBalls,
@@ -2373,26 +1058,29 @@ function checkCombo(combo, f) {
   const r = range(combo.balls);
   const ec = evenCount(combo.balls);
   const dc = decadesCovered(combo.balls);
+  const bl = combo.balls.length;
+  const hp = f.halfPoint || 25;
+  const p = v => Math.round(v * 1000) / 10;  // % avec 1 décimale
   const checks = [];
 
   // --- Règles dures ---
   checks.push({
-    ok: !f.seenFull.has(comboKey(combo.balls, combo.stars)),
+    ok: !f.seenFull.has(comboKey(combo.balls, combo.stars || combo.bonus)),
     label: 'Pas déjà tirée',
     detail: fmt(f.seenFull.size) + ' tirages historiques exclus',
   });
   checks.push({
     ok: !isAP(combo.balls),
     label: 'Pas de progression arithmétique',
-    detail: 'jamais observé en ' + fmt(f.totalDraws) + ' tirages',
+    detail: f.countAP + ' fois en ' + fmt(f.totalDraws) + ' tirages',
   });
   checks.push({
     ok: !sameDecade(combo.balls),
-    label: 'Pas les 5 balles dans la même dizaine',
-    detail: 'jamais observé en ' + fmt(f.totalDraws) + ' tirages',
+    label: 'Pas toutes les balles dans la même dizaine',
+    detail: f.countSameDecade + ' fois en ' + fmt(f.totalDraws) + ' tirages',
   });
 
-  // --- Règles cœur de distribution ---
+  // --- Règles cœur de distribution (seuils appris) ---
   checks.push({
     ok: s >= f.sumP10 && s <= f.sumP90,
     label: 'Somme dans le cœur',
@@ -2404,77 +1092,84 @@ function checkCombo(combo, f) {
     detail: 'votre range : ' + r + ' · cœur [' + f.rangeP10 + ', ' + f.rangeP90 + ']',
   });
   checks.push({
-    ok: ec >= 1 && ec <= 4,
+    ok: ec >= 1 && ec <= (bl - 1),
     label: 'Parité mixte',
-    detail: 'votre parité : ' + ec + 'p / ' + (5-ec) + 'i · 95% des tirages',
+    detail: 'votre parité : ' + ec + 'p / ' + (bl-ec) + 'i · ' + p(1 - f.pctParityExtreme) + '% des tirages',
   });
   checks.push({
-    ok: dc === 3 || dc === 4,
-    label: '3 ou 4 dizaines couvertes',
-    detail: 'vous en couvrez ' + dc + ' · 88% des tirages',
+    ok: dc >= (f.minDecades || 3) && dc <= (f.maxDecades || 5),
+    label: (f.minDecades || 3) + ' à ' + (f.maxDecades || 5) + ' dizaines couvertes',
+    detail: 'vous en couvrez ' + dc + ' · ' + p(f.pctDecadesCommon) + '% des tirages',
   });
   checks.push({
-    ok: combo.balls[4] > 31,
-    label: 'Au moins un numéro > 31',
-    detail: 'votre max : ' + combo.balls[4] + ' · 92% des tirages',
+    ok: combo.balls[bl - 1] > hp,
+    label: 'Au moins un numéro > ' + hp,
+    detail: 'votre max : ' + combo.balls[bl - 1],
   });
   checks.push({
-    ok: combo.balls[0] <= 31,
-    label: 'Au moins un numéro ≤ 31',
-    detail: 'votre min : ' + combo.balls[0] + ' · 99% des tirages',
+    ok: combo.balls[0] <= hp,
+    label: 'Au moins un numéro ≤ ' + hp,
+    detail: 'votre min : ' + combo.balls[0],
   });
 
-  // --- Filtres rares ---
+  // --- Filtres rares (seuils adaptatifs) ---
   const mcr = maxConsecutiveRun(combo.balls);
+  const ct = f.consecThreshold || 3;
   checks.push({
-    ok: mcr < 3,
-    label: 'Pas 3 numéros consécutifs',
-    detail: 'suite max : ' + mcr + ' · 97.8% des tirages',
+    ok: mcr < ct,
+    label: 'Pas ' + ct + ' numéros consécutifs',
+    detail: 'suite max : ' + mcr + ' · ' + p(1 - f.pct3Consec) + '% des tirages',
   });
   const cp = consecutivePairs(combo.balls);
+  const pt = f.pairsThreshold || 2;
   checks.push({
-    ok: cp < 2,
-    label: 'Max 1 paire consécutive',
-    detail: 'paires : ' + cp + ' · 95.7% des tirages',
+    ok: cp < pt,
+    label: 'Max ' + (pt - 1) + ' paire' + (pt > 2 ? 's' : '') + ' consécutive' + (pt > 2 ? 's' : ''),
+    detail: 'paires : ' + cp + ' · ' + p(1 - f.pct2Pairs) + '% des tirages',
   });
   const mpd = maxBallsPerDecade(combo.balls);
+  const sdt = f.sameDecThreshold || 4;
   checks.push({
-    ok: mpd < 4,
-    label: 'Max 3 balles dans une dizaine',
-    detail: 'max concentration : ' + mpd + ' · 98.4% des tirages',
+    ok: mpd < sdt,
+    label: 'Max ' + (sdt - 1) + ' balles dans une dizaine',
+    detail: 'max concentration : ' + mpd + ' · ' + p(1 - f.pct4SameDec) + '% des tirages',
   });
   const mpu = maxBallsPerUnit(combo.balls);
+  const sut = f.sameUnitThreshold || 4;
   checks.push({
-    ok: mpu < 4,
-    label: 'Max 3 balles finissant pareil',
-    detail: 'même unité : ' + mpu + ' · 99.9% des tirages',
+    ok: mpu < sut,
+    label: 'Max ' + (sut - 1) + ' balles finissant pareil',
+    detail: 'même unité : ' + mpu + ' · ' + p(1 - f.pct4SameUnit) + '% des tirages',
   });
   const mg = maxGap(combo.balls);
+  const gt = f.gapThreshold || 30;
   checks.push({
-    ok: mg < 30,
-    label: 'Pas de trou de 30+',
-    detail: 'plus grand écart : ' + mg + ' · 97.1% des tirages',
+    ok: mg < gt,
+    label: 'Pas de trou de ' + gt + '+',
+    detail: 'plus grand écart : ' + mg + ' · ' + p(1 - f.pctBigGap) + '% des tirages',
   });
-  const lh = lowerHalfCount(combo.balls);
+  const lhCount = combo.balls.filter(b => b <= hp).length;
   checks.push({
-    ok: lh >= 1 && lh <= 4,
-    label: 'Équilibre 1–25 / 26–50',
-    detail: 'bas/haut : ' + lh + '/' + (5-lh) + ' · 95.6% des tirages',
+    ok: lhCount >= 1 && lhCount <= (bl - 1),
+    label: 'Équilibre 1–' + hp + ' / ' + (hp+1) + '–' + (f.ballMax || 50),
+    detail: 'bas/haut : ' + lhCount + '/' + (bl - lhCount) + ' · ' + p(1 - f.pctHalfExtreme) + '% des tirages',
   });
 
-  // --- Étoiles ---
-  const ss = sum(combo.stars);
-  checks.push({
-    ok: ss >= f.starSumP5 && ss <= f.starSumP95,
-    label: 'Somme étoiles dans le cœur',
-    detail: 'votre somme : ' + ss + ' · cœur [' + f.starSumP5 + ', ' + f.starSumP95 + ']',
-  });
-  const sg = combo.stars[1] - combo.stars[0];
-  checks.push({
-    ok: sg < 11,
-    label: 'Étoiles pas aux extrêmes',
-    detail: 'écart : ' + sg + ' · 99.1% des tirages',
-  });
+  // --- Étoiles (EuroMillions uniquement) ---
+  if (combo.stars && combo.stars.length === 2) {
+    const ss = sum(combo.stars);
+    checks.push({
+      ok: ss >= f.starSumP5 && ss <= f.starSumP95,
+      label: 'Somme étoiles dans le cœur',
+      detail: 'votre somme : ' + ss + ' · cœur [' + f.starSumP5 + ', ' + f.starSumP95 + ']',
+    });
+    const sg = combo.stars[1] - combo.stars[0];
+    checks.push({
+      ok: sg < 11,
+      label: 'Étoiles pas aux extrêmes',
+      detail: 'écart : ' + sg + ' · ' + p(1 - f.pctStarsOppose) + '% des tirages',
+    });
+  }
 
   return checks;
 }
@@ -2485,24 +1180,36 @@ function renderRules() {
   const f = state.filters;
   const p = v => Math.round(v * 1000) / 10;
 
+  const hp = f.halfPoint || 25;
+  const bm = f.ballMax || 50;
+  const bl = f.ballCount || 5;
+  const pt = f.pairsThreshold || 2;
+  const sdt = f.sameDecThreshold || 4;
+  const gt = f.gapThreshold || 30;
+  const ct = f.consecThreshold || 3;
+  const sut = f.sameUnitThreshold || 4;
+  const minDec = f.minDecades || 3;
+  const maxDec = f.maxDecades || 5;
+  const bonusLabel = f.hasStars ? 'étoiles' : (f.game === 'loto' ? 'N° Chance' : 'N° Dream');
+
   const absolute = [
     {
       active: true,
       name: 'Exclure les combinaisons déjà tirées',
-      detail: 'Balles + étoiles identiques',
+      detail: 'Balles + ' + bonusLabel + ' identiques',
       evidence: fmt(f.seenFull.size) + ' exclues · ' + f.dupeFull.length + ' doublon(s)',
     },
     {
-      active: true,
+      active: f.rejectAP,
       name: 'Pas de progression arithmétique',
       detail: 'Type 1-2-3-4-5 ou 5-10-15-20-25',
-      evidence: '0 sur ' + fmt(f.totalDraws),
+      evidence: f.countAP + ' fois sur ' + fmt(f.totalDraws),
     },
     {
-      active: true,
-      name: 'Pas les 5 balles dans la même dizaine',
-      detail: 'Jamais 5 balles dans la même tranche de 10',
-      evidence: '0 sur ' + fmt(f.totalDraws),
+      active: f.rejectSameDecade,
+      name: 'Pas toutes les balles dans la même dizaine',
+      detail: 'Jamais ' + bl + ' balles dans la même tranche de 10',
+      evidence: f.countSameDecade + ' fois sur ' + fmt(f.totalDraws),
     },
   ];
 
@@ -2521,77 +1228,81 @@ function renderRules() {
     },
     {
       active: true,
-      name: 'Parité mixte (au moins une paire et une impaire)',
-      detail: 'On écarte les extrêmes 0p/5i et 5p/0i',
+      name: 'Parité mixte',
+      detail: 'On écarte les extrêmes (tout pair / tout impair)',
       evidence: p(1 - f.pctParityExtreme) + '% des tirages',
     },
     {
       active: true,
-      name: '3 ou 4 dizaines couvertes',
-      detail: 'Ni concentré sur 2 dizaines, ni étalé sur 5',
+      name: minDec + ' à ' + maxDec + ' dizaines couvertes',
+      detail: 'Ni trop concentré, ni trop étalé',
       evidence: p(f.pctDecadesCommon) + '% des tirages',
     },
     {
       active: true,
-      name: 'Au moins un numéro > 31',
-      detail: 'Évite le biais « anniversaire »',
+      name: 'Au moins un numéro > ' + hp,
+      detail: 'Équilibre haut de grille',
       evidence: p(1 - f.pctBirthdayOnly) + '% des tirages',
     },
     {
       active: true,
-      name: 'Au moins un numéro ≤ 31',
-      detail: 'Équilibre avec la première moitié',
+      name: 'Au moins un numéro ≤ ' + hp,
+      detail: 'Équilibre bas de grille',
       evidence: p(1 - f.pctAllAbove31) + '% des tirages',
     },
     {
       active: true,
-      name: 'Pas 3 numéros consécutifs',
-      detail: 'Type 19-20-21',
+      name: 'Pas ' + ct + ' numéros consécutifs',
+      detail: 'Type 19-20-' + (ct > 3 ? '21-22' : '21'),
       evidence: p(1 - f.pct3Consec) + '% des tirages',
     },
     {
       active: true,
-      name: 'Max 1 paire consécutive',
-      detail: 'Pas 19-20 + 35-36 dans le même tirage',
+      name: 'Max ' + (pt - 1) + ' paire' + (pt > 2 ? 's' : '') + ' consécutive' + (pt > 2 ? 's' : ''),
+      detail: 'Seuil adapté à ' + bl + ' boules sur ' + bm,
       evidence: p(1 - f.pct2Pairs) + '% des tirages',
     },
     {
       active: true,
-      name: 'Max 3 balles dans une même dizaine',
-      detail: 'Pas 4 numéros concentrés sur une tranche',
+      name: 'Max ' + (sdt - 1) + ' balles dans une même dizaine',
+      detail: 'Seuil adapté à ' + bl + ' boules sur ' + bm,
       evidence: p(1 - f.pct4SameDec) + '% des tirages',
     },
     {
       active: true,
-      name: 'Max 3 balles avec le même chiffre unité',
+      name: 'Max ' + (sut - 1) + ' balles avec le même chiffre unité',
       detail: 'Pas 7-17-27-37 par exemple',
       evidence: p(1 - f.pct4SameUnit) + '% des tirages',
     },
     {
       active: true,
-      name: 'Pas de trou de 30+ entre balles',
-      detail: 'Distribution sans saut énorme',
+      name: 'Pas de trou de ' + gt + '+ entre balles',
+      detail: 'Seuil adapté à la grille 1–' + bm,
       evidence: p(1 - f.pctBigGap) + '% des tirages',
     },
     {
       active: true,
-      name: 'Équilibre moitié basse / haute (1-25 vs 26-50)',
-      detail: 'Ni 5/0 ni 0/5',
+      name: 'Équilibre 1–' + hp + ' / ' + (hp+1) + '–' + bm,
+      detail: 'Pas tout en bas ou tout en haut',
       evidence: p(1 - f.pctHalfExtreme) + '% des tirages',
     },
-    {
+  ];
+
+  // Règles étoiles (EuroMillions uniquement)
+  if (f.hasStars) {
+    core.push({
       active: true,
       name: 'Somme étoiles ∈ [' + f.starSumP5 + ', ' + f.starSumP95 + ']',
       detail: 'Bornes p5–p95',
       evidence: '90% des tirages',
-    },
-    {
+    });
+    core.push({
       active: true,
       name: 'Étoiles pas aux extrêmes (écart < 11)',
       detail: 'Exclut par ex. la combinaison 1 + 12',
       evidence: p(1 - f.pctStarsOppose) + '% des tirages',
-    },
-  ];
+    });
+  }
 
   const renderBlock = (container, items) => {
     container.innerHTML = '';
@@ -2612,7 +1323,10 @@ function renderRules() {
 
 // --- scraping : cagnotte prochain tirage (FDJ) ----------------------
 
-const NEXT_DRAW_URL = 'https://www.fdj.fr/jeux-de-tirage/euromillions-my-million/';
+const NEXT_DRAW_URLS = {
+  euromillions: 'https://www.fdj.fr/jeux-de-tirage/euromillions-my-million/',
+  loto: 'https://www.fdj.fr/jeux-de-tirage/loto?board=0',
+};
 // Page avec les vrais jackpots (en €) des tirages récents.
 // On utilise la version anglaise /results car elle expose des chiffres précis
 // au format "Jackpot: €48,175,066" dès que le tirage est connu.
@@ -2712,21 +1426,29 @@ function parseNextDraw(html) {
 }
 
 async function fetchNextDrawInfo() {
-  const cached = cacheGet(CACHE_KEYS.NEXT_DRAW, CACHE_TTL.NEXT_DRAW);
+  const game = state.currentGame;
+  const url = NEXT_DRAW_URLS[game];
+  if (!url) throw new Error('Pas de cagnotte pour ' + game);
+
+  const cacheKey = CACHE_KEYS.NEXT_DRAW + ':' + game;
+  const cached = cacheGet(cacheKey, CACHE_TTL.NEXT_DRAW);
   if (cached && cached.amountEur) {
-    console.log('[EuroAffûté] prochain tirage depuis cache');
+    console.log('[EuroAffûté] prochain tirage ' + game + ' depuis cache');
     return cached;
   }
-  const html = await fetchViaProxy(NEXT_DRAW_URL);
+  const html = await fetchViaProxy(url);
   const parsed = parseNextDraw(html);
   if (!parsed.amountEur) throw new Error('montant introuvable dans la page FDJ');
-  cacheSet(CACHE_KEYS.NEXT_DRAW, parsed);
+  cacheSet(cacheKey, parsed);
   return parsed;
 }
 
 async function renderNextDraw() {
   const el = document.getElementById('nextDrawBody');
   if (!el) return;
+  const game = state.currentGame;
+  if (!NEXT_DRAW_URLS[game]) return;
+
   try {
     const info = await fetchNextDrawInfo();
     let meta = '';
@@ -2734,10 +1456,11 @@ async function renderNextDraw() {
       meta = info.nextDay.charAt(0).toUpperCase() + info.nextDay.slice(1);
       if (info.nextDate) meta += ' ' + info.nextDate;
     }
-    // Si c'est le minimum garanti (17 M€), on ajoute un contexte discret
-    const isFresh = Math.round(info.amountEur / 1e6) === 17;
-    if (isFresh) {
-      meta += (meta ? ' · ' : '') + '<span class="nd-rollover" style="border-color:var(--green); color:var(--green);">jackpot frais (repart à 17 M€)</span>';
+    // Contexte "jackpot frais" selon le jeu
+    const freshAmounts = { euromillions: 17, loto: 2 };
+    const freshM = freshAmounts[game];
+    if (freshM && Math.round(info.amountEur / 1e6) === freshM) {
+      meta += (meta ? ' · ' : '') + '<span class="nd-rollover" style="border-color:var(--green); color:var(--green);">jackpot frais (repart à ' + freshM + ' M€)</span>';
     }
 
     el.innerHTML =
@@ -2746,7 +1469,7 @@ async function renderNextDraw() {
         '<div class="next-draw-meta">' + (meta || '&nbsp;') + '</div>' +
       '</div>';
   } catch (err) {
-    console.warn('[EuroAffûté] next draw :', err.message);
+    console.warn('[EuroAffûté] next draw ' + game + ' :', err.message);
     el.innerHTML = '<div class="next-draw-err">Cagnotte indisponible (scraping fdj.fr via proxy CORS).</div>';
   }
 }
@@ -3123,7 +1846,7 @@ async function renderLatest() {
   const outcomeReset = document.getElementById('latestOutcome');
   if (outcomeReset) outcomeReset.innerHTML = '';
 
-  // Balles et étoiles
+  // Balles et étoiles/bonus
   const ballsEl = document.getElementById('latestBalls');
   ballsEl.innerHTML = '';
   for (const n of latest.balls) {
@@ -3136,10 +1859,17 @@ async function renderLatest() {
   sep.className = 'latest-sep';
   sep.textContent = '✦';
   ballsEl.appendChild(sep);
-  for (const n of latest.stars) {
+  if (state.currentGame === 'euromillions' && latest.stars) {
+    for (const n of latest.stars) {
+      const el = document.createElement('div');
+      el.className = 'latest-ball star';
+      el.textContent = n;
+      ballsEl.appendChild(el);
+    }
+  } else if (latest.bonus !== undefined) {
     const el = document.createElement('div');
-    el.className = 'latest-ball star';
-    el.textContent = n;
+    el.className = 'latest-ball bonus';
+    el.textContent = latest.bonus;
     ballsEl.appendChild(el);
   }
 
@@ -3149,37 +1879,55 @@ async function renderLatest() {
   const pairs = evenCount(latest.balls);
   const dc = decadesCovered(latest.balls);
   const mg = maxGap(latest.balls);
-  const ss = sum(latest.stars);
-  const lh = lowerHalfCount(latest.balls);
+  const ss = latest.stars ? sum(latest.stars) : latest.bonus || 0;
+  const hp = (state.filters && state.filters.halfPoint) || 25;
+  const lh = lowerHalfCount(latest.balls, hp);
 
   const prof = document.getElementById('latestProfile');
-  prof.innerHTML =
+  const ballCount = latest.balls.length;
+  let profileHtml =
     '<div><span class="li-label">Somme</span><span class="li-val">' + s + '</span></div>' +
     '<div><span class="li-label">Range</span><span class="li-val">' + r + '</span></div>' +
-    '<div><span class="li-label">Parité</span><span class="li-val">' + pairs + 'p/' + (5-pairs) + 'i</span></div>' +
+    '<div><span class="li-label">Parité</span><span class="li-val">' + pairs + 'p/' + (ballCount-pairs) + 'i</span></div>' +
     '<div><span class="li-label">Dizaines</span><span class="li-val">' + dc + '</span></div>' +
-    '<div><span class="li-label">Bas/Haut</span><span class="li-val">' + lh + '/' + (5-lh) + '</span></div>' +
-    '<div><span class="li-label">Max gap</span><span class="li-val">' + mg + '</span></div>' +
-    '<div><span class="li-label">Étoiles ∑</span><span class="li-val">' + ss + '</span></div>' +
-    '<div><span class="li-label">Écart ★</span><span class="li-val">' + (latest.stars[1]-latest.stars[0]) + '</span></div>';
+    '<div><span class="li-label">Bas/Haut</span><span class="li-val">' + lh + '/' + (ballCount-lh) + '</span></div>' +
+    '<div><span class="li-label">Max gap</span><span class="li-val">' + mg + '</span></div>';
+  if (state.currentGame === 'euromillions' && latest.stars) {
+    profileHtml +=
+      '<div><span class="li-label">Étoiles ∑</span><span class="li-val">' + ss + '</span></div>' +
+      '<div><span class="li-label">Écart ★</span><span class="li-val">' + (latest.stars[1]-latest.stars[0]) + '</span></div>';
+  } else if (latest.bonus !== undefined) {
+    const bonusLabel = state.currentGame === 'loto' ? 'N° Chance' : 'N° Dream';
+    profileHtml += '<div><span class="li-label">' + bonusLabel + '</span><span class="li-val">' + latest.bonus + '</span></div>';
+  }
+  prof.innerHTML = profileHtml;
 
   // Audit : on fait passer le tirage à travers nos filtres
   // (sauf le "pas déjà tirée" bien sûr, vu que c'est LE tirage)
   const f = state.filters;
-  const auditCombo = { balls: latest.balls, stars: latest.stars };
+  const auditCombo = { balls: latest.balls, stars: latest.stars || [], bonus: latest.bonus };
   const tests = [];
+  const lastBall = latest.balls[latest.balls.length - 1];
   tests.push({ ok: s >= f.sumP10 && s <= f.sumP90,   l: 'Somme cœur' });
   tests.push({ ok: r >= f.rangeP10 && r <= f.rangeP90, l: 'Range cœur' });
-  tests.push({ ok: pairs >= 1 && pairs <= 4,          l: 'Parité mixte' });
-  tests.push({ ok: dc >= 3 && dc <= 4,                l: '3–4 dizaines' });
-  tests.push({ ok: latest.balls[4] > 31,              l: '≥ 1 balle > 31' });
-  tests.push({ ok: latest.balls[0] <= 31,             l: '≥ 1 balle ≤ 31' });
-  tests.push({ ok: maxConsecutiveRun(latest.balls) < 3, l: 'Pas 3 consécutifs' });
-  tests.push({ ok: consecutivePairs(latest.balls) < 2, l: 'Max 1 paire' });
-  tests.push({ ok: maxBallsPerDecade(latest.balls) < 4, l: 'Max 3/dizaine' });
-  tests.push({ ok: mg < 30,                           l: 'Pas gap ≥ 30' });
-  tests.push({ ok: lh >= 1 && lh <= 4,                l: 'Équilibre bas/haut' });
-  tests.push({ ok: ss >= f.starSumP5 && ss <= f.starSumP95, l: 'Somme ★ cœur' });
+  tests.push({ ok: pairs >= 1 && pairs <= (ballCount - 1), l: 'Parité mixte' });
+  var minDec = (state.filters.minDecades || 3);
+  var maxDec = (state.filters.maxDecades || 5);
+  tests.push({ ok: dc >= minDec && dc <= maxDec,        l: minDec + '–' + maxDec + ' dizaines' });
+  var pt = (state.filters.pairsThreshold || 2);
+  var sdt = (state.filters.sameDecThreshold || 4);
+  var gt = (state.filters.gapThreshold || 30);
+  var ct = (state.filters.consecThreshold || 3);
+  tests.push({ ok: lastBall > hp,                      l: '≥ 1 balle > ' + hp });
+  tests.push({ ok: latest.balls[0] <= hp,              l: '≥ 1 balle ≤ ' + hp });
+  tests.push({ ok: maxConsecutiveRun(latest.balls) < ct, l: 'Pas ' + ct + ' consécutifs' });
+  tests.push({ ok: consecutivePairs(latest.balls) < pt, l: 'Max ' + (pt-1) + ' paire' + ((pt-1) > 1 ? 's' : '') });
+  tests.push({ ok: maxBallsPerDecade(latest.balls) < sdt, l: 'Max ' + (sdt-1) + '/dizaine' });
+  tests.push({ ok: mg < gt,                            l: 'Pas gap ≥ ' + gt });
+  tests.push({ ok: lh >= 1 && lh <= (ballCount - 1),  l: 'Équilibre bas/haut' });
+  if (latest.stars && latest.stars.length === 2) {
+    tests.push({ ok: ss >= f.starSumP5 && ss <= f.starSumP95, l: 'Somme ★ cœur' });
+  }
 
   const auditEl = document.getElementById('latestAudit');
 
@@ -3198,8 +1946,10 @@ async function renderLatest() {
     { ok: !tooManyMultiplesOf7(latest.balls),   l: '≤ 2 multiples de 7' },
     { ok: !tooManyMultiplesOf5(latest.balls),   l: '≤ 2 multiples de 5' },
     { ok: !hasGridAlignment(latest.balls),      l: 'Pas d\'alignement grille' },
-    { ok: !hasPopularStars(latest.stars),       l: '≥ 1 étoile > 7' },
   ];
+  if (latest.stars) {
+    contrarianTests.push({ ok: !hasPopularStars(latest.stars), l: '≥ 1 étoile > 7' });
+  }
   const passedContrarian = contrarianTests.filter(t => t.ok).length;
   const contrarianHtml =
     '<div class="audit-separator">Contre-tendance <span>' + passedContrarian + '/' + contrarianTests.length + '</span></div>' +
@@ -3224,179 +1974,99 @@ async function renderLatest() {
       '<span class="tag fail">' + passed + '/' + tests.length + '</span>' + contrarianNote;
   }
 
-  // Gains du tirage — on tente d'abord de récupérer les vrais chiffres depuis
-  // la page /fr/resultats (jackpot en € précis, source officielle).
+  // Gains du tirage — les données sont directement dans le JSON FDJ
   const prizesEl = document.getElementById('latestPrizes');
-  prizesEl.innerHTML = '<div class="latest-prize-main" style="color:var(--text-faint); font-size:1rem; font-style:italic;">Chargement…</div>';
+  prizesEl.innerHTML = '';
 
-  let realJackpot = null;
-  try {
-    console.log('[EuroAffûté] recherche du vrai jackpot pour la date', latest.date);
-    // 1. On tente d'abord la page spécifique du tirage (plus fiable et à jour)
-    const single = await fetchSingleDrawJackpot(latest.date);
-    if (single) {
-      realJackpot = single;
-      console.log('[EuroAffûté] ✓ jackpot via page individuelle :', realJackpot);
-    } else {
-      // 2. Fallback : la liste globale des résultats
-      console.log('[EuroAffûté] page individuelle sans données, essai de la liste globale…');
-      const recent = await fetchRecentJackpots();
-      const dates = Object.keys(recent);
-      console.log('[EuroAffûté] ' + dates.length + ' jackpots scrapés. Dates :', dates.slice(0, 5).join(', ') + (dates.length > 5 ? '…' : ''));
-      if (recent[latest.date]) {
-        realJackpot = recent[latest.date];
-        console.log('[EuroAffûté] ✓ jackpot via liste :', realJackpot);
-      } else {
-        console.warn('[EuroAffûté] ✗ pas de jackpot pour', latest.date, '(la date n\'est pas dans la liste scrapée)');
-      }
-    }
-  } catch (err) {
-    console.warn('[EuroAffûté] scraping jackpot échoué :', err.message);
-  }
+  // Affichage des gains depuis les données FDJ (déjà dans le JSON)
+  if (latest.prizes && latest.prizes.length) {
+    const rank1 = latest.prizes.find(p => p.rank === 1);
+    const winners1 = rank1 ? (rank1.winners || rank1.winnersEu || 0) : 0;
+    const prize1 = rank1 ? rank1.prize : 0;
 
-  if (realJackpot) {
-    const fromSecrets = realJackpot.source === 'secretsdujeu';
-    const apiJp = latest.prizes && latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
-    const apiWinners = apiJp ? apiJp.winners : 0;
-
-    // Mention "dont X en France" selon le nb de gagnants France vs total
-    function frDetail(totalWinners) {
-      const fr = realJackpot.frWinners;
-      if (fr === null || fr === undefined) return '';
-      if (fr === 0) return ' (aucun 🇫🇷)';
-      if (fr === totalWinners) return fr === 1 ? ' 🇫🇷' : ' (tous 🇫🇷)';
-      return ' (dont ' + fr + ' 🇫🇷)';
-    }
-
-    // ---- Normalise jackpot : toujours {total, perWinner, winners} ou null ----
-    let jackpotTotal = null;
-    let jackpotPerWinner = null;
-    let jackpotWinners = null;
-
-    if (realJackpot.won && realJackpot.jackpotPerWinner && realJackpot.jackpotWinners) {
-      // Cas idéal : breakdown complet depuis secretsdujeu
-      jackpotTotal = realJackpot.jackpotPerWinner * realJackpot.jackpotWinners;
-      jackpotPerWinner = realJackpot.jackpotPerWinner;
-      jackpotWinners = realJackpot.jackpotWinners;
-    } else if (realJackpot.won && fromSecrets) {
-      // Headline seul : jackpot = total
-      jackpotTotal = realJackpot.jackpot;
-      jackpotWinners = apiWinners || 1;
-      jackpotPerWinner = Math.round(jackpotTotal / jackpotWinners);
-    } else if (realJackpot.won) {
-      // euro-millions.com : jackpot = part par gagnant
-      jackpotPerWinner = realJackpot.jackpot;
-      jackpotWinners = apiWinners || 1;
-      jackpotTotal = jackpotPerWinner * jackpotWinners;
-    } else if (apiWinners > 0) {
-      // Scrape dit "pas gagné" mais API voit des gagnants 5+2 → probablement partagé
-      jackpotPerWinner = realJackpot.jackpot;
-      jackpotWinners = apiWinners;
-      jackpotTotal = jackpotPerWinner * jackpotWinners;
-    }
-    const isWon = jackpotTotal !== null;
-
-    // ---- Badge d'issue affiché à droite de "Dernier tirage" ----
+    // Badge d'issue
     const outcomeEl = document.getElementById('latestOutcome');
+    const isED = state.currentGame === 'eurodreams';
     if (outcomeEl) {
-      if (isWon) {
-        const fr = realJackpot.frWinners;
-        const flag = (fr && fr > 0) ? ' <span class="flag">🇫🇷</span>' : '';
-        outcomeEl.innerHTML = '<span class="outcome-badge won">Jackpot gagné' + flag + '</span>';
+      if (latest.hasWinner) {
+        const frWinners = rank1 && rank1.winnersFr ? rank1.winnersFr : 0;
+        const flag = frWinners > 0 ? ' <span class="flag">🇫🇷</span>' : '';
+        if (isED) {
+          const w = (rank1 && (rank1.winnersEu || rank1.winners)) || 0;
+          const renteOrCapital = w > 3
+            ? 'Capital partagé (' + w + ' gagnants)' + flag
+            : 'Rente attribuée' + (w > 1 ? ' (' + w + ' gagnants)' : '') + flag;
+          outcomeEl.innerHTML = '<span class="outcome-badge won">' + renteOrCapital + '</span>';
+        } else {
+          outcomeEl.innerHTML = '<span class="outcome-badge won">Jackpot gagné' + flag + '</span>';
+        }
       } else {
-        outcomeEl.innerHTML = '<span class="outcome-badge not-won">Jackpot non remporté</span>';
+        outcomeEl.innerHTML = isED
+          ? '<span class="outcome-badge not-won">Aucun gagnant au rang 1</span>'
+          : '<span class="outcome-badge not-won">Jackpot non remporté</span>';
       }
     }
 
-    // ---- Total distribué : jackpot (si gagné) + tous les autres rangs ----
-    // On utilise l'API pour les rangs < 5+2 (prize × winners). Le rang 5+2 de l'API
-    // a un bug (montant divisé), donc on le remplace par le vrai jackpot scrapé.
-    let otherTiersTotal = 0;
-    if (latest.prizes && latest.prizes.length) {
-      for (const p of latest.prizes) {
-        if (p.matched_numbers === 5 && p.matched_stars === 2) continue;
-        otherTiersTotal += (p.prize || 0) * (p.winners || 0);
-      }
-    }
-    const totalDistributed = otherTiersTotal + (isWon ? jackpotTotal : 0);
-
-    // ---- Construit le rendu ----
-    let line;
-    if (isWon) {
-      const frText = frDetail(jackpotWinners);
-      let subText;
-      if (jackpotWinners === 1) {
-        const who = realJackpot.frWinners === 1
-          ? '1 gagnant unique 🇫🇷'
-          : '1 seul gagnant au rang 5+2';
-        subText = 'Dont jackpot <strong>' + formatMoney(jackpotTotal) + '</strong> · ' + who;
-      } else {
-        subText = 'Dont jackpot <strong>' + formatMoney(jackpotTotal) + '</strong> · ' +
-          jackpotWinners + ' gagnants 5+2' + frText + ' · ' + formatMoney(jackpotPerWinner) + ' chacun';
-      }
-      line = '<div class="latest-prize-main">' + formatMoney(totalDistributed) + '</div>' +
-        '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Total distribué aux gagnants</div>' +
-        '<div class="latest-prize-sub">' + subText + '</div>';
-    } else {
-      // Jackpot non remporté : seuls les rangs inférieurs ont distribué
-      const announcedJackpot = realJackpot.jackpot;
-      line = '<div class="latest-prize-main">' + formatMoney(otherTiersTotal) + '</div>' +
-        '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Distribués aux rangs secondaires</div>' +
-        '<div class="latest-prize-sub">Jackpot <strong>' + formatMoney(announcedJackpot) + '</strong> non remporté · reporté au tirage suivant</div>';
-    }
-
-    // ---- Nombre total de gagnants tous rangs confondus ----
-    let totalWinners = realJackpot.totalWinners;
-    if (!totalWinners && latest.prizes && latest.prizes.length) {
-      totalWinners = 0;
-      for (const p of latest.prizes) totalWinners += (p.winners || 0);
-    }
-    let extra = '';
-    if (totalWinners > 0) {
-      extra = '<div class="latest-prize-total">' +
-        '<strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus' +
-        '</div>';
-    }
-    // ---- Top 5 des rangs par montant distribué ----
-    const topRanks = buildTopRanksTable(latest.prizes, {
-      jackpotTotal: isWon ? jackpotTotal : 0,
-      jackpotPerWinner: isWon ? jackpotPerWinner : 0,
-    });
-
-    prizesEl.innerHTML = line + extra + topRanks;
-  } else if (latest.prizes && latest.prizes.length) {
-    // Pas de vrai jackpot scrapé : fallback API complet (données imparfaites)
-    const jp = latest.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
-    let otherTiersTotal = 0;
+    // Total distribué tous rangs
+    let totalDist = 0;
     let totalWinners = 0;
     for (const p of latest.prizes) {
-      totalWinners += (p.winners || 0);
-      if (p.matched_numbers === 5 && p.matched_stars === 2) continue;
-      otherTiersTotal += (p.prize || 0) * (p.winners || 0);
+      const w = p.winners || p.winnersEu || 0;
+      totalDist += (p.prize || 0) * w;
+      totalWinners += w;
     }
-    const apiJackpotTotal = jp && jp.winners > 0 ? (jp.prize * jp.winners) : 0;
-    const totalDistributed = otherTiersTotal + apiJackpotTotal;
 
-    let jpLine;
-    if (jp && jp.winners > 0) {
-      jpLine = '<div class="latest-prize-main">' + formatMoney(totalDistributed) + '</div>' +
+    let line;
+    if (isED) {
+      // EuroDreams : pas de jackpot progressif, rente fixe ou capital partagé
+      if (latest.hasWinner && winners1 > 0) {
+        const renteInfo = winners1 <= 3
+          ? '20 000 €/mois pendant 30 ans' + (winners1 > 1 ? ' × ' + winners1 + ' gagnants' : '')
+          : formatMoney(Math.round(21600000 / winners1)) + ' par gagnant (' + winners1 + ' gagnants · capital partagé)';
+        line = '<div class="latest-prize-main">' + formatMoney(totalDist) + '</div>' +
+          '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Total distribué aux gagnants</div>' +
+          '<div class="latest-prize-sub">Rang 1 : <strong>' + renteInfo + '</strong></div>';
+      } else {
+        line = '<div class="latest-prize-main">' + formatMoney(totalDist) + '</div>' +
+          '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Distribués aux rangs secondaires</div>' +
+          '<div class="latest-prize-sub">Aucun gagnant au rang 1</div>';
+      }
+    } else if (latest.hasWinner && prize1 > 0) {
+      line = '<div class="latest-prize-main">' + formatMoney(totalDist) + '</div>' +
         '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Total distribué aux gagnants</div>' +
-        '<div class="latest-prize-sub">Dont jackpot ≈ ' + formatMoney(apiJackpotTotal) + ' · ' +
-        (jp.winners === 1 ? '1 seul gagnant' : jp.winners + ' gagnants') + ' au 5+2</div>';
+        '<div class="latest-prize-sub">Dont jackpot <strong>' + formatMoney(prize1 * winners1) + '</strong> · ' +
+        (winners1 === 1 ? '1 seul gagnant' : winners1 + ' gagnants') + ' au ' + rankLabel(1) + '</div>';
     } else {
-      jpLine = '<div class="latest-prize-main">' + formatMoney(otherTiersTotal) + '</div>' +
+      const nonJackpotDist = totalDist - (prize1 * winners1);
+      line = '<div class="latest-prize-main">' + formatMoney(nonJackpotDist > 0 ? nonJackpotDist : totalDist) + '</div>' +
         '<div class="latest-prize-sub" style="color:var(--text-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem;">Distribués aux rangs secondaires</div>' +
         '<div class="latest-prize-sub">Jackpot non remporté · reporté au tirage suivant</div>';
     }
-    const topRanks = buildTopRanksTable(latest.prizes, {
-      jackpotTotal: apiJackpotTotal,
-      jackpotPerWinner: (jp && jp.winners > 0) ? jp.prize : 0,
+
+    let extra = '';
+    if (totalWinners > 0) {
+      extra = '<div class="latest-prize-total"><strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus</div>';
+    }
+
+    // Top rangs
+    const rankTotals = latest.prizes.map(p => {
+      const w = p.winners || p.winnersEu || 0;
+      return { label: rankLabel(p.rank), winners: w, perWinner: p.prize || 0, total: (p.prize || 0) * w };
     });
-    prizesEl.innerHTML = jpLine +
-      '<div class="latest-prize-total">' +
-      '<strong>' + fmt(totalWinners) + '</strong> gagnants tous rangs confondus' +
-      '<div style="margin-top:0.4rem; font-size:0.7rem; color:var(--text-faint); font-style:italic;">Chiffres issus de l\'API (agrégats européens).</div>' +
-      '</div>' + topRanks;
+    const top5 = rankTotals.filter(r => r.total > 0).sort((a, b) => b.total - a.total).slice(0, 5);
+    let topHtml = '';
+    if (top5.length) {
+      topHtml = '<div class="rank-breakdown"><div class="rank-breakdown-title">Top rangs par montant distribué</div>' +
+        '<table class="rank-table"><thead><tr><th>Rang</th><th>Total distribué</th><th>Gagnants</th><th>Par gagnant</th></tr></thead><tbody>';
+      for (const r of top5) {
+        topHtml += '<tr><td class="rank-label"><strong>' + r.label + '</strong></td>' +
+          '<td class="rank-total">' + formatMoney(r.total) + '</td>' +
+          '<td>' + fmt(r.winners) + '</td><td>' + formatMoney(r.perWinner) + '</td></tr>';
+      }
+      topHtml += '</tbody></table></div>';
+    }
+
+    prizesEl.innerHTML = line + extra + topHtml;
   } else {
     prizesEl.innerHTML = '<div class="latest-prize-main" style="color:var(--text-dim); font-size:1rem">Données indisponibles</div>';
   }
@@ -3409,12 +2079,20 @@ function renderGains() {
   const big = biggestJackpot(state.draws);
   const noJp = drawsWithoutJackpot(state.draws);
   const nDraws = state.draws.length;
+  const isED = state.currentGame === 'eurodreams';
+
+  // Labels dynamiques
+  const bigLabel = document.getElementById('gainBiggestLabel');
+  const noJpLabel = document.getElementById('gainNoJackpotLabel');
+  if (bigLabel) bigLabel.textContent = isED ? 'Plus gros gain rang 1' : 'Plus gros jackpot touché';
+  if (noJpLabel) noJpLabel.textContent = isED ? 'Tirages sans gagnant rang 1' : 'Tirages sans gagnant jackpot';
 
   const tEl = document.getElementById('gainTotal');
   const tSub = document.getElementById('gainTotalSub');
   if (total > 0) {
     tEl.textContent = formatMoney(total);
-    tSub.innerHTML = 'sur ' + fmt(nDraws) + ' tirages · agrégats européens (peuvent différer des chiffres FDJ)';
+    const scope = state.currentGame === 'loto' ? 'chiffres FDJ France' : 'agrégats européens (peuvent différer des chiffres FDJ)';
+    tSub.innerHTML = 'sur ' + fmt(nDraws) + ' tirages · ' + scope;
   } else {
     tEl.textContent = '—';
     tSub.textContent = 'données de gains indisponibles';
@@ -3423,8 +2101,14 @@ function renderGains() {
   const bEl = document.getElementById('gainBiggest');
   const bSub = document.getElementById('gainBiggestSub');
   if (big.draw) {
-    bEl.textContent = formatMoney(big.amount);
-    bSub.textContent = 'par gagnant · le ' + big.draw.date + ' · ' + big.draw.balls.join('·') + ' ✦ ' + big.draw.stars.join('·');
+    if (isED) {
+      bEl.textContent = '20 000 €/mois';
+      bSub.textContent = 'rente de 30 ans · ' + big.draw.date + ' · ' + big.draw.balls.join('·') + ' ✦ ' + big.draw.bonus;
+    } else {
+      bEl.textContent = formatMoney(big.amount);
+      const starsOrBonus = big.draw.stars ? big.draw.stars.join('·') : big.draw.bonus;
+      bSub.textContent = 'par gagnant · le ' + big.draw.date + ' · ' + big.draw.balls.join('·') + ' ✦ ' + starsOrBonus;
+    }
   } else {
     bEl.textContent = '—';
     bSub.textContent = '';
@@ -3434,7 +2118,9 @@ function renderGains() {
   const nSub = document.getElementById('gainNoJackpotSub');
   nEl.textContent = fmt(noJp);
   const pct = Math.round(100 * noJp / nDraws);
-  nSub.textContent = pct + '% des tirages · cagnotte reportée';
+  nSub.textContent = isED
+    ? pct + '% des tirages · pas de gagnant au rang 1'
+    : pct + '% des tirages · cagnotte reportée';
 }
 
 // --- rendu des fréquences (heatmap) ---------------------------------
@@ -3448,18 +2134,20 @@ function renderFrequencies() {
   if (expEl) expEl.textContent = Math.round(expected);
 
   // Amplitude maximale observée pour calibrer la gamme de couleurs
+  const ballMax = freq.ballMax || 50;
   let maxAbsDelta = 0;
-  for (let n = 1; n <= 50; n++) {
+  for (let n = 1; n <= ballMax; n++) {
     const d = (freq.ballFreq[n] - expected) / expected;
     if (Math.abs(d) > maxAbsDelta) maxAbsDelta = Math.abs(d);
   }
-  // on ajoute un petit buffer pour que même les extrêmes ne saturent pas
   const ballScale = Math.max(0.08, maxAbsDelta);
 
-  // Rendu des boules (1..50)
+  // Rendu des boules
   const ballsEl = document.getElementById('freqBalls');
   ballsEl.innerHTML = '';
-  for (let n = 1; n <= 50; n++) {
+  // Adapter le grid-template-columns selon le nombre de boules
+  ballsEl.style.gridTemplateColumns = 'repeat(' + Math.min(10, ballMax) + ', 1fr)';
+  for (let n = 1; n <= ballMax; n++) {
     const count = freq.ballFreq[n];
     const delta = (count - expected) / expected;
     const cell = document.createElement('div');
@@ -3476,39 +2164,80 @@ function renderFrequencies() {
     ballsEl.appendChild(cell);
   }
 
-  // Rendu des étoiles (1..12), échelle calibrée par étoile selon son attendu
+  // Rendu des étoiles / bonus selon le jeu
   const starsEl = document.getElementById('freqStars');
   starsEl.innerHTML = '';
-  let starMaxAbs = 0;
-  for (let n = 1; n <= 12; n++) {
-    const d = (freq.starFreq[n] - freq.starExpected[n]) / freq.starExpected[n];
-    if (Math.abs(d) > starMaxAbs) starMaxAbs = Math.abs(d);
-  }
-  const starScale = Math.max(0.08, starMaxAbs);
-  for (let n = 1; n <= 12; n++) {
-    const count = freq.starFreq[n];
-    const exp = freq.starExpected[n];
-    const delta = (count - exp) / exp;
-    const cell = document.createElement('div');
-    cell.className = 'freq-cell';
-    cell.style.background = colorForDelta(delta, starScale);
-    cell.style.color = textForDelta(delta, starScale);
-    const deltaPct = Math.round(delta * 100);
-    const sign = deltaPct >= 0 ? '+' : '';
-    cell.title = 'Étoile ' + n + ' : sortie ' + count + ' fois · attendu ' +
-      Math.round(exp) + ' · écart ' + sign + deltaPct + '%';
-    cell.innerHTML =
-      '<div class="freq-num">' + n + '</div>' +
-      '<div class="freq-count">' + count + '</div>';
-    starsEl.appendChild(cell);
-  }
-
-  // Caveat sur l'étoile 12
+  const starsBlock = starsEl.closest('.freq-block');
   const caveat = document.getElementById('freqStarsCaveat');
-  if (caveat) {
-    caveat.textContent = 'L\'étoile 12 a rejoint le tirage le 24/09/2016, donc ' +
-      freq.drawsEra12 + ' tirages sur ' + (freq.drawsEra11 + freq.drawsEra12) +
-      ' seulement — l\'attendu affiché tient compte de cette différence.';
+  const cfg = (state.cache[state.currentGame] && state.cache[state.currentGame].config) || {};
+
+  if (state.currentGame === 'euromillions') {
+    // EuroMillions : étoiles (1..12), échelle calibrée par étoile selon son attendu
+    if (starsBlock) starsBlock.style.display = '';
+    starsEl.style.gridTemplateColumns = 'repeat(12, 1fr)';
+    let starMaxAbs = 0;
+    for (let n = 1; n <= 12; n++) {
+      const d = (freq.starFreq[n] - freq.starExpected[n]) / freq.starExpected[n];
+      if (Math.abs(d) > starMaxAbs) starMaxAbs = Math.abs(d);
+    }
+    const starScale = Math.max(0.08, starMaxAbs);
+    for (let n = 1; n <= 12; n++) {
+      const count = freq.starFreq[n];
+      const exp = freq.starExpected[n];
+      const delta = (count - exp) / exp;
+      const cell = document.createElement('div');
+      cell.className = 'freq-cell';
+      cell.style.background = colorForDelta(delta, starScale);
+      cell.style.color = textForDelta(delta, starScale);
+      const deltaPct = Math.round(delta * 100);
+      const sign = deltaPct >= 0 ? '+' : '';
+      cell.title = 'Étoile ' + n + ' : sortie ' + count + ' fois · attendu ' +
+        Math.round(exp) + ' · écart ' + sign + deltaPct + '%';
+      cell.innerHTML =
+        '<div class="freq-num">' + n + '</div>' +
+        '<div class="freq-count">' + count + '</div>';
+      starsEl.appendChild(cell);
+    }
+    // Caveat sur l'étoile 12
+    if (caveat) {
+      caveat.textContent = 'L\'étoile 12 a rejoint le tirage le 24/09/2016, donc ' +
+        freq.drawsEra12 + ' tirages sur ' + (freq.drawsEra11 + freq.drawsEra12) +
+        ' seulement — l\'attendu affiché tient compte de cette différence.';
+    }
+  } else {
+    // LOTO / EuroDreams : bonus frequencies
+    const bonusMax = cfg.bonusMax || 10;
+    const bonusName = cfg.bonusName || 'Bonus';
+    const totalDraws = state.draws.length;
+    const bonusExpected = totalDraws / bonusMax;
+
+    if (starsBlock) starsBlock.style.display = '';
+    starsEl.style.gridTemplateColumns = 'repeat(' + bonusMax + ', 1fr)';
+    if (caveat) caveat.textContent = '';
+
+    let bonusMaxAbs = 0;
+    for (let n = 1; n <= bonusMax; n++) {
+      const count = freq.bonusFreq[n] || 0;
+      const d = (count - bonusExpected) / bonusExpected;
+      if (Math.abs(d) > bonusMaxAbs) bonusMaxAbs = Math.abs(d);
+    }
+    const bonusScale = Math.max(0.08, bonusMaxAbs);
+    for (let n = 1; n <= bonusMax; n++) {
+      const count = freq.bonusFreq[n] || 0;
+      const delta = (count - bonusExpected) / bonusExpected;
+      const cell = document.createElement('div');
+      cell.className = 'freq-cell';
+      cell.style.background = colorForDelta(delta, bonusScale);
+      cell.style.color = textForDelta(delta, bonusScale);
+      const deltaPct = Math.round(delta * 100);
+      const sign = deltaPct >= 0 ? '+' : '';
+      cell.title = bonusName + ' ' + n + ' : sorti ' + count + ' fois · attendu ' +
+        Math.round(bonusExpected) + ' · écart ' + sign + deltaPct + '%';
+      cell.innerHTML =
+        '<div class="freq-num">' + n + '</div>' +
+        '<div class="freq-count">' + count + '</div>';
+      starsEl.appendChild(cell);
+    }
   }
 }
 
@@ -3522,7 +2251,8 @@ function renderRemainingCombos() {
 
   // Défère sur la tick suivante pour ne pas bloquer le rendu initial
   setTimeout(() => {
-    const TOTAL_COMBOS = 139838160;  // C(50,5) × C(12,2)
+    const cfg = (state.cache[state.currentGame] && state.cache[state.currentGame].config) || {};
+    const TOTAL_COMBOS = cfg.totalCombinations || 139838160;
     const SAMPLE_SIZE = 50000;       // compromis vitesse/précision (±0.3%)
 
     let passed = 0;
@@ -3541,7 +2271,103 @@ function renderRemainingCombos() {
 
     el.innerHTML = display + ' <span style="font-weight:400; color:var(--text-dim);">(' +
       pctDropped.toFixed(0) + ' % éliminées)</span>';
+
+    // Met à jour le texte de la section "Note d'honnêteté"
+    const gameNames = { euromillions: 'L\'EuroMillions', loto: 'Le LOTO', eurodreams: 'EuroDreams' };
+    const gameName = gameNames[state.currentGame] || 'Ce jeu';
+    const topPrize = state.currentGame === 'eurodreams'
+      ? 'la rente de 20 000 €/mois'
+      : 'le jackpot';
+    const realityEl = document.getElementById('realityText1');
+    if (realityEl) {
+      realityEl.innerHTML = gameName + ' compte <strong>' + fmt(TOTAL_COMBOS) + '</strong> combinaisons possibles. Même ' +
+        'avec nos filtres, il reste <strong>' + display + '</strong> ' +
+        'en lice : la réduction est <strong>marginale</strong> — on reste à une ' +
+        'chance sur des millions de décrocher ' + topPrize + '.';
+    }
   }, 0);
+}
+
+// --- mise à jour des textes dynamiques selon le jeu -------------------
+
+function updateDynamicTexts() {
+  const game = state.currentGame;
+  const cfg = (state.cache[game] && state.cache[game].config) || {};
+  const nDraws = state.draws.length;
+  const gameNames = { euromillions: 'EuroMillions', loto: 'LOTO', eurodreams: 'EuroDreams' };
+  const gn = gameNames[game] || game;
+  const ballMax = cfg.ballMax || 50;
+  const ballCount = cfg.ballCount || 5;
+  const gridCost = cfg.gridCost || 2.50;
+  const drawsPerWeek = { euromillions: 2, loto: 3, eurodreams: 2 };
+  const dpw = drawsPerWeek[game] || 2;
+
+  // Première date des données (cherche la date ISO min valide)
+  const validDates = state.draws.map(d => d.date).filter(d => /^\d{4}-/.test(d)).sort();
+  const oldest = validDates.length ? validDates[0] : '';
+  const firstYear = oldest ? oldest.slice(0, 4) : '?';
+  const years = oldest ? (new Date().getFullYear() - parseInt(firstYear, 10)) : '?';
+
+  // Sous-titre règles dures
+  const sub = document.getElementById('rulesHardSub');
+  if (sub) sub.textContent = '— ce qui n\'est jamais arrivé en ' + years + ' ans';
+
+  // Eyebrow gains
+  const ge = document.getElementById('gainsEyebrow');
+  if (ge) ge.textContent = 'Gains · depuis ' + firstYear;
+
+  // Titre fréquences
+  const ft = document.getElementById('freqTitle');
+  if (ft) ft.innerHTML = (years > 5 ? years + ' ans' : nDraws + ' tirages') + ' de <em>régularité</em>.';
+
+  // Titre grille fréquences
+  const fbt = document.getElementById('freqBallsTitle');
+  if (fbt) fbt.textContent = 'Les ' + ballMax + ' boules';
+
+  // Titre grille étoiles / bonus
+  const fst = document.getElementById('freqStarsTitle');
+  if (fst) {
+    if (game === 'euromillions') {
+      fst.innerHTML = 'Les ' + (cfg.starMax || 12) + ' étoiles <small>fréquences ajustées par période de disponibilité</small>';
+    } else {
+      const bonusMax = cfg.bonusMax || 10;
+      const bonusName = cfg.bonusName || 'Bonus';
+      fst.innerHTML = 'Les ' + bonusMax + ' ' + bonusName;
+    }
+  }
+
+  // Timeline note (jackpot)
+  const tn = document.getElementById('timelineNote');
+  if (tn) {
+    if (game === 'euromillions') {
+      tn.textContent = 'Chaque barre = un tirage. Le jackpot enfle tant que personne ne rafle le 5+2, puis retombe à 17 M€ dès qu\'un gagnant s\'en empare.';
+    } else if (game === 'loto') {
+      tn.textContent = 'Chaque barre = un tirage. Le jackpot enfle tant que personne ne rafle le 5+1, puis retombe à 2 M€ dès qu\'un gagnant s\'en empare.';
+    }
+  }
+
+  // Contrarian rules count & star rule visibility
+  const crc = document.getElementById('contrarianRulesCount');
+  const csr = document.getElementById('contrarianStarRule');
+  if (game === 'euromillions') {
+    if (crc) crc.textContent = 'Les 6 règles appliquées';
+    if (csr) csr.style.display = '';
+  } else {
+    if (crc) crc.textContent = 'Les 5 règles appliquées';
+    if (csr) csr.style.display = 'none';
+  }
+
+  // Coût portefeuille
+  const costEl = document.getElementById('portfolioCostText');
+  if (costEl) {
+    const costPerDraw = 10 * gridCost;
+    const costPerYear = costPerDraw * dpw * 52;
+    costEl.innerHTML = '10 grilles × ' + gridCost.toFixed(2).replace('.', ',') + ' € = ' +
+      fmt(costPerDraw) + ' € par tirage. ' + dpw + ' tirages par semaine = ' +
+      fmt(Math.round(costPerYear)) + ' € par an. ' +
+      'L\'espérance mathématique de gain se situe autour de 50 % de la mise — ' +
+      'vous perdrez statistiquement ~' + fmt(Math.round(costPerYear / 2)) + ' € par an.';
+  }
 }
 
 // --- rendu de la sparkline des 15 derniers jackpots ------------------
@@ -3557,57 +2383,91 @@ async function renderJackpotTimeline() {
     chartEl.innerHTML = '<div class="jt-status err">' + msg + '</div>';
   };
 
-  // On fetch chaque tirage individuellement : les pages par-date (secretsdujeu
-  // puis euro-millions.com) sont plus fiables que le parse de la liste globale,
-  // qui a un format instable. Cache per-date 24h, donc après la 1re visite les
-  // 15 appels sont quasi instantanés.
   const sortedDraws = state.draws.slice().sort((a, b) => a.date.localeCompare(b.date));
   const last15 = sortedDraws.slice(-15);
-
-  chartEl.innerHTML = '<div class="jt-status">Récupération des jackpots des 15 derniers tirages…</div>';
-  const scraped = await Promise.all(
-    last15.map(d => fetchSingleDrawJackpot(d.date).catch(err => {
-      console.warn('[EuroAffûté] timeline : scrape ' + d.date + ' échoué', err.message);
-      return null;
-    }))
-  );
+  const game = state.currentGame;
 
   const data = [];
-  for (let i = 0; i < last15.length; i++) {
-    const d = last15[i];
-    const s = scraped[i];
-    const won = d.hasWinner === true;
-    const p52 = d.prizes && d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
-    const winners = (p52 && p52.winners) || 0;
-    let jackpot = null;
 
-    if (s) {
-      if (won) {
-        // Tirage gagné : on veut le TOTAL distribué, pas la part par gagnant.
-        // secretsdujeu renvoie les deux, euro-millions.com juste la part.
-        if (s.jackpotPerWinner && s.jackpotWinners) {
-          jackpot = s.jackpotPerWinner * s.jackpotWinners;
-        } else if (s.jackpot && winners > 0) {
-          // `s.jackpot` ici est la part par gagnant (euro-millions.com) →
-          // × winners = total
-          jackpot = s.jackpot * winners;
+  if (game === 'euromillions') {
+    // EuroMillions : scraping des jackpots (secretsdujeu / euro-millions.com)
+    chartEl.innerHTML = '<div class="jt-status">Récupération des jackpots des 15 derniers tirages…</div>';
+    const scraped = await Promise.all(
+      last15.map(d => fetchSingleDrawJackpot(d.date).catch(err => {
+        console.warn('[EuroAffûté] timeline : scrape ' + d.date + ' échoué', err.message);
+        return null;
+      }))
+    );
+
+    for (let i = 0; i < last15.length; i++) {
+      const d = last15[i];
+      const s = scraped[i];
+      const won = d.hasWinner === true;
+      const p52 = d.prizes && d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
+      const winners = (p52 && p52.winners) || 0;
+      let jackpot = null;
+
+      if (s) {
+        if (won) {
+          if (s.jackpotPerWinner && s.jackpotWinners) {
+            jackpot = s.jackpotPerWinner * s.jackpotWinners;
+          } else if (s.jackpot && winners > 0) {
+            jackpot = s.jackpot * winners;
+          }
+        } else if (s.jackpot) {
+          jackpot = s.jackpot;
         }
-      } else if (s.jackpot) {
-        // Tirage reporté : `s.jackpot` est le jackpot annoncé
-        jackpot = s.jackpot;
+      }
+
+      if (jackpot === null && won && p52 && p52.prize && winners > 0) {
+        jackpot = p52.prize * winners;
+      }
+
+      if (jackpot !== null && jackpot > 0) {
+        data.push({ date: d.date, jackpot, won });
       }
     }
-
-    // Dernier recours : API (imparfait pour le 5+2 à cause du bug de moyennage)
-    if (jackpot === null && won && p52 && p52.prize && winners > 0) {
-      jackpot = p52.prize * winners;
-    }
-
-    if (jackpot !== null && jackpot > 0) {
-      data.push({ date: d.date, jackpot, won });
+  } else {
+    // LOTO (et autres) : jackpots directement depuis les données FDJ (rang 1)
+    chartEl.innerHTML = '<div class="jt-status">Chargement des jackpots…</div>';
+    for (let i = 0; i < last15.length; i++) {
+      const d = last15[i];
+      const p1 = d.prizes && d.prizes.find(p => p.rank === 1);
+      if (!p1) continue;
+      const won = p1.winners > 0;
+      const jackpot = won ? p1.prize * p1.winners : p1.prize;
+      if (jackpot > 0) {
+        data.push({ date: d.date, jackpot, won });
+      }
     }
   }
   console.log('[EuroAffûté] timeline : ' + data.length + ' / ' + last15.length + ' tirages exploitables');
+
+  // Ajouter le jackpot estimé du prochain tirage comme dernier point
+  try {
+    if (NEXT_DRAW_URLS[state.currentGame]) {
+      const nextInfo = await fetchNextDrawInfo();
+      if (nextInfo && nextInfo.amountEur > 0) {
+        // Calculer une date fictive pour le prochain tirage (prochaine date logique)
+        const lastDate = data.length > 0 ? data[data.length - 1].date : last15[last15.length - 1].date;
+        const ld = new Date(lastDate);
+        const dow = ld.getUTCDay();
+        // Jours de tirage par jeu : EuroMillions mar(2)/ven(5), LOTO lun(1)/mer(3)/sam(6)
+        const drawDays = state.currentGame === 'loto' ? [1, 3, 6] : [2, 5];
+        let daysToNext = 8;
+        for (let dd = 1; dd <= 7; dd++) {
+          if (drawDays.indexOf((dow + dd) % 7) >= 0) { daysToNext = dd; break; }
+        }
+        const nd = new Date(ld);
+        nd.setUTCDate(nd.getUTCDate() + daysToNext);
+        const nextDate = nd.toISOString().slice(0, 10);
+        data.push({ date: nextDate, jackpot: nextInfo.amountEur, won: false, isNext: true });
+        console.log('[EuroAffûté] timeline : prochain tirage ajouté (' + (nextInfo.amountEur / 1e6).toFixed(0) + ' M€)');
+      }
+    }
+  } catch (err) {
+    console.warn('[EuroAffûté] timeline : impossible d\'ajouter le prochain tirage', err.message);
+  }
 
   if (data.length < 2) {
     console.warn('[EuroAffûté] timeline : pas assez de données (' + data.length + ')');
@@ -3626,17 +2486,37 @@ async function renderJackpotTimeline() {
   const yScale = v => PAD_T + plotH - (v / maxJp) * plotH;
   const xScale = i => PAD_L + (i / (data.length - 1)) * plotW;
 
-  // Path pour la courbe (smooth via monotone cubic)
+  // Path pour la courbe complète (smooth via monotone cubic)
   const points = data.map((d, i) => ({ x: xScale(i), y: yScale(d.jackpot) }));
-  let linePath = 'M ' + points[0].x + ',' + points[0].y;
-  for (let i = 1; i < points.length; i++) {
-    const p0 = points[i - 1], p1 = points[i];
+
+  // Séparer la courbe pleine (tirages passés) du segment vers le prochain tirage
+  const nextIdx = data.findIndex(d => d.isNext);
+  const lastPastIdx = nextIdx >= 0 ? nextIdx - 1 : points.length - 1;
+  const hasNext = nextIdx >= 0;
+  let dashedSegment = '';
+
+  // linePath = courbe pleine (tirages passés uniquement)
+  const pastPoints = hasNext ? points.slice(0, lastPastIdx + 1) : points;
+  let linePath = 'M ' + pastPoints[0].x + ',' + pastPoints[0].y;
+  for (let i = 1; i < pastPoints.length; i++) {
+    const p0 = pastPoints[i - 1], p1 = pastPoints[i];
     const midX = (p0.x + p1.x) / 2;
     linePath += ' C ' + midX + ',' + p0.y + ' ' + midX + ',' + p1.y + ' ' + p1.x + ',' + p1.y;
   }
-  // Path pour l'area (même courbe, refermée en bas)
-  const areaPath = linePath + ' L ' + points[points.length - 1].x + ',' + (PAD_T + plotH) +
-                   ' L ' + points[0].x + ',' + (PAD_T + plotH) + ' Z';
+
+  // Segment en tirets vers le prochain tirage
+  if (hasNext && points.length >= 2) {
+    const pPrev = points[lastPastIdx];
+    const pNext = points[nextIdx];
+    const midX = (pPrev.x + pNext.x) / 2;
+    dashedSegment = '<path d="M ' + pPrev.x + ',' + pPrev.y +
+      ' C ' + midX + ',' + pPrev.y + ' ' + midX + ',' + pNext.y + ' ' + pNext.x + ',' + pNext.y +
+      '" fill="none" stroke="var(--gold)" stroke-width="2" stroke-dasharray="6,4" opacity="0.6" />';
+  }
+
+  // Path pour l'area (courbe pleine, refermée en bas)
+  const areaPath = linePath + ' L ' + pastPoints[pastPoints.length - 1].x + ',' + (PAD_T + plotH) +
+                   ' L ' + pastPoints[0].x + ',' + (PAD_T + plotH) + ' Z';
 
   // Lignes d'échelle (horizontales, 4 niveaux)
   const ticks = [];
@@ -3652,6 +2532,13 @@ async function renderJackpotTimeline() {
   const dots = data.map((d, i) => {
     const x = xScale(i), y = yScale(d.jackpot);
     const amountLabel = (d.jackpot / 1e6).toFixed(0) + ' M€';
+    if (d.isNext) {
+      // Prochain tirage : cercle ouvert (contour doré, fond transparent) + label "à venir"
+      return '<circle cx="' + x + '" cy="' + y + '" r="10" fill="var(--gold)" opacity="0.12" />' +
+        '<circle cx="' + x + '" cy="' + y + '" r="4.5" fill="none" stroke="var(--gold)" stroke-width="2" stroke-dasharray="3,2" />' +
+        '<text x="' + x + '" y="' + (y - 12) + '" text-anchor="middle" class="jt-label-val" fill="var(--gold)">' + amountLabel + '</text>' +
+        '<text x="' + x + '" y="' + (y - 26) + '" text-anchor="middle" class="jt-label-x" fill="var(--gold)" opacity="0.7" style="font-size:9px;font-style:italic;">à venir</text>';
+    }
     const color = d.won ? 'var(--green)' : 'var(--star)';
     const glow = d.won ? '<circle cx="' + x + '" cy="' + y + '" r="10" fill="var(--green)" opacity="0.18" />' : '';
     return glow +
@@ -3678,8 +2565,9 @@ async function renderJackpotTimeline() {
     const x = xScale(i);
     const parts = d.date.split('-');
     const dateFull = parts.length === 3 ? (parts[2] + '/' + parts[1] + '/' + parts[0]) : d.date;
+    const status = d.isNext ? 'À venir (estimation)' : (d.won ? 'Gagné' : 'Reporté');
     return '<rect x="' + (x - 30) + '" y="' + PAD_T + '" width="60" height="' + plotH + '" fill="transparent">' +
-      '<title>' + dateFull + ' — ' + fmt(d.jackpot) + ' € · ' + (d.won ? 'Gagné' : 'Reporté') + '</title>' +
+      '<title>' + dateFull + ' — ' + fmt(d.jackpot) + ' € · ' + status + '</title>' +
       '</rect>';
   }).join('');
 
@@ -3694,6 +2582,7 @@ async function renderJackpotTimeline() {
       yLabels +
       '<path d="' + areaPath + '" fill="url(#jt-grad)" />' +
       '<path d="' + linePath + '" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round" />' +
+      dashedSegment +
       dots +
       xLabels +
       hitZones +
@@ -3728,24 +2617,39 @@ function renderAnomaly() {
   }
 
   const datesEl = document.getElementById('anomalyDates');
-  datesEl.innerHTML = first.map(d =>
-    '<div>' + d.date + ' <span>(étoiles ' + d.stars.join(' · ') + ')</span></div>'
-  ).join('');
+  datesEl.innerHTML = first.map(d => {
+    let extra = '';
+    if (d.stars) extra = 'étoiles ' + d.stars.join(' · ');
+    else if (d.bonus !== undefined) extra = (state.currentGame === 'loto' ? 'N° Chance ' : 'N° Dream ') + d.bonus;
+    return '<div>' + d.date + ' <span>(' + extra + ')</span></div>';
+  }).join('');
 }
 
 // --- générateur filtré ----------------------------------------------
 
 function randomCombo() {
+  const game = state.currentGame;
+  const cfg = (state.cache[game] && state.cache[game].config) || {};
+  const ballCount = cfg.ballCount || 5;
+  const ballMax = cfg.ballMax || 50;
+
   const balls = new Set();
-  while (balls.size < 5) balls.add(Math.floor(Math.random() * 50) + 1);
-  const stars = new Set();
-  while (stars.size < 2) stars.add(Math.floor(Math.random() * 12) + 1);
-  return { balls: sortAsc([...balls]), stars: sortAsc([...stars]) };
+  while (balls.size < ballCount) balls.add(Math.floor(Math.random() * ballMax) + 1);
+
+  if (game === 'euromillions') {
+    const stars = new Set();
+    while (stars.size < (cfg.starCount || 2)) stars.add(Math.floor(Math.random() * (cfg.starMax || 12)) + 1);
+    return { balls: sortAsc([...balls]), stars: sortAsc([...stars]) };
+  } else {
+    const bonusMax = cfg.bonusMax || 10;
+    const bonus = Math.floor(Math.random() * bonusMax) + 1;
+    return { balls: sortAsc([...balls]), bonus };
+  }
 }
 
 function passesAll(c, f) {
   // Règles dures (absolues) : ce qui n'est jamais arrivé
-  if (f.seenFull.has(comboKey(c.balls, c.stars))) return false;
+  if (f.seenFull.has(comboKey(c.balls, c.stars || c.bonus))) return false;
   const s = sum(c.balls);
   if (s < f.minSum || s > f.maxSum) return false;
   const r = range(c.balls);
@@ -3757,25 +2661,30 @@ function passesAll(c, f) {
   if (s < f.sumP10 || s > f.sumP90) return false;
   if (r < f.rangeP10 || r > f.rangeP90) return false;
   const ec = evenCount(c.balls);
-  if (ec === 0 || ec === 5) return false;      // parité mixte (95%)
+  const bl = c.balls.length;
+  if (ec === 0 || ec === bl) return false;      // parité mixte
   const dc = decadesCovered(c.balls);
-  if (dc < 3 || dc > 4) return false;          // 3 ou 4 dizaines (88%)
-  if (c.balls[0] > 31) return false;           // pas toutes > 31 (<1%)
-  if (c.balls[4] <= 31) return false;          // pas toutes ≤ 31 (8%)
+  if (dc < (f.minDecades || 3) || dc > (f.maxDecades || 5)) return false;
+  // Au moins un numéro de chaque côté de la moitié
+  const hp = f.halfPoint || Math.floor((f.ballMax || 50) / 2);
+  if (c.balls[0] > hp) return false;
+  if (c.balls[bl - 1] <= hp) return false;
 
-  // Règles "rares" : patterns présents dans <5% de l'histoire
-  if (maxConsecutiveRun(c.balls) >= 3) return false;        // 19-20-21 style (2.2%)
-  if (consecutivePairs(c.balls) >= 2) return false;         // 2+ paires (4.3%)
-  if (maxBallsPerDecade(c.balls) >= 4) return false;        // 4 dans la même dizaine (1.6%)
-  if (maxBallsPerUnit(c.balls) >= 4) return false;          // 4 finissant pareil (0.1%)
-  if (maxGap(c.balls) >= 30) return false;                  // trou de 30+ (2.9%)
-  const lh = lowerHalfCount(c.balls);
-  if (lh === 0 || lh === 5) return false;                   // toutes basses ou hautes (4.4%)
+  // Règles "rares" — seuils adaptés par jeu (appris dans learnFilters)
+  if (maxConsecutiveRun(c.balls) >= (f.consecThreshold || 3)) return false;
+  if (consecutivePairs(c.balls) >= (f.pairsThreshold || 2)) return false;
+  if (maxBallsPerDecade(c.balls) >= (f.sameDecThreshold || 4)) return false;
+  if (maxBallsPerUnit(c.balls) >= (f.sameUnitThreshold || 4)) return false;
+  if (maxGap(c.balls) >= (f.gapThreshold || 30)) return false;
+  const lhCount = c.balls.filter(b => b <= hp).length;
+  if (lhCount === 0 || lhCount === bl) return false;
 
-  // Règles "rares" sur les étoiles
-  const ss = sum(c.stars);
-  if (ss < f.starSumP5 || ss > f.starSumP95) return false;  // somme étoiles hors cœur
-  if (c.stars[1] - c.stars[0] >= 11) return false;          // étoiles extrêmes (0.9%)
+  // Règles étoiles (EuroMillions uniquement)
+  if (c.stars && c.stars.length === 2) {
+    const ss = sum(c.stars);
+    if (ss < f.starSumP5 || ss > f.starSumP95) return false;
+    if (c.stars[1] - c.stars[0] >= 11) return false;
+  }
   return true;
 }
 
@@ -3808,13 +2717,21 @@ function renderCombo(combo, tries) {
   sep.textContent = '✦';
   display.appendChild(sep);
 
-  combo.stars.forEach((n, i) => {
+  if (combo.stars) {
+    combo.stars.forEach((n, i) => {
+      const el = document.createElement('div');
+      el.className = 'ball star';
+      el.textContent = n;
+      el.style.animationDelay = (400 + i * 80) + 'ms';
+      display.appendChild(el);
+    });
+  } else if (combo.bonus !== undefined) {
     const el = document.createElement('div');
-    el.className = 'ball star';
-    el.textContent = n;
-    el.style.animationDelay = (400 + i * 80) + 'ms';
+    el.className = 'ball bonus';
+    el.textContent = combo.bonus;
+    el.style.animationDelay = '400ms';
     display.appendChild(el);
-  });
+  }
 
   meta.innerHTML = 'Trouvée en <span class="hl">' + tries + '</span> essai' +
     (tries > 1 ? 's' : '') + ' · toutes les règles validées';
@@ -3830,25 +2747,39 @@ function renderCombo(combo, tries) {
 
 function readAuditInputs() {
   const inputs = document.querySelectorAll('.audit-input');
-  const balls = [], stars = [];
+  const balls = [], extras = [];
   inputs.forEach(el => {
     const v = parseInt(el.value, 10);
     if (el.dataset.kind === 'ball') balls.push(v);
-    else stars.push(v);
+    else extras.push(v);
   });
-  return { balls, stars };
+  if (state.currentGame === 'euromillions') {
+    return { balls, stars: extras };
+  }
+  return { balls, stars: extras, bonus: extras[0] };
 }
 
 function validateInputs(balls, stars) {
   const errs = [];
+  const cfg = (state.cache[state.currentGame] && state.cache[state.currentGame].config) || {};
+  const ballCount = cfg.ballCount || 5;
+  const ballMax = cfg.ballMax || 50;
+  const game = state.currentGame;
   const bs = balls.filter(n => !isNaN(n));
   const ss = stars.filter(n => !isNaN(n));
-  if (bs.length !== 5) errs.push('Il faut 5 balles.');
-  if (ss.length !== 2) errs.push('Il faut 2 étoiles.');
-  if (bs.some(n => n < 1 || n > 50)) errs.push('Les balles doivent être entre 1 et 50.');
-  if (ss.some(n => n < 1 || n > 12)) errs.push('Les étoiles doivent être entre 1 et 12.');
-  if (new Set(bs).size !== bs.length) errs.push('Deux balles sont identiques.');
-  if (new Set(ss).size !== ss.length) errs.push('Deux étoiles sont identiques.');
+  if (bs.length !== ballCount) errs.push('Il faut ' + ballCount + ' numéros.');
+  if (bs.some(n => n < 1 || n > ballMax)) errs.push('Les numéros doivent être entre 1 et ' + ballMax + '.');
+  if (new Set(bs).size !== bs.length) errs.push('Deux numéros sont identiques.');
+  if (game === 'euromillions') {
+    if (ss.length !== 2) errs.push('Il faut 2 étoiles.');
+    if (ss.some(n => n < 1 || n > 12)) errs.push('Les étoiles doivent être entre 1 et 12.');
+    if (new Set(ss).size !== ss.length) errs.push('Deux étoiles sont identiques.');
+  } else {
+    const bonusMax = cfg.bonusMax || 10;
+    const bonusName = cfg.bonusName || 'Bonus';
+    if (ss.length !== 1) errs.push('Il faut 1 ' + bonusName + '.');
+    if (ss.some(n => n < 1 || n > bonusMax)) errs.push(bonusName + ' doit être entre 1 et ' + bonusMax + '.');
+  }
   return errs;
 }
 
@@ -3874,8 +2805,8 @@ function runAudit() {
   const checksEl = document.getElementById('auditChecks');
   const simEl = document.getElementById('auditSim');
 
-  const { balls, stars } = readAuditInputs();
-  const errs = validateInputs(balls, stars);
+  const raw = readAuditInputs();
+  const errs = validateInputs(raw.balls, raw.stars);
 
   if (errs.length) {
     verdictEl.textContent = 'Saisie incomplète';
@@ -3887,7 +2818,9 @@ function runAudit() {
     return;
   }
 
-  const combo = { balls: sortAsc(balls), stars: sortAsc(stars) };
+  const combo = state.currentGame === 'euromillions'
+    ? { balls: sortAsc(raw.balls), stars: sortAsc(raw.stars) }
+    : { balls: sortAsc(raw.balls), stars: sortAsc(raw.stars), bonus: raw.bonus };
   const f = state.filters;
   const checks = checkCombo(combo, f);
   const allPass = checks.every(c => c.ok);
@@ -3916,7 +2849,7 @@ function runAudit() {
   simEl.innerHTML =
     '<div>Tirages historiques avec une somme similaire (±5) : <span class="hl">' + fmt(sameSum) + '</span></div>' +
     '<div>Plus proche voisin historique (<span class="hl">' + near.shared + '</span> num. communs) : ' +
-    near.draw.date + ' — ' + near.draw.balls.join(' · ') + ' ✦ ' + near.draw.stars.join(' · ') + '</div>';
+    near.draw.date + ' — ' + near.draw.balls.join(' · ') + ' ✦ ' + (near.draw.stars ? near.draw.stars.join(' · ') : near.draw.bonus) + '</div>';
 
   // Panel des gains virtuels : "si j'avais joué ça à tous les tirages…"
   const virtEl = document.getElementById('auditVirtual');
@@ -3927,21 +2860,21 @@ function runAudit() {
   if (drawsWithPrizes === 0) {
     virtEl.innerHTML = '';
   } else {
-    const cost = cw.drawCount * GRID_COST;
+    const cost = cw.drawCount * getGridCost();
     const balance = cw.total - cost;
     const balanceClass = balance >= 0 ? 'positive' : 'negative';
     const tierLabel = cw.bestTier ? cw.bestTier.mn + '+' + cw.bestTier.ms : '—';
     const bestLine = cw.bestDraw
       ? 'Meilleur coup : <strong>' + formatMoney(cw.bestPrize) + '</strong> au rang <strong>' +
         tierLabel + '</strong> le ' + cw.bestDraw.date +
-        ' (tirage : ' + cw.bestDraw.balls.join('·') + ' ✦ ' + cw.bestDraw.stars.join('·') + ')'
+        ' (tirage : ' + cw.bestDraw.balls.join('·') + ' ✦ ' + (cw.bestDraw.stars ? cw.bestDraw.stars.join('·') : cw.bestDraw.bonus) + ')'
       : 'Aucun rang atteint sur l\'ensemble des tirages — statistiquement peu probable mais possible.';
 
     virtEl.innerHTML =
       '<div class="virtual-winnings">' +
         '<div class="vw-head">Si vous aviez joué cette grille à chaque tirage</div>' +
         '<div class="vw-row"><span class="vw-label">Tirages joués</span><span class="vw-value">' + fmt(cw.drawCount) + '</span></div>' +
-        '<div class="vw-row"><span class="vw-label">Dépense cumulée (2,50 € / grille)</span><span class="vw-value">' + formatMoney(cost) + '</span></div>' +
+        '<div class="vw-row"><span class="vw-label">Dépense cumulée (' + getGridCost().toFixed(2).replace('.',',') + ' € / grille)</span><span class="vw-value">' + formatMoney(cost) + '</span></div>' +
         '<div class="vw-row"><span class="vw-label">Nombre de fois où la grille a gagné quelque chose</span><span class="vw-value">' + fmt(cw.wins) + '</span></div>' +
         '<div class="vw-row"><span class="vw-label">Total gagné</span><span class="vw-value">' + formatMoney(cw.total) + '</span></div>' +
         '<div class="vw-row"><span class="vw-label">Bilan net</span><span class="vw-value ' + balanceClass + '">' +
@@ -3963,23 +2896,54 @@ function fillRandom() {
   let bi = 0, si = 0;
   inputs.forEach(el => {
     if (el.dataset.kind === 'ball') el.value = c.balls[bi++];
-    else el.value = c.stars[si++];
+    else el.value = c.stars ? c.stars[si++] : c.bonus;
     el.classList.remove('invalid');
   });
   runAudit();
   document.getElementById('auditResult').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-document.querySelectorAll('.audit-input').forEach((el, i, all) => {
-  el.addEventListener('input', () => {
-    const v = parseInt(el.value, 10);
-    const max = parseInt(el.max, 10);
-    const min = parseInt(el.min, 10);
-    el.classList.remove('invalid');
-    if (!isNaN(v) && (v < min || v > max)) el.classList.add('invalid');
-    if (el.value.length >= el.max.length && i < all.length - 1) all[i+1].focus();
+function buildAuditInputs() {
+  const container = document.getElementById('auditInputs');
+  if (!container) return;
+  const cfg = (state.cache[state.currentGame] && state.cache[state.currentGame].config) || {};
+  const ballCount = cfg.ballCount || 5;
+  const ballMax = cfg.ballMax || 50;
+  const game = state.currentGame;
+
+  let html = '<div class="audit-input-group">' +
+    '<span class="audit-label">' + ballCount + ' nums (1–' + ballMax + ')</span>';
+  for (let i = 0; i < ballCount; i++) {
+    html += '<input type="number" class="audit-input" id="ball' + (i+1) + '" name="ball' + (i+1) + '" min="1" max="' + ballMax + '" placeholder="·" data-kind="ball" aria-label="Numéro ' + (i + 1) + '" autocomplete="off">';
+  }
+  html += '</div><span class="audit-separator">✦</span><div class="audit-input-group">';
+
+  if (game === 'euromillions') {
+    html += '<span class="audit-label">2 étoiles (1–12)</span>' +
+      '<input type="number" class="audit-input star" id="star1" name="star1" min="1" max="12" placeholder="·" data-kind="star" aria-label="Étoile 1" autocomplete="off">' +
+      '<input type="number" class="audit-input star" id="star2" name="star2" min="1" max="12" placeholder="·" data-kind="star" aria-label="Étoile 2" autocomplete="off">';
+  } else {
+    const bonusName = cfg.bonusName || 'Bonus';
+    const bonusMax = cfg.bonusMax || 10;
+    html += '<span class="audit-label">1 ' + bonusName + ' (1–' + bonusMax + ')</span>' +
+      '<input type="number" class="audit-input bonus" id="bonus1" name="bonus1" min="1" max="' + bonusMax + '" placeholder="·" data-kind="star" aria-label="' + bonusName + '" autocomplete="off">';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Rebrancher les event listeners
+  container.querySelectorAll('.audit-input').forEach((el, i, all) => {
+    el.addEventListener('input', () => {
+      if (el.value.length > 2) el.value = el.value.slice(0, 2);
+      const v = parseInt(el.value, 10);
+      const max = parseInt(el.max, 10);
+      const min = parseInt(el.min, 10);
+      el.classList.remove('invalid');
+      if (!isNaN(v) && (v < min || v > max)) el.classList.add('invalid');
+      if (el.value.length >= el.max.length && i < all.length - 1) all[i + 1].focus();
+    });
   });
-});
+}
 
 document.getElementById('generateBtn').addEventListener('click', () => {
   if (!state.ready) return;
@@ -4003,7 +2967,7 @@ function generatePortfolio(f, target = 10) {
     tries++;
     const c = randomCombo();
     if (!passesAll(c, f)) continue;
-    const k = comboKey(c.balls, c.stars);
+    const k = comboKey(c.balls, c.stars || c.bonus);
     if (seenKeys.has(k)) continue;
     seenKeys.add(k);
     grids.push(c);
@@ -4040,16 +3004,20 @@ function tooManyMultiplesOf5(balls) {
   return balls.filter(n => n % 5 === 0).length >= 3;
 }
 
-// 5. Patterns visuels sur la grille FDJ (10 colonnes × 5 lignes, numéros 1-50)
-//    → détecte ≥ 3 numéros alignés sur une même colonne ou ligne
+// 5. Patterns visuels sur la grille FDJ — adapté à chaque jeu
+//    EuroMillions : 10 colonnes × 5 lignes (1-50)
+//    LOTO : 10 colonnes × 5 lignes (1-49, case 50 vide)
+//    EuroDreams : 8 colonnes × 5 lignes (1-40)
 function hasGridAlignment(balls) {
-  const cols = new Array(10).fill(0);
+  const game = state.currentGame;
+  const gridCols = game === 'eurodreams' ? 8 : 10;
+  const cols = new Array(gridCols).fill(0);
   const rows = new Array(5).fill(0);
   for (const n of balls) {
-    const col = (n - 1) % 10;
-    const row = Math.floor((n - 1) / 10);
+    const col = (n - 1) % gridCols;
+    const row = Math.floor((n - 1) / gridCols);
     cols[col]++;
-    rows[row]++;
+    if (row < 5) rows[row]++;
   }
   return cols.some(c => c >= 3) || rows.some(r => r >= 3);
 }
@@ -4061,12 +3029,14 @@ function hasPopularStars(stars) {
 
 // Grille "contre-tendance" : passe passesAll ET aucun pattern populaire
 function isContrarian(c) {
-  return !hasBirthdayPattern(c.balls)
-      && !hasArithmeticRun(c.balls)
-      && !tooManyMultiplesOf7(c.balls)
-      && !tooManyMultiplesOf5(c.balls)
-      && !hasGridAlignment(c.balls)
-      && !hasPopularStars(c.stars);
+  if (hasBirthdayPattern(c.balls)) return false;
+  if (hasArithmeticRun(c.balls)) return false;
+  if (tooManyMultiplesOf7(c.balls)) return false;
+  if (tooManyMultiplesOf5(c.balls)) return false;
+  if (hasGridAlignment(c.balls)) return false;
+  // Règle étoiles uniquement pour EuroMillions
+  if (c.stars && hasPopularStars(c.stars)) return false;
+  return true;
 }
 
 function generateContrarianPortfolio(f, target = 10) {
@@ -4078,7 +3048,7 @@ function generateContrarianPortfolio(f, target = 10) {
     const c = randomCombo();
     if (!passesAll(c, f)) continue;
     if (!isContrarian(c)) continue;
-    const k = comboKey(c.balls, c.stars);
+    const k = comboKey(c.balls, c.stars || c.bonus);
     if (seenKeys.has(k)) continue;
     seenKeys.add(k);
     grids.push(c);
@@ -4099,17 +3069,20 @@ function renderGridList(containerId, grids) {
     row.style.animationDelay = (i * 40) + 'ms';
 
     const ballsHtml = g.balls.map(n => '<span class="grid-ball">' + n + '</span>').join('');
-    const starsHtml = g.stars.map(n => '<span class="grid-star">' + n + '</span>').join('');
+    const bonusHtml = g.stars
+      ? g.stars.map(n => '<span class="grid-star">' + n + '</span>').join('')
+      : (g.bonus !== undefined ? '<span class="grid-bonus">' + g.bonus + '</span>' : '');
     const dc = decadesCovered(g.balls);
     const pairs = evenCount(g.balls);
-    const copyText = g.balls.join(' - ') + '  ★  ' + g.stars.join(' - ');
+    const bl = g.balls.length;
+    const copyText = g.balls.join(' - ') + '  ★  ' + (g.stars ? g.stars.join(' - ') : g.bonus);
 
     row.innerHTML =
       '<div class="grid-num">' + String(i + 1).padStart(2, '0') + '</div>' +
       '<div class="grid-numbers">' + ballsHtml +
-        '<span class="row-sep">✦</span>' + starsHtml + '</div>' +
+        '<span class="row-sep">✦</span>' + bonusHtml + '</div>' +
       '<div class="grid-profile">s=' + sum(g.balls) + ' · r=' + range(g.balls) +
-        ' · ' + pairs + 'p/' + (5 - pairs) + 'i · ' + dc + ' diz.</div>' +
+        ' · ' + pairs + 'p/' + (bl - pairs) + 'i · ' + dc + ' diz.</div>' +
       '<button class="grid-copy" type="button" title="Copier la grille" aria-label="Copier la grille">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
           '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
