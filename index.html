@@ -2192,8 +2192,6 @@ function renderHistory() {
     const relevantChecks = checks.slice(1);
     const passed = relevantChecks.filter(c => c.ok).length;
     const total = relevantChecks.length;
-    const pct = Math.round((passed / total) * 100);
-
     // Date FR
     const parts = draw.date.split('-');
     const dateFr = parts.length === 3 ? (parts[2] + '/' + parts[1] + '/' + parts[0]) : draw.date;
@@ -2221,7 +2219,7 @@ function renderHistory() {
     html += '<div class="history-row">' +
       '<span class="history-col-date">' + dateFr + '</span>' +
       '<span class="history-col-balls">' + ballsHtml + '</span>' +
-      '<span class="history-col-score"><span class="history-score ' + scoreClass + '">' + passed + '/' + total + '</span><span class="history-pct">' + pct + '%</span></span>' +
+      '<span class="history-col-score"><span class="history-score ' + scoreClass + '">' + passed + '/' + total + '</span></span>' +
       '</div>';
   }
 

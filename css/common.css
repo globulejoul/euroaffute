@@ -1785,13 +1785,6 @@ footer a:hover { color: var(--accent); }
 .history-score.score-almost { color: var(--blue); }
 .history-score.score-warn { color: var(--accent); }
 .history-score.score-bad { color: var(--red); }
-.history-pct {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
-  color: var(--text-faint);
-  min-width: 32px;
-  text-align: right;
-}
 
 @media (max-width: 640px) {
   .container { padding: 0 1.25rem; }
@@ -1859,5 +1852,4 @@ footer a:hover { color: var(--accent); }
   .hist-ball.star { width: 26px; height: 26px; }
   .history-col-date { font-size: 0.65rem; }
   .history-score { font-size: 0.7rem; padding: 0.15rem 0.35rem; }
-  .history-pct { font-size: 0.6rem; }
 }
