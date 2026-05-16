@@ -136,6 +136,18 @@
     </p>
   </section>
 
+  <section class="history-card" id="historyCard" style="display:none">
+    <div class="section-head">
+      <div class="section-eyebrow">Historique récent</div>
+      <h2 class="section-title">Les <em>10 derniers</em> tirages.</h2>
+      <p class="section-lede">
+        Chaque tirage est passé au crible de nos filtres appris. Le score indique combien
+        de règles cœur sont respectées — un indicateur de typicité statistique.
+      </p>
+    </div>
+    <div class="history-table" id="historyTable"></div>
+  </section>
+
   <div class="section-head">
     <div class="section-eyebrow">Ce qu'on a appris</div>
     <h2 class="section-title">Les règles, <em>déduites</em> des données.</h2>
@@ -894,6 +906,7 @@ async function loadDraws() {
     renderRules();
     renderAnomaly();
     renderLatest();
+    renderHistory();
     renderGains();
     renderFrequencies();
     renderRemainingCombos();
@@ -2143,6 +2156,74 @@ async function renderLatest() {
   } else {
     prizesEl.innerHTML = '<div class="latest-prize-main" style="color:var(--text-dim); font-size:1rem">Données indisponibles</div>';
   }
+}
+
+// --- rendu de l'historique des 10 derniers tirages -------------------
+
+function renderHistory() {
+  const card = document.getElementById('historyCard');
+  const table = document.getElementById('historyTable');
+  if (!state.draws || state.draws.length === 0 || !state.filters) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = 'block';
+
+  // Trier par date décroissante et prendre les 10 premiers
+  const sorted = [...state.draws].sort((a, b) => b.date.localeCompare(a.date));
+  const last10 = sorted.slice(0, 10);
+
+  const f = state.filters;
+  const game = state.currentGame;
+  const hp = f.halfPoint || 25;
+
+  let html = '<div class="history-header">' +
+    '<span class="history-col-date">Date</span>' +
+    '<span class="history-col-balls">Numéros</span>' +
+    '<span class="history-col-score">Score filtres</span>' +
+    '</div>';
+
+  for (const draw of last10) {
+    // Calcul du score de passage de filtre
+    const combo = { balls: draw.balls, stars: draw.stars || [], bonus: draw.bonus };
+    const checks = checkCombo(combo, f);
+    // On exclut le check "Pas déjà tirée" (premier élément) car c'est un tirage réel
+    const relevantChecks = checks.slice(1);
+    const passed = relevantChecks.filter(c => c.ok).length;
+    const total = relevantChecks.length;
+    const pct = Math.round((passed / total) * 100);
+
+    // Date FR
+    const parts = draw.date.split('-');
+    const dateFr = parts.length === 3 ? (parts[2] + '/' + parts[1] + '/' + parts[0]) : draw.date;
+
+    // Balles HTML
+    let ballsHtml = '';
+    for (const n of draw.balls) {
+      ballsHtml += '<span class="hist-ball">' + n + '</span>';
+    }
+    if (game === 'euromillions' && draw.stars) {
+      for (const n of draw.stars) {
+        ballsHtml += '<span class="hist-ball star">' + n + '</span>';
+      }
+    } else if (draw.bonus !== undefined) {
+      ballsHtml += '<span class="hist-ball bonus">' + draw.bonus + '</span>';
+    }
+
+    // Classe selon le score
+    let scoreClass = 'score-high';
+    if (pct < 70) scoreClass = 'score-low';
+    else if (pct < 90) scoreClass = 'score-mid';
+
+    html += '<div class="history-row">' +
+      '<span class="history-col-date">' + dateFr + '</span>' +
+      '<span class="history-col-balls">' + ballsHtml + '</span>' +
+      '<span class="history-col-score"><span class="history-score ' + scoreClass + '">' + passed + '/' + total + '</span><span class="history-pct">' + pct + '%</span></span>' +
+      '</div>';
+  }
+
+  table.innerHTML = html;
 }
 
 // --- rendu des gains totaux -----------------------------------------
