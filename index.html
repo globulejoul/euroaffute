@@ -2211,10 +2211,12 @@ function renderHistory() {
       ballsHtml += '<span class="hist-ball bonus">' + draw.bonus + '</span>';
     }
 
-    // Classe selon le score
-    let scoreClass = 'score-high';
-    if (pct < 70) scoreClass = 'score-low';
-    else if (pct < 90) scoreClass = 'score-mid';
+    // Classe selon le nombre de règles manquantes
+    const failed = total - passed;
+    let scoreClass = 'score-perfect';
+    if (failed >= 3) scoreClass = 'score-bad';
+    else if (failed === 2) scoreClass = 'score-warn';
+    else if (failed === 1) scoreClass = 'score-almost';
 
     html += '<div class="history-row">' +
       '<span class="history-col-date">' + dateFr + '</span>' +

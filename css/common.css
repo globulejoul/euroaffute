@@ -1781,9 +1781,10 @@ footer a:hover { color: var(--accent); }
   border-radius: 4px;
   border: 1px solid currentColor;
 }
-.history-score.score-high { color: var(--green); }
-.history-score.score-mid { color: var(--accent); }
-.history-score.score-low { color: var(--red); }
+.history-score.score-perfect { color: var(--green); }
+.history-score.score-almost { color: var(--blue); }
+.history-score.score-warn { color: var(--accent); }
+.history-score.score-bad { color: var(--red); }
 .history-pct {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.7rem;
