@@ -13,9 +13,60 @@
     ],
     "topPrize": "20 000 €/mois pendant 30 ans"
   },
-  "lastUpdated": "2026-05-16T22:39:42.319Z",
-  "totalDraws": 264,
+  "lastUpdated": "2026-05-18T22:55:07.088Z",
+  "totalDraws": 265,
   "draws": [
+    {
+      "date": "2026-05-18",
+      "day": "LUNDI",
+      "balls": [
+        3,
+        11,
+        16,
+        20,
+        21,
+        22
+      ],
+      "bonus": 4,
+      "prizes": [
+        {
+          "rank": 1,
+          "winnersFr": 0,
+          "winnersEu": 0,
+          "prize": 0
+        },
+        {
+          "rank": 2,
+          "winnersFr": 0,
+          "winnersEu": 1,
+          "prize": 2000
+        },
+        {
+          "rank": 3,
+          "winnersFr": 26,
+          "winnersEu": 91,
+          "prize": 515.1
+        },
+        {
+          "rank": 4,
+          "winnersFr": 1004,
+          "winnersEu": 4030,
+          "prize": 32.6
+        },
+        {
+          "rank": 5,
+          "winnersFr": 14531,
+          "winnersEu": 60218,
+          "prize": 4.5
+        },
+        {
+          "rank": 6,
+          "winnersFr": 83008,
+          "winnersEu": 347869,
+          "prize": 2.5
+        }
+      ]
+    },
     {
       "date": "2026-05-14",
       "day": "JEUDI",
