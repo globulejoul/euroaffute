@@ -140,7 +140,7 @@
     <div class="section-head">
       <div class="section-eyebrow">Historique récent</div>
       <h2 class="section-title">Les <em>10 derniers</em> tirages.</h2>
-      <p class="section-lede">
+      <p class="section-lede" id="historyLede">
         Chaque tirage est passé au crible de nos filtres appris. Le score indique combien
         de règles cœur sont respectées — un indicateur de typicité statistique.
       </p>
@@ -2169,6 +2169,14 @@ function renderHistory() {
   }
 
   card.style.display = 'block';
+
+  // Mise à jour du descriptif avec le détail des règles
+  const lede = document.getElementById('historyLede');
+  const hasStars = game === 'euromillions';
+  const ruleDetail = hasStars
+    ? '(3 règles dures, 12 règles cœur, 2 règles étoiles)'
+    : '(3 règles dures, 12 règles cœur)';
+  lede.textContent = 'Chaque tirage est passé au crible de nos filtres appris ' + ruleDetail + '. Le score indique combien de règles sont respectées — un indicateur de typicité statistique.';
 
   // Trier par date décroissante et prendre les 10 premiers
   const sorted = [...state.draws].sort((a, b) => b.date.localeCompare(a.date));
