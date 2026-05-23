@@ -2181,8 +2181,8 @@ function renderHistory() {
   const lede = document.getElementById('historyLede');
   const hasStars = game === 'euromillions';
   const ruleDetail = hasStars
-    ? '(3 règles dures, 12 règles cœur, 2 règles étoiles)'
-    : '(3 règles dures, 12 règles cœur)';
+    ? '(2 règles dures, 12 règles cœur, 2 règles étoiles)'
+    : '(2 règles dures, 12 règles cœur)';
   lede.textContent = 'Chaque tirage est passé au crible de nos filtres appris ' + ruleDetail + '. Le score indique combien de règles sont respectées — un indicateur de typicité statistique.';
   const hp = f.halfPoint || 25;
 
