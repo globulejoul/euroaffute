@@ -2170,6 +2170,13 @@ function renderHistory() {
 
   card.style.display = 'block';
 
+  // Trier par date décroissante et prendre les 10 premiers
+  const sorted = [...state.draws].sort((a, b) => b.date.localeCompare(a.date));
+  const last10 = sorted.slice(0, 10);
+
+  const f = state.filters;
+  const game = state.currentGame;
+
   // Mise à jour du descriptif avec le détail des règles
   const lede = document.getElementById('historyLede');
   const hasStars = game === 'euromillions';
@@ -2177,13 +2184,6 @@ function renderHistory() {
     ? '(3 règles dures, 12 règles cœur, 2 règles étoiles)'
     : '(3 règles dures, 12 règles cœur)';
   lede.textContent = 'Chaque tirage est passé au crible de nos filtres appris ' + ruleDetail + '. Le score indique combien de règles sont respectées — un indicateur de typicité statistique.';
-
-  // Trier par date décroissante et prendre les 10 premiers
-  const sorted = [...state.draws].sort((a, b) => b.date.localeCompare(a.date));
-  const last10 = sorted.slice(0, 10);
-
-  const f = state.filters;
-  const game = state.currentGame;
   const hp = f.halfPoint || 25;
 
   let html = '<div class="history-header">' +
