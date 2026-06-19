@@ -12,9 +12,106 @@
       "vendredi"
     ]
   },
-  "lastUpdated": "2026-06-18T23:52:09.088Z",
-  "totalDraws": 1955,
+  "lastUpdated": "2026-06-19T22:59:53.040Z",
+  "totalDraws": 1956,
   "draws": [
+    {
+      "date": "2026-06-19",
+      "day": "VENDREDI",
+      "balls": [
+        8,
+        34,
+        39,
+        41,
+        42
+      ],
+      "stars": [
+        2,
+        7
+      ],
+      "hasWinner": false,
+      "prizes": [
+        {
+          "rank": 1,
+          "winnersFr": 0,
+          "winnersEu": 0,
+          "prize": 0
+        },
+        {
+          "rank": 2,
+          "winnersFr": 0,
+          "winnersEu": 0,
+          "prize": 0
+        },
+        {
+          "rank": 3,
+          "winnersFr": 1,
+          "winnersEu": 7,
+          "prize": 110334.5
+        },
+        {
+          "rank": 4,
+          "winnersFr": 3,
+          "winnersEu": 19,
+          "prize": 2398.5
+        },
+        {
+          "rank": 5,
+          "winnersFr": 103,
+          "winnersEu": 453,
+          "prize": 185.3
+        },
+        {
+          "rank": 6,
+          "winnersFr": 411,
+          "winnersEu": 1531,
+          "prize": 57.9
+        },
+        {
+          "rank": 7,
+          "winnersFr": 215,
+          "winnersEu": 1110,
+          "prize": 56.1
+        },
+        {
+          "rank": 8,
+          "winnersFr": 6030,
+          "winnersEu": 23965,
+          "prize": 13
+        },
+        {
+          "rank": 9,
+          "winnersFr": 5596,
+          "winnersEu": 26024,
+          "prize": 13.3
+        },
+        {
+          "rank": 10,
+          "winnersFr": 11461,
+          "winnersEu": 55202,
+          "prize": 11.7
+        },
+        {
+          "rank": 11,
+          "winnersFr": 35902,
+          "winnersEu": 141949,
+          "prize": 5.5
+        },
+        {
+          "rank": 12,
+          "winnersFr": 89449,
+          "winnersEu": 404196,
+          "prize": 6.1
+        },
+        {
+          "rank": 13,
+          "winnersFr": 180882,
+          "winnersEu": 848710,
+          "prize": 4.6
+        }
+      ],
+      "myMillion": "TP 802 5197"
+    },
     {
       "date": "2026-06-16",
       "day": "MARDI",
