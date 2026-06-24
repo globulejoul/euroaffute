@@ -13,9 +13,68 @@
       "samedi"
     ]
   },
-  "lastUpdated": "2026-06-23T23:09:17.962Z",
-  "totalDraws": 2772,
+  "lastUpdated": "2026-06-24T23:00:25.833Z",
+  "totalDraws": 2773,
   "draws": [
+    {
+      "date": "2026-06-24",
+      "day": "MERCREDI",
+      "balls": [
+        8,
+        26,
+        29,
+        32,
+        38
+      ],
+      "bonus": 7,
+      "prizes": [
+        {
+          "rank": 1,
+          "winners": 0,
+          "prize": 6000000
+        },
+        {
+          "rank": 2,
+          "winners": 1,
+          "prize": 135464.7
+        },
+        {
+          "rank": 3,
+          "winners": 30,
+          "prize": 1102.1
+        },
+        {
+          "rank": 4,
+          "winners": 247,
+          "prize": 482.8
+        },
+        {
+          "rank": 5,
+          "winners": 1721,
+          "prize": 41.4
+        },
+        {
+          "rank": 6,
+          "winners": 12274,
+          "prize": 20.8
+        },
+        {
+          "rank": 7,
+          "winners": 27588,
+          "prize": 7.2
+        },
+        {
+          "rank": 8,
+          "winners": 187077,
+          "prize": 4.2
+        },
+        {
+          "rank": 9,
+          "winners": 429255,
+          "prize": 2.2
+        }
+      ]
+    },
     {
       "date": "2026-06-22",
       "day": "LUNDI",
