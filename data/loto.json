@@ -13,9 +13,68 @@
       "samedi"
     ]
   },
-  "lastUpdated": "2026-07-11T22:41:07.311Z",
-  "totalDraws": 2780,
+  "lastUpdated": "2026-07-13T22:50:37.070Z",
+  "totalDraws": 2781,
   "draws": [
+    {
+      "date": "2026-07-13",
+      "day": "LUNDI",
+      "balls": [
+        5,
+        18,
+        26,
+        29,
+        45
+      ],
+      "bonus": 7,
+      "prizes": [
+        {
+          "rank": 1,
+          "winners": 0,
+          "prize": 11000000
+        },
+        {
+          "rank": 2,
+          "winners": 2,
+          "prize": 75943.1
+        },
+        {
+          "rank": 3,
+          "winners": 70,
+          "prize": 529.5
+        },
+        {
+          "rank": 4,
+          "winners": 421,
+          "prize": 317.6
+        },
+        {
+          "rank": 5,
+          "winners": 2723,
+          "prize": 29.3
+        },
+        {
+          "rank": 6,
+          "winners": 17333,
+          "prize": 16.5
+        },
+        {
+          "rank": 7,
+          "winners": 35452,
+          "prize": 6.3
+        },
+        {
+          "rank": 8,
+          "winners": 235380,
+          "prize": 3.7
+        },
+        {
+          "rank": 9,
+          "winners": 443683,
+          "prize": 2.2
+        }
+      ]
+    },
     {
       "date": "2026-07-11",
       "day": "SAMEDI",
