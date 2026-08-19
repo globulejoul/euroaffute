@@ -40,22 +40,65 @@ const EURODREAMS_ZIPS = [
 
 // --- Utilitaires réseau ----------------------------------------------
 
-function fetchBuffer(url) {
+const FETCH_TIMEOUT_MS = 60000;        // inactivité socket
+const FETCH_TOTAL_TIMEOUT_MS = 300000; // durée totale par requête
+const MAX_REDIRECTS = 5;
+
+function fetchBuffer(url, redirectsLeft = MAX_REDIRECTS) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
-    client.get(url, { headers: { 'User-Agent': 'EuroAffute-Updater/1.0' } }, res => {
-      // Gère les redirections
+    let settled = false;
+    let deadline = null;
+    const finish = fn => v => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(deadline);
+      fn(v);
+    };
+    const ok = finish(resolve);
+    const ko = finish(reject);
+
+    const req = client.get(url, {
+      headers: { 'User-Agent': 'EuroAffute-Updater/1.0' },
+      timeout: FETCH_TIMEOUT_MS,
+    }, res => {
+      // Gère les redirections (bornées, et résout les Location relatives)
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return fetchBuffer(res.headers.location).then(resolve).catch(reject);
+        res.resume(); // libère le socket
+        if (redirectsLeft <= 0) {
+          return ko(new Error(`Trop de redirections pour ${url}`));
+        }
+        clearTimeout(deadline); // la requête suivante a son propre délai
+        const next = new URL(res.headers.location, url).toString();
+        return fetchBuffer(next, redirectsLeft - 1).then(ok).catch(ko);
       }
       if (res.statusCode !== 200) {
-        return reject(new Error(`HTTP ${res.statusCode} pour ${url}`));
+        res.resume();
+        return ko(new Error(`HTTP ${res.statusCode} pour ${url}`));
       }
       const chunks = [];
       res.on('data', c => chunks.push(c));
-      res.on('end', () => resolve(Buffer.concat(chunks)));
-      res.on('error', reject);
-    }).on('error', reject);
+      res.on('end', () => {
+        const buf = Buffer.concat(chunks);
+        // Corps tronqué avec statut 200 : détectable quand content-length est présent
+        const expected = parseInt(res.headers['content-length'], 10);
+        if (!isNaN(expected) && buf.length !== expected) {
+          return ko(new Error(`Réponse tronquée pour ${url} : ${buf.length}/${expected} octets`));
+        }
+        ok(buf);
+      });
+      res.on('error', ko);
+    });
+    // L'option `timeout` de http.get ne borne que l'INACTIVITÉ du socket : un
+    // serveur qui goutte un octet par minute retiendrait la requête sans fin.
+    // Délai total dur en complément :
+    deadline = setTimeout(() => {
+      req.destroy(new Error(`Délai total dépassé (${FETCH_TOTAL_TIMEOUT_MS / 1000}s) pour ${url}`));
+    }, FETCH_TOTAL_TIMEOUT_MS);
+    req.on('timeout', () => {
+      req.destroy(new Error(`Timeout d'inactivité (${FETCH_TIMEOUT_MS / 1000}s) pour ${url}`));
+    });
+    req.on('error', ko);
   });
 }
 
@@ -181,8 +224,16 @@ function parseEuroDreamsCSV(rows) {
       const winnersKeyFr = `nombre_de_gagnant_au_rang${rank}_euro_dreams_en_france`;
       const winnersKeyEu = `nombre_de_gagnant_au_rang${rank}_euro_dreams_en_europe`;
       const prizeKey = `rapport_du_rang${rank}_euro_dreams`;
+      // Même garde que EM/LOTO : des colonnes renommées ne doivent pas
+      // fabriquer des rangs à zéro (validate-data.js exige ensuite 6 rangs)
+      if (r[winnersKeyEu] === undefined || r[prizeKey] === undefined) continue;
       const winnersFr = parseInt(r[winnersKeyFr], 10) || 0;
-      const winnersEu = parseInt(r[winnersKeyEu], 10) || 0;
+      let winnersEu = parseInt(r[winnersKeyEu], 10) || 0;
+      // Plausibilité : la France est incluse dans l'Europe (cf. parseEuroMillionsCSV)
+      if (winnersEu < winnersFr) {
+        console.warn(`    ⚠ ${date} rang ${rank} : winnersEu (${winnersEu}) < winnersFr (${winnersFr}) — borné à winnersFr`);
+        winnersEu = winnersFr;
+      }
       const prize = parseFrenchNumber(r[prizeKey]);
       prizes.push({ rank, winnersFr, winnersEu, prize });
     }
@@ -246,7 +297,14 @@ function parseEuroMillionsCSV(rows) {
       }
       if (r[winnersEuKey] !== undefined && r[prizeKey] !== undefined) {
         const winnersFr = parseInt(r[winnersFrKey], 10) || 0;
-        const winnersEu = parseInt(r[winnersEuKey], 10) || 0;
+        let winnersEu = parseInt(r[winnersEuKey], 10) || 0;
+        // Plausibilité : la France est incluse dans l'Europe. Certains CSV FDJ
+        // ont des colonnes Europe vides (ex. tirage du 2020-01-31) → on borne
+        // par winnersFr (corrigible plus finement via corrections.json).
+        if (winnersEu < winnersFr) {
+          console.warn(`    ⚠ ${date} rang ${rank} : winnersEu (${winnersEu}) < winnersFr (${winnersFr}) — borné à winnersFr`);
+          winnersEu = winnersFr;
+        }
         const prize = parseFrenchNumber(r[prizeKey]);
         prizes.push({ rank, winnersFr, winnersEu, prize });
       }
@@ -265,6 +323,66 @@ function parseEuroMillionsCSV(rows) {
       prizes,
       myMillion: r.numero_my_million || null,
     });
+  }
+  return draws;
+}
+
+// --- Corrections manuelles --------------------------------------------
+// scripts/corrections.json répare les défauts connus des archives FDJ :
+//   "add"   : tirages absents des ZIP (ex. LOTO du 2019-11-04, à la couture
+//             entre deux archives) — injectés s'ils ne sont pas déjà présents.
+//   "patch" : champs erronés (ex. EM du 2020-01-31, colonnes Europe vides) —
+//             fusionnés par date ; les prizes sont fusionnés rang par rang.
+
+function loadCorrections() {
+  const p = path.join(__dirname, 'corrections.json');
+  if (!fs.existsSync(p)) return {};
+  return JSON.parse(fs.readFileSync(p, 'utf-8'));
+}
+
+function applyCorrections(gameName, draws) {
+  const corr = loadCorrections()[gameName];
+  if (!corr) return draws;
+  const byDate = new Map(draws.map(d => [d.date, d]));
+
+  // hasWinner (EM uniquement) est calculé au parsing : toute correction qui
+  // touche les prizes doit le resynchroniser, sinon la donnée devient
+  // silencieusement incohérente (winnersEu rang 1 > 0 avec hasWinner=false).
+  const syncHasWinner = draw => {
+    if (gameName !== 'euromillions') return;
+    const r1 = (draw.prizes || []).find(p => p.rank === 1);
+    draw.hasWinner = r1 ? (r1.winnersEu || r1.winners || 0) > 0 : false;
+  };
+
+  for (const add of corr.add || []) {
+    if (byDate.has(add.date)) continue; // déjà dans les archives
+    // Les clés préfixées "_" (documentation, sources) restent dans corrections.json
+    const draw = Object.fromEntries(Object.entries(add).filter(([k]) => !k.startsWith('_')));
+    if (gameName === 'euromillions' && draw.hasWinner === undefined) syncHasWinner(draw);
+    draws.push(draw);
+    byDate.set(draw.date, draw);
+    console.log(`  + Correction : tirage ${draw.date} injecté (absent des archives FDJ)`);
+  }
+
+  for (const patch of corr.patch || []) {
+    const target = byDate.get(patch.date);
+    if (!target) {
+      console.warn(`  ⚠ Correction ignorée : tirage ${patch.date} introuvable`);
+      continue;
+    }
+    for (const [key, value] of Object.entries(patch)) {
+      if (key === 'date' || key.startsWith('_')) continue;
+      if (key === 'prizes') {
+        for (const pp of value) {
+          const entry = (target.prizes || []).find(e => e.rank === pp.rank);
+          if (entry) Object.assign(entry, pp);
+        }
+        syncHasWinner(target);
+      } else {
+        target[key] = value;
+      }
+    }
+    console.log(`  ± Correction : tirage ${patch.date} patché (${Object.keys(patch).filter(k => k !== 'date' && !k.startsWith('_')).join(', ')})`);
   }
   return draws;
 }
@@ -289,10 +407,15 @@ async function fetchFDJGame(zips, parser, gameName) {
 
     // Trouve le CSV dans le dossier extrait
     const files = fs.readdirSync(extractDir).filter(f => f.endsWith('.csv'));
+    if (files.length === 0) {
+      throw new Error(`Archive ${gameName} ${period} : aucun CSV dans le ZIP`);
+    }
+    let zipDraws = 0;
     for (const file of files) {
       const csvText = fs.readFileSync(path.join(extractDir, file), 'utf-8');
       const rows = parseCSV(csvText);
       const draws = parser(rows);
+      zipDraws += draws.length;
       for (const d of draws) {
         if (!seenDates.has(d.date)) {
           seenDates.add(d.date);
@@ -301,11 +424,18 @@ async function fetchFDJGame(zips, parser, gameName) {
       }
       console.log(`    ${file}: ${draws.length} tirages parsés`);
     }
+    // Un ZIP dont plus AUCUNE ligne ne parse signale un changement de format
+    // FDJ : mieux vaut échouer bruyamment qu'écrire un historique amputé.
+    if (zipDraws === 0) {
+      throw new Error(`Archive ${gameName} ${period} : 0 tirage parsé (format FDJ modifié ?)`);
+    }
 
     // Nettoyage
     fs.rmSync(zipPath, { force: true });
     fs.rmSync(extractDir, { recursive: true, force: true });
   }
+
+  applyCorrections(gameName, allDraws);
 
   // Tri anti-chronologique
   allDraws.sort((a, b) => b.date.localeCompare(a.date));
@@ -315,15 +445,58 @@ async function fetchFDJGame(zips, parser, gameName) {
 // --- Génération des fichiers JSON ------------------------------------
 
 function writeJSON(filename, game, config, draws) {
+  const filePath = path.join(DATA_DIR, filename);
+
+  let old = null;
+  if (fs.existsSync(filePath)) {
+    try {
+      old = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    } catch {
+      console.warn(`  ⚠ ${filename} existant illisible — réécriture complète`);
+    }
+  }
+
+  // Garde anti-régression : ne jamais écraser un historique par moins de
+  // données (ZIP partiel, format FDJ modifié, réponse tronquée…).
+  // Contournement volontaire : EUROAFFUTE_FORCE=1 node scripts/update-data.js
+  if (old && Array.isArray(old.draws) && process.env.EUROAFFUTE_FORCE !== '1') {
+    if (draws.length < old.draws.length) {
+      throw new Error(
+        `Régression refusée pour ${filename} : ${draws.length} tirages < ${old.draws.length} existants ` +
+        `(EUROAFFUTE_FORCE=1 pour forcer)`
+      );
+    }
+    const oldNewest = old.draws.length ? old.draws[0].date : '';
+    const newNewest = draws.length ? draws[0].date : '';
+    if (newNewest < oldNewest) {
+      throw new Error(
+        `Régression refusée pour ${filename} : date la plus récente ${newNewest} < ${oldNewest} existante ` +
+        `(EUROAFFUTE_FORCE=1 pour forcer)`
+      );
+    }
+  }
+
+  // lastUpdated stable : si rien n'a changé (mêmes tirages, même config), on
+  // conserve l'horodatage existant pour que le fichier soit octet pour octet
+  // identique — sinon chaque run du cron (dont le rattrapage quotidien)
+  // produirait un commit de pur bruit.
+  let lastUpdated = new Date().toISOString();
+  if (old && old.lastUpdated
+      && JSON.stringify(old.draws) === JSON.stringify(draws)
+      && JSON.stringify(old.config) === JSON.stringify(config)) {
+    lastUpdated = old.lastUpdated;
+  }
+
   const output = {
     game,
     config,
-    lastUpdated: new Date().toISOString(),
+    lastUpdated,
     totalDraws: draws.length,
     draws,
   };
-  const filePath = path.join(DATA_DIR, filename);
-  fs.writeFileSync(filePath, JSON.stringify(output, null, 2), 'utf-8');
+  // Minifié : -55 % sur disque, -22 % en gzip, parse ~40 % plus rapide côté
+  // client — ces fichiers sont générés, pas destinés à la lecture humaine.
+  fs.writeFileSync(filePath, JSON.stringify(output), 'utf-8');
   console.log(`  → ${filePath} (${draws.length} tirages)`);
 }
 
@@ -332,6 +505,7 @@ function writeJSON(filename, game, config, draws) {
 async function main() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   console.log('=== EuroAffûté — Mise à jour des données ===\n');
+  const failures = [];
 
   // 1. EuroMillions (CSV FDJ)
   console.log('[EuroMillions]');
@@ -348,6 +522,7 @@ async function main() {
     }, emDraws);
   } catch (err) {
     console.error('  ERREUR EuroMillions :', err.message);
+    failures.push('euromillions');
   }
 
   // 2. LOTO
@@ -365,6 +540,7 @@ async function main() {
     }, lotoDraws);
   } catch (err) {
     console.error('  ERREUR LOTO :', err.message);
+    failures.push('loto');
   }
 
   // 3. EuroDreams
@@ -376,16 +552,24 @@ async function main() {
       ballMax: 40,
       bonusName: 'N° Dream',
       bonusMax: 5,
-      totalCombinations: 19068840, // C(40,6) × 5
+      totalCombinations: 19191900, // C(40,6) × 5 = 3 838 380 × 5
       gridCost: 2.50,
       drawDays: ['lundi', 'jeudi'],
       topPrize: '20 000 €/mois pendant 30 ans',
     }, edDraws);
   } catch (err) {
     console.error('  ERREUR EuroDreams :', err.message);
+    failures.push('eurodreams');
   }
 
-  console.log('\n=== Terminé ===');
+  if (failures.length > 0) {
+    // Les jeux réussis ont déjà été écrits ; on signale l'échec au CI pour
+    // que le workflow soit marqué rouge au lieu de vieillir en silence.
+    console.error(`\n=== Terminé avec ÉCHEC pour : ${failures.join(', ')} ===`);
+    process.exitCode = 1;
+  } else {
+    console.log('\n=== Terminé ===');
+  }
 }
 
 main().catch(err => {

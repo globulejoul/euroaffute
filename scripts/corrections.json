@@ -1,0 +1,61 @@
+{
+  "_readme": [
+    "Correctifs manuels appliqués par update-data.js après le parsing des archives FDJ.",
+    "add   : tirages absents des ZIP (injectés si leur date n'est pas déjà présente).",
+    "patch : champs erronés, fusionnés par date ; les prizes sont fusionnés rang par rang.",
+    "Chaque entrée doit citer ses sources dans _sources."
+  ],
+  "loto": {
+    "add": [
+      {
+        "_sources": [
+          "Tirage absent des archives FDJ (couture entre les ZIP 2019-02→2019-11 et 2019-11→présent).",
+          "Boules+Chance croisées : lesbonsnumeros.com (tirage 1739), lotto.net, gagnerloto.fr, JORF JORFTEXT000039350220.",
+          "Répartition des 9 rangs identique sur lesbonsnumeros.com et lotto.net ; somme des gagnants = 703 312 = total officiel."
+        ],
+        "date": "2019-11-04",
+        "day": "LUNDI",
+        "balls": [1, 9, 16, 39, 42],
+        "bonus": 7,
+        "prizes": [
+          { "rank": 1, "winners": 0, "prize": 11000000 },
+          { "rank": 2, "winners": 0, "prize": 134717.6 },
+          { "rank": 3, "winners": 48, "prize": 3491.6 },
+          { "rank": 4, "winners": 283, "prize": 419 },
+          { "rank": 5, "winners": 2192, "prize": 32.3 },
+          { "rank": 6, "winners": 13497, "prize": 18.8 },
+          { "rank": 7, "winners": 32886, "prize": 6 },
+          { "rank": 8, "winners": 199162, "prize": 3.9 },
+          { "rank": 9, "winners": 455244, "prize": 2.2 }
+        ]
+      }
+    ]
+  },
+  "euromillions": {
+    "patch": [
+      {
+        "_sources": [
+          "Colonnes 'gagnants Europe' vides dans le CSV FDJ pour ce seul tirage (winnersEu=0 partout).",
+          "Gagnants Europe par rang : euro-millions.com/results/31-01-2020 (tirage 1290), croisé avec lottery.co.uk.",
+          "Montants par rang identiques au fichier FDJ ; winnersEu ≥ winnersFr vérifié sur les 13 rangs."
+        ],
+        "date": "2020-01-31",
+        "prizes": [
+          { "rank": 1, "winnersEu": 0 },
+          { "rank": 2, "winnersEu": 12 },
+          { "rank": 3, "winnersEu": 18 },
+          { "rank": 4, "winnersEu": 47 },
+          { "rank": 5, "winnersEu": 1213 },
+          { "rank": 6, "winnersEu": 2571 },
+          { "rank": 7, "winnersEu": 2496 },
+          { "rank": 8, "winnersEu": 31283 },
+          { "rank": 9, "winnersEu": 46534 },
+          { "rank": 10, "winnersEu": 98157 },
+          { "rank": 11, "winnersEu": 147291 },
+          { "rank": 12, "winnersEu": 608229 },
+          { "rank": 13, "winnersEu": 1284966 }
+        ]
+      }
+    ]
+  }
+}

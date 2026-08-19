@@ -2,17 +2,31 @@ name: Mise à jour des données de tirage
 
 on:
   schedule:
-    # LOTO : lundi, mercredi, samedi à 22h00 UTC (minuit heure de Paris)
-    - cron: '0 22 * * 1,3,6'
-    # EuroDreams : lundi, jeudi à 22h00 UTC
-    - cron: '0 22 * * 1,4'
-    # EuroMillions : mardi, vendredi à 22h00 UTC
-    - cron: '0 22 * * 2,5'
+    # Tirages à ~21h15 Paris. 22h23 UTC = ~minuit à Paris en été, ~23h30 en hiver.
+    # Minute décalée (23, 17) : la minute 0 est le créneau le plus congestionné
+    # de GitHub Actions (runs retardés voire sautés).
+    # LOTO : lundi, mercredi, samedi
+    - cron: '23 22 * * 1,3,6'
+    # EuroDreams : lundi, jeudi
+    - cron: '23 22 * * 1,4'
+    # EuroMillions : mardi, vendredi
+    - cron: '23 22 * * 2,5'
+    # Rattrapage quotidien du matin : si l'archive FDJ n'était pas encore
+    # publiée la veille au soir, ce run idempotent capte le tirage manquant
+    # (il ne committe que s'il y a du nouveau : lastUpdated est stable).
+    - cron: '17 5 * * *'
   workflow_dispatch: # Permet le lancement manuel depuis l'interface GitHub
+
+# Le lundi à 22h00 UTC, deux crons se recouvrent (LOTO + EuroDreams) :
+# on sérialise les runs pour éviter un push non-fast-forward perdu.
+concurrency:
+  group: update-data
+  cancel-in-progress: false
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
 
@@ -28,13 +42,28 @@ jobs:
       - name: Installer unzip
         run: sudo apt-get install -y unzip
 
+      # continue-on-error : si un seul jeu échoue, les jeux réussis sont
+      # quand même validés puis commités ; l'échec est signalé en fin de job.
       - name: Exécuter le script de mise à jour
+        id: update
+        continue-on-error: true
         run: node scripts/update-data.js
 
+      # Bloque le commit si les données produites sont incohérentes
+      # (bornes, doublons, continuité calendaire, structure des gains).
+      - name: Valider l'intégrité des données
+        run: node scripts/validate-data.js
+
+      # git status --porcelain couvre aussi d'éventuels nouveaux fichiers
+      # (un 4e jeu) que git diff ignorerait tant qu'ils ne sont pas trackés.
       - name: Vérifier les changements
         id: check
         run: |
-          git diff --quiet data/ && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+          if [ -z "$(git status --porcelain data/)" ]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Commit et push si changements
         if: steps.check.outputs.changed == 'true'
@@ -44,4 +73,11 @@ jobs:
           git add data/
           DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
           git commit -m "data: mise à jour automatique des tirages ($DATE)"
+          git pull --rebase origin main
           git push
+
+      - name: Signaler un échec de téléchargement
+        if: steps.update.outcome == 'failure'
+        run: |
+          echo "::error::update-data.js a échoué pour au moins un jeu — voir les logs ci-dessus"
+          exit 1

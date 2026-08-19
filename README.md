@@ -66,9 +66,10 @@ npx serve
 ```bash
 # Nécessite Node.js 20+
 node scripts/update-data.js
+node scripts/validate-data.js   # garde-fou d'intégrité (exécuté aussi en CI)
 ```
 
-Le script télécharge les archives ZIP depuis l'API FDJ, extrait les CSV, parse les tirages et génère les fichiers `data/*.json`.
+Le script télécharge les archives ZIP depuis l'API FDJ, extrait les CSV, parse les tirages, applique `scripts/corrections.json` (tirages absents des archives, champs erronés — ex. le LOTO du 04/11/2019 tombé à la couture entre deux ZIP), et génère les fichiers `data/*.json`. Une garde anti-régression refuse d'écraser un historique par moins de données (`EUROAFFUTE_FORCE=1` pour outrepasser).
 
 ## Sources de données
 
@@ -101,7 +102,9 @@ euroaffute/
 │   ├── loto.json           # ~2 750 tirages
 │   └── eurodreams.json     # ~260 tirages
 ├── scripts/
-│   └── update-data.js      # Pipeline de téléchargement et parsing FDJ
+│   ├── update-data.js      # Pipeline de téléchargement et parsing FDJ
+│   ├── corrections.json    # Correctifs manuels des archives FDJ
+│   └── validate-data.js    # Garde-fou d'intégrité (CI + local)
 └── .github/
     └── workflows/
         └── update-data.yml # Scheduler GitHub Actions
