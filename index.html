@@ -20,9 +20,10 @@
 
 <!-- Favicon : un trèfle en SVG inline, pas de requête externe -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230E0E10'/><text x='50' y='72' text-anchor='middle' font-size='68' font-family='serif' font-style='italic' fill='%23C9A94E'>€</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Polices auto-hébergées (voir @font-face dans common.css) : préchargement
+     des deux critiques pour éviter le flash de fonte système -->
+<link rel="preload" as="font" type="font/woff2" href="css/fonts/manrope-variable.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="css/fonts/jetbrains-mono-variable.woff2" crossorigin>
 <link rel="stylesheet" href="css/common.css">
 <link rel="stylesheet" href="css/euromillions.css">
 <link rel="stylesheet" href="css/loto.css">
@@ -52,12 +53,12 @@
     <div class="logo"><span>◊</span>EuroAffûté</div>
     <div class="meta">
       <span class="meta-dot" id="statusDot"></span>
-      <span id="statusText">Chargement des données…</span>
+      <span id="statusText" aria-live="polite">Chargement des données…</span>
     </div>
   </header>
 
   <nav class="game-tabs" id="gameTabs" aria-label="Jeux">
-    <button class="game-tab active" data-game="euromillions">
+    <button class="game-tab active" data-game="euromillions" aria-current="true">
       <span class="tab-dot"></span>EuroMillions
     </button>
     <button class="game-tab" data-game="loto">
@@ -134,6 +135,24 @@
       Chaque barre = un tirage. Le jackpot enfle tant que personne ne rafle le 5+2,
       puis retombe à 17 M€ dès qu'un gagnant s'en empare.
     </p>
+  </section>
+
+  <section class="economics" id="economicsSection" style="display:none">
+    <div class="section-head">
+      <div class="section-eyebrow">Économie du tirage</div>
+      <h2 class="section-title">Volume, espérance &amp; <em>partage</em>.</h2>
+      <p class="section-lede" id="econLede"></p>
+    </div>
+    <div class="econ-chips" id="econChips"></div>
+    <div class="econ-chart-card">
+      <div class="econ-chart" id="econChart"></div>
+      <p class="econ-chart-note" id="econChartNote"></p>
+    </div>
+    <div class="econ-panels">
+      <div class="econ-panel" id="econEv"></div>
+      <div class="econ-panel" id="econTonight"></div>
+    </div>
+    <div class="econ-panel econ-shame" id="econShame" style="display:none"></div>
   </section>
 
   <section class="history-card" id="historyCard" style="display:none">
@@ -276,15 +295,18 @@
         <button class="btn" id="genCoreBtn" disabled>Tirer 10 grilles</button>
       </div>
       <p class="portfolio-desc">
-        Chaque grille respecte <strong>l'ensemble des filtres appris</strong> :
-        somme entre p10 et p90, range idem, parité mixte, 3 ou 4 dizaines
-        couvertes, au moins un numéro au-dessus de 31 et un en dessous.
-        Ce sont précisément les grilles qui <em>ressembleraient</em> à un tirage
-        historique — sans jamais en être un.
+        Chaque grille respecte <strong>l'ensemble des filtres appris</strong>
+        (somme et range dans le cœur de distribution, parité mixte, dizaines,
+        équilibre bas/haut…) et les 10 grilles forment une
+        <strong>partition des numéros</strong> : couverture totale, recouvrement
+        minimal — la probabilité d'attraper au moins un petit rang gagne
+        jusqu'à ~10 points selon le jeu par rapport à 10 grilles tirées au
+        hasard, au même prix (le chiffre exact s'affiche sous les grilles).
       </p>
       <div class="grid-list" id="coreGrids">
         <div class="grid-empty">Cliquez sur « Tirer 10 grilles »</div>
       </div>
+      <p class="contrarian-foot" id="coreCoverageNote"></p>
     </div>
 
     <div class="portfolio contrarian">
@@ -298,27 +320,29 @@
       <p class="portfolio-desc">
         <strong>La seule stratégie validée par les maths :</strong> ces grilles ne
         changent pas vos chances de gagner, elles changent <em>ce que vous
-        toucheriez si ça arrivait</em>. On évite les schémas joués par des millions
-        de personnes — dates d'anniversaire (≤ 31), multiples de 7, suites
-        arithmétiques (5‑10‑15‑20‑25), colonnes/lignes sur la grille FDJ. Résultat :
-        un jackpot moins partagé.
+        toucheriez si ça arrivait</em>. La popularité de chaque numéro est
+        <strong>mesurée</strong> dans les compteurs de gagnants par rang de tout
+        l'historique — pas supposée. Les grilles proposées sont les moins jouées
+        d'un pool de candidates. Résultat : un jackpot moins partagé.
       </p>
       <div class="grid-list" id="contrarianGrids">
         <div class="grid-empty">Cliquez sur « Tirer 10 grilles »</div>
       </div>
       <div class="contrarian-note">
-        <strong id="contrarianRulesCount">Les 6 règles appliquées</strong>
+        <strong id="contrarianRulesCount">La méthode</strong>
         <ul class="contrarian-rules">
-          <li><code>&lt; 4</code> numéros ≤ 31 — évite la signature <em>dates de naissance</em> (20-30 % des joueurs)</li>
-          <li>Pas de <em>suite arithmétique</em> de 3+ numéros — bloque 5-10-15-20-25, 3-8-13-18-23, etc.</li>
-          <li><code>≤ 2</code> multiples de 7 — évite le chiffre porte-bonheur sur-joué</li>
-          <li><code>≤ 2</code> multiples de 5 — évite les numéros "ronds"</li>
-          <li>Pas <code>3+</code> numéros alignés sur une colonne ou ligne de la grille FDJ (10×5)</li>
-          <li id="contrarianStarRule">Au moins une étoile <code>&gt; 7</code> — évite le combo étoiles "petits chiffres" très joué</li>
+          <li id="popRuleNumbers"><strong>Indice de popularité mesuré</strong> — calcul en cours…</li>
+          <li id="popRuleBonus" style="display:none"></li>
+          <li id="popRuleEuros" style="display:none"></li>
+          <li id="popRuleFr" style="display:none"></li>
+          <li>Pas de <em>suite arithmétique</em> de 3+ numéros — bloque 5-10-15-20-25, 3-8-13-18-23, etc. (les tirages à motif « humain » sont massivement sur-partagés)</li>
+          <li>Pas <code>3+</code> numéros alignés sur une colonne ou ligne de la grille FDJ</li>
         </ul>
-        <p class="contrarian-foot">
-          Ces règles s'appliquent <strong>en plus</strong> des filtres statistiques appris
-          (somme, range, parité, etc.). Environ 15 % des combinaisons aléatoires passent l'ensemble.
+        <p class="contrarian-foot" id="contrarianFoot">
+          Sur un pool de 300 candidates passant les filtres appris et les deux
+          règles structurelles, on garde les <strong>10 grilles les moins jouées</strong>
+          d'après l'indice mesuré. Le « % co-joueurs » affiché estime le nombre de
+          joueurs partageant la grille par rapport à une grille moyenne.
         </p>
       </div>
     </div>
@@ -335,11 +359,13 @@
     <h2 class="section-title" id="freqTitle">Des années de <em>régularité</em>.</h2>
     <p class="section-lede">
       Chaque boule devrait sortir environ <strong id="freqExpectedBall">—</strong> fois
-      sur l'ensemble des tirages. Les écarts visibles ci-dessous sont à <strong>95% du bruit
-      statistique</strong>. Jouer les « numéros chauds » ou « froids » ne change rien à
-      vos chances — la seule utilité de ce tableau est esthétique, et peut-être un peu
-      thérapeutique contre l'illusion du pattern.
+      sur l'ensemble des tirages. Les couleurs ci-dessous sont graduées en
+      <strong>écarts-types théoriques</strong> (saturation à ±3σ) : tout ce qui n'est pas
+      saturé est du bruit ordinaire. Jouer les « numéros chauds » ou « froids » ne change
+      rien à vos chances — la seule utilité de ce tableau est esthétique, et peut-être
+      un peu thérapeutique contre l'illusion du pattern.
     </p>
+    <p class="fairness-badge" id="fairnessBadge" style="display:none"></p>
   </div>
 
   <div class="frequencies" id="frequencies">
@@ -424,9 +450,12 @@ function switchGame(game) {
   // Met à jour l'attribut data-game sur <body> pour le thème CSS
   document.body.setAttribute('data-game', game);
 
-  // Met à jour les onglets actifs
+  // Met à jour les onglets actifs (classe visuelle + état accessible)
   document.querySelectorAll('.game-tab').forEach(tab => {
-    tab.classList.toggle('active', tab.dataset.game === game);
+    const active = tab.dataset.game === game;
+    tab.classList.toggle('active', active);
+    if (active) tab.setAttribute('aria-current', 'true');
+    else tab.removeAttribute('aria-current');
   });
 
   // Désactive les boutons pendant le chargement
@@ -567,14 +596,19 @@ function computeFrequencies(draws) {
   const ballFreq = new Array(ballMax + 1).fill(0);
   const starFreq = new Array(13).fill(0);
   const bonusFreq = {};
-  let drawsEra11 = 0, drawsEra12 = 0;
+  // TROIS ères d'étoiles : 2 parmi 9 (2004 → 06/05/2011), 2 parmi 11
+  // (10/05/2011 → 23/09/2016), 2 parmi 12 (depuis le 27/09/2016). Ignorer
+  // l'ère 9 faisait afficher les étoiles 10-11 (inexistantes avant 2011)
+  // comme massivement déficitaires (−4,6σ au lieu de −0,6σ réels).
+  let drawsEra9 = 0, drawsEra11 = 0, drawsEra12 = 0;
 
   for (const d of draws) {
     for (const b of d.balls) if (b <= ballMax) ballFreq[b]++;
     if (d.stars) {
       for (const s of d.stars) starFreq[s]++;
       if (d.date && d.date >= STAR_12_ERA_START) drawsEra12++;
-      else drawsEra11++;
+      else if (d.date && d.date >= EM_13_RANKS_START) drawsEra11++;
+      else drawsEra9++;
     }
     if (d.bonus !== undefined) {
       bonusFreq[d.bonus] = (bonusFreq[d.bonus] || 0) + 1;
@@ -583,16 +617,19 @@ function computeFrequencies(draws) {
 
   const ballExpected = draws.length * ballCount / ballMax;
 
-  // Étoiles (EuroMillions)
+  // Étoiles (EuroMillions) : attendu ventilé sur les ères de disponibilité
   const starExpected = new Array(13).fill(0);
   if (game === 'euromillions') {
-    for (let n = 1; n <= 11; n++) {
+    for (let n = 1; n <= 9; n++) {
+      starExpected[n] = drawsEra9 * 2 / 9 + drawsEra11 * 2 / 11 + drawsEra12 * 2 / 12;
+    }
+    for (let n = 10; n <= 11; n++) {
       starExpected[n] = drawsEra11 * 2 / 11 + drawsEra12 * 2 / 12;
     }
     starExpected[12] = drawsEra12 * 2 / 12;
   }
 
-  return { ballFreq, starFreq, bonusFreq, ballExpected, starExpected, drawsEra11, drawsEra12, ballMax, ballCount };
+  return { ballFreq, starFreq, bonusFreq, ballExpected, starExpected, drawsEra9, drawsEra11, drawsEra12, ballMax, ballCount };
 }
 
 // Couleur divergente : froid (bleu) → neutre → chaud (or)
@@ -616,21 +653,31 @@ function getFreqColors() {
   };
   return _freqColors;
 }
-function colorForDelta(delta, maxAbs) {
+function rgbForDelta(delta, maxAbs) {
   const { cold, mid, hot } = getFreqColors();
   const t = Math.max(-1, Math.min(1, delta / maxAbs));
   const lerp = (a, b, u) => Math.round(a + (b - a) * u);
   if (t >= 0) {
-    return 'rgb(' + lerp(mid[0], hot[0], t) + ',' + lerp(mid[1], hot[1], t) + ',' + lerp(mid[2], hot[2], t) + ')';
-  } else {
-    const u = -t;
-    return 'rgb(' + lerp(mid[0], cold[0], u) + ',' + lerp(mid[1], cold[1], u) + ',' + lerp(mid[2], cold[2], u) + ')';
+    return [lerp(mid[0], hot[0], t), lerp(mid[1], hot[1], t), lerp(mid[2], hot[2], t)];
   }
+  const u = -t;
+  return [lerp(mid[0], cold[0], u), lerp(mid[1], cold[1], u), lerp(mid[2], cold[2], u)];
+}
+function colorForDelta(delta, maxAbs) {
+  const c = rgbForDelta(delta, maxAbs);
+  return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
 }
 function textForDelta(delta, maxAbs) {
-  const t = delta / maxAbs;
-  // Texte clair sur fond foncé (accent), texte foncé sinon
-  return t > 0.4 ? '#FFFFFF' : '#1A1A1A';
+  // Couleur du texte choisie au MEILLEUR contraste WCAG sur le fond réellement
+  // interpolé : l'ancien seuil fixe t>0.4 était calibré pour le bleu nuit
+  // EuroMillions et rendait le texte illisible sur les accents clairs des
+  // thèmes LOTO (#009ED8 : blanc = 3,05:1, sombre = 5,7:1) et EuroDreams.
+  const c = rgbForDelta(delta, maxAbs);
+  const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+  const contrastWhite = 1.05 / (L + 0.05);
+  const contrastDark = (L + 0.05) / 0.0604; // luminance de #1A1A1A ≈ 0.0104
+  return contrastWhite >= contrastDark ? '#FFFFFF' : '#1A1A1A';
 }
 
 // --- gains et matching historique -----------------------------------
@@ -654,30 +701,75 @@ function matchesAgainst(userCombo, draw) {
   return { mn, ms };
 }
 
-// Table officielle FDJ : (boules matchées, étoiles/bonus matchés) → rang
-// EuroMillions : 13 rangs, 5 boules + 2 étoiles
+// Tables officielles FDJ : (boules matchées, étoiles/bonus matchés) → rang.
+// La signification des rangs a CHANGÉ au fil des ans : chaque table est
+// résolue selon l'ère du tirage (par date ou par nombre de rangs).
+
+// EuroMillions — ère 12 étoiles (depuis le 27/09/2016) : 13 rangs
 const RANK_TABLE_EM = {
   '5+2': 1, '5+1': 2, '5+0': 3, '4+2': 4, '4+1': 5, '3+2': 6,
   '4+0': 7, '2+2': 8, '3+1': 9, '3+0': 10, '1+2': 11, '2+1': 12, '2+0': 13,
 };
-// LOTO : 9 rangs, 5 boules + 1 bonus (N° Chance)
+// EuroMillions — ère 11 étoiles (10/05/2011 → 23/09/2016) : le 4+0 (rang 6)
+// passait devant le 3+2 (rang 7), plus fréquent avec 11 étoiles.
+const RANK_TABLE_EM_11 = {
+  '5+2': 1, '5+1': 2, '5+0': 3, '4+2': 4, '4+1': 5, '4+0': 6,
+  '3+2': 7, '2+2': 8, '3+1': 9, '3+0': 10, '1+2': 11, '2+1': 12, '2+0': 13,
+};
+// EuroMillions — ère 9 étoiles (13/02/2004 → 06/05/2011) : 12 rangs
+// seulement (pas de 2+0), et 3+1 (rang 8) devant 2+2 (rang 9).
+const RANK_TABLE_EM_9 = {
+  '5+2': 1, '5+1': 2, '5+0': 3, '4+2': 4, '4+1': 5, '4+0': 6,
+  '3+2': 7, '3+1': 8, '2+2': 9, '3+0': 10, '1+2': 11, '2+1': 12,
+};
+// Premier tirage EM à 13 rangs (vérifié dans les données)
+const EM_13_RANKS_START = '2011-05-10';
+
+// LOTO moderne (depuis le 06/03/2017) : 9 rangs. Le rang 9 (remboursement
+// 2,20 €) est gagné dès que le N° Chance est trouvé — avec 0 OU 1 bon numéro.
 const RANK_TABLE_LOTO = {
   '5+1': 1, '5+0': 2, '4+1': 3, '4+0': 4, '3+1': 5, '3+0': 6,
-  '2+1': 7, '2+0': 8, '1+1': 9,
+  '2+1': 7, '2+0': 8, '1+1': 9, '0+1': 9,
 };
-// EuroDreams : 6 rangs, 6 boules + 1 bonus (N° Dream)
-const RANK_TABLE_ED = {
-  '6+1': 1, '6+0': 2, '5+1': 3, '5+0': 4, '4+1': 5, '4+0': 6,
-};
+
+// Ancien LOTO (06/10/2008 → 04/03/2017, tirages à 6 rangs) : le N° Chance ne
+// comptait que seul (rang 6, remboursement ~2 €), les rangs 2 à 5 l'ignoraient.
+// NB : le remboursement Chance était cumulable avec un rang de boules ; on ne
+// retient ici que le rang principal (léger sous-comptage assumé).
+function oldLotoRank(mn, ms) {
+  if (mn === 5) return ms ? 1 : 2;
+  if (mn === 4) return 3;
+  if (mn === 3) return 4;
+  if (mn === 2) return 5;
+  return ms ? 6 : null;
+}
+
+// EuroDreams : 6 rangs — le N° Dream ne distingue QUE les rangs 1 et 2 ;
+// en dessous, seuls les numéros comptent (rang 3 = 5 numéros … rang 6 = 2).
+function edRank(mn, ms) {
+  if (mn === 6) return ms ? 1 : 2;
+  if (mn >= 2) return 8 - mn;  // 5→3, 4→4, 3→5, 2→6
+  return null;
+}
+
+// Rang atteint par (mn, ms) sur ce tirage, selon le jeu ET l'ère du tirage
+function resolveRank(game, draw, mn, ms) {
+  if (game === 'euromillions') {
+    const table = draw.date >= STAR_12_ERA_START ? RANK_TABLE_EM
+                : draw.date >= EM_13_RANKS_START ? RANK_TABLE_EM_11
+                : RANK_TABLE_EM_9;
+    return table[mn + '+' + ms] || null;
+  }
+  if (game === 'loto') {
+    if (draw.prizes && draw.prizes.length <= 6) return oldLotoRank(mn, ms);
+    return RANK_TABLE_LOTO[mn + '+' + ms] || null;
+  }
+  return edRank(mn, ms);
+}
 
 function findPrize(draw, mn, ms) {
   if (!draw.prizes) return null;
-  const game = state.currentGame;
-  const table = game === 'euromillions' ? RANK_TABLE_EM
-              : game === 'loto' ? RANK_TABLE_LOTO
-              : RANK_TABLE_ED;
-  const key = mn + '+' + ms;
-  const rank = table[key];
+  const rank = resolveRank(state.currentGame, draw, mn, ms);
   if (!rank) return null;
   const entry = draw.prizes.find(p => p.rank === rank);
   if (entry && entry.prize > 0) {
@@ -780,11 +872,13 @@ const RANK_LABELS = {
   },
   loto: {
     1: '5+1', 2: '5+0', 3: '4+1', 4: '4+0', 5: '3+1',
-    6: '3+0', 7: '2+1', 8: '2+0', 9: '1+1',
+    6: '3+0', 7: '2+1', 8: '2+0', 9: '0/1+1',
   },
+  // Le N° Dream ne compte que pour les rangs 1-2 : en dessous, le rang
+  // n'est défini que par le nombre de numéros trouvés.
   eurodreams: {
-    1: '6+1', 2: '6+0', 3: '5+1', 4: '5+0', 5: '4+1',
-    6: '4+0',
+    1: '6+1', 2: '6+0', 3: '5', 4: '4', 5: '3',
+    6: '2',
   },
 };
 
@@ -799,16 +893,16 @@ function rankLabel(rank) {
 // On stocke les données scrapées (jackpots, prochain tirage) localement.
 
 const CACHE_KEYS = {
-  DRAWS: 'euroaffute:draws:v2:',  // préfixe, suivi du nom du jeu
   JACKPOT: 'euroaffute:jackpot:v1:',  // préfixe, suivi de la date ISO
   NEXT_DRAW: 'euroaffute:nextDraw:v2',
+  RECENT_JACKPOTS: 'euroaffute:recentJackpots:v2',
 };
 
 // TTL (en ms) pour chaque type de donnée
 const CACHE_TTL = {
-  DRAWS: 6 * 60 * 60 * 1000,       // 6h : assez court pour capter un nouveau tirage rapidement
-  JACKPOT: 24 * 60 * 60 * 1000,    // 24h : un tirage ne change jamais après coup
-  NEXT_DRAW: 30 * 60 * 1000,        // 30 min : montant du prochain tirage peut évoluer
+  JACKPOT: 90 * 24 * 60 * 60 * 1000, // 90 j : un tirage passé ne change jamais — inutile de re-scraper
+  RECENT_JACKPOTS: 6 * 60 * 60 * 1000, // 6h : la page de listing doit capter les nouveaux tirages
+  NEXT_DRAW: 30 * 60 * 1000,          // 30 min : montant du prochain tirage peut évoluer
 };
 
 function cacheGet(key, maxAgeMs) {
@@ -833,6 +927,38 @@ function cacheSet(key, value) {
   }
 }
 
+// Purge au démarrage : cacheGet ne supprime jamais les entrées expirées, et
+// les clés par date (jackpot:v1:YYYY-MM-DD) s'accumulaient sans borne — sur
+// une origine github.io partagée par TOUS les projets du compte (quota commun).
+// Toute clé euroaffute: illisible, expirée ou d'une version abandonnée saute.
+function cachePurge() {
+  const RULES = [
+    { prefix: CACHE_KEYS.JACKPOT, ttl: CACHE_TTL.JACKPOT },
+    { prefix: CACHE_KEYS.RECENT_JACKPOTS, ttl: CACHE_TTL.RECENT_JACKPOTS },
+    { prefix: CACHE_KEYS.NEXT_DRAW, ttl: CACHE_TTL.NEXT_DRAW },
+  ];
+  try {
+    const doomed = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('euroaffute:')) continue;
+      const rule = RULES.find(r => key.startsWith(r.prefix));
+      if (!rule) { doomed.push(key); continue; } // version abandonnée (v1, draws…)
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key));
+        if (!parsed || typeof parsed.t !== 'number' || Date.now() - parsed.t > rule.ttl) {
+          doomed.push(key);
+        }
+      } catch {
+        doomed.push(key);
+      }
+    }
+    doomed.forEach(k => localStorage.removeItem(k));
+    if (doomed.length) console.log('[EuroAffûté] cache purgé : ' + doomed.length + ' entrée(s)');
+  } catch { /* localStorage indisponible (mode privé strict) */ }
+}
+cachePurge();
+
 async function fetchDrawsJson() {
   const game = state.currentGame;
   const url = DATA_URLS[game];
@@ -856,51 +982,83 @@ async function loadDraws() {
   txt.textContent = 'Chargement ' + game + '…';
 
   try {
-    const json = await fetchDrawsJson();
+    // Cache de session : les données d'un jeu ne changent qu'après un tirage
+    // (2-3 fois par semaine) — inutile de re-télécharger, re-parser et
+    // re-apprendre les filtres à chaque changement d'onglet. TTL de 6h pour
+    // qu'une session laissée ouverte un soir de tirage finisse par se rafraîchir.
+    const DRAWS_SESSION_TTL = 6 * 60 * 60 * 1000;
+    const cached = state.cache[game];
+    if (cached && cached.draws && cached.filters
+        && Date.now() - (cached.cachedAt || 0) < DRAWS_SESSION_TTL) {
+      state.draws = cached.draws;
+      state.filters = cached.filters;
+      state.popularity = cached.popularity || null;
+      state.economics = cached.economics || null;
+      state.fairness = cached.fairness || null;
+    } else {
+      const json = await fetchDrawsJson();
+      // L'utilisateur a pu changer d'onglet pendant le fetch : tout ce qui
+      // suit (apprentissage des filtres — qui lit state.currentGame —, écriture
+      // du cache, rendus) appartiendrait au mauvais jeu. On abandonne ; le
+      // loadDraws du nouvel onglet a pris la main.
+      if (state.currentGame !== game) return;
 
-    if (!json.draws || !Array.isArray(json.draws)) {
-      throw new Error('Format JSON inattendu');
-    }
-
-    // Normalise les tirages selon le jeu
-    const parsed = [];
-    for (const d of json.draws) {
-      const entry = {
-        date: d.date || '',
-        balls: sortAsc(d.balls || []),
-        prizes: d.prizes || null,
-      };
-
-      if (game === 'euromillions') {
-        entry.stars = sortAsc(d.stars || []);
-        entry.hasWinner = d.hasWinner || false;
-        if (entry.balls.length !== 5 || (entry.stars || []).length !== 2) continue;
-      } else if (game === 'loto') {
-        entry.bonus = d.bonus;
-        // Détermine hasWinner depuis les prizes (rang 1, winners > 0)
-        const r1 = (d.prizes || []).find(p => p.rank === 1);
-        entry.hasWinner = r1 ? r1.winners > 0 : false;
-        if (entry.balls.length !== 5 || !entry.bonus) continue;
-      } else if (game === 'eurodreams') {
-        entry.bonus = d.bonus;
-        const r1 = (d.prizes || []).find(p => p.rank === 1);
-        entry.hasWinner = r1 ? (r1.winnersEu || 0) > 0 : false;
-        if (entry.balls.length !== 6 || !entry.bonus) continue;
+      if (!json.draws || !Array.isArray(json.draws)) {
+        throw new Error('Format JSON inattendu');
       }
 
-      parsed.push(entry);
+      // Normalise les tirages selon le jeu
+      const parsed = [];
+      for (const d of json.draws) {
+        const entry = {
+          date: d.date || '',
+          balls: sortAsc(d.balls || []),
+          prizes: d.prizes || null,
+        };
+
+        if (game === 'euromillions') {
+          entry.stars = sortAsc(d.stars || []);
+          entry.hasWinner = d.hasWinner || false;
+          if (entry.balls.length !== 5 || (entry.stars || []).length !== 2) continue;
+        } else if (game === 'loto') {
+          entry.bonus = d.bonus;
+          // Détermine hasWinner depuis les prizes (rang 1, winners > 0)
+          const r1 = (d.prizes || []).find(p => p.rank === 1);
+          entry.hasWinner = r1 ? r1.winners > 0 : false;
+          if (entry.balls.length !== 5 || !entry.bonus) continue;
+        } else if (game === 'eurodreams') {
+          entry.bonus = d.bonus;
+          const r1 = (d.prizes || []).find(p => p.rank === 1);
+          entry.hasWinner = r1 ? (r1.winnersEu || 0) > 0 : false;
+          if (entry.balls.length !== 6 || !entry.bonus) continue;
+        }
+
+        parsed.push(entry);
+      }
+
+      if (parsed.length === 0) throw new Error('Aucun tirage parsé');
+
+      state.draws = parsed;
+      // learnFilters/learnPopularity lisent state.cache[game].config : l'ordre compte
+      state.cache[game] = { draws: parsed, config: json.config, cachedAt: Date.now() };
+      state.filters = learnFilters(parsed);
+      state.cache[game].filters = state.filters;
+      state.popularity = learnPopularity(parsed);
+      state.cache[game].popularity = state.popularity;
+      state.economics = learnEconomics(parsed);
+      state.cache[game].economics = state.economics;
+      state.fairness = learnFairness(parsed);
+      state.cache[game].fairness = state.fairness;
     }
-
-    if (parsed.length === 0) throw new Error('Aucun tirage parsé');
-
-    state.draws = parsed;
-    state.cache[game] = { draws: parsed, config: json.config };
-    state.filters = learnFilters(parsed);
+    // La cagnotte scrapée appartient au jeu précédent : reset AVANT les rendus
+    // (renderEconomics consomme state.nextDrawAmount ; renderNextDraw, appelé
+    // plus tard, la re-renseignera pour CE jeu si le scraping aboutit).
+    state.nextDrawAmount = null;
     state.ready = true;
 
     dot.classList.add('live');
     const gameNames = { euromillions: 'EuroMillions', loto: 'LOTO', eurodreams: 'EuroDreams' };
-    txt.textContent = fmt(parsed.length) + ' tirages ' + (gameNames[game] || game) + ' chargés';
+    txt.textContent = fmt(state.draws.length) + ' tirages ' + (gameNames[game] || game) + ' chargés';
 
     buildAuditInputs();
     renderRules();
@@ -910,6 +1068,7 @@ async function loadDraws() {
     renderGains();
     renderFrequencies();
     renderRemainingCombos();
+    renderEconomics();
     updateDynamicTexts();
     // Sections conditionnelles selon le jeu
     const timeline = document.getElementById('jackpotTimeline');
@@ -1004,9 +1163,11 @@ function learnFilters(draws) {
   // Seuil consécutifs : 3+ est normal en EuroDreams (3.9%), rejeter seulement 4+
   const consecThreshold = game === 'eurodreams' ? 4 : 3;
 
-  // Dizaines acceptées : EM peut avoir 5 dizaines (4.6%), ED n'en a que 4 max
+  // Dizaines acceptées : EM peut couvrir 5 dizaines (6.6% des tirages).
+  // ED aussi : la boule 40 forme sa propre dizaine (40 + une boule dans
+  // chacune des tranches 1-9/10-19/20-29/30-39 = 5 dizaines, 6.2% des tirages).
   const minDecades = game === 'eurodreams' ? 2 : 3;
-  const maxDecades = game === 'eurodreams' ? 4 : 5;
+  const maxDecades = 5;
 
   // Même chiffre unité : avec 6 boules (ED), 3+ = 5.4% → seuil à 4
   const sameUnitThreshold = game === 'eurodreams' ? 4 : 4;
@@ -1078,6 +1239,573 @@ function learnFilters(draws) {
     dupeFull,
     dupeBalls,
   };
+}
+
+// --- indice de popularité mesuré --------------------------------------
+// Les compteurs de gagnants par rang cachent une mesure directe de ce que
+// jouent les autres : à volume de ventes donné, un tirage plein de numéros
+// populaires produit PLUS de gagnants « 3 numéros » par gagnant « 2 numéros ».
+// Le ratio W3/W2 est insensible au volume ET aux étoiles/bonus (ils se
+// simplifient entre rangs à même nombre d'étoiles). En moyennant ce signal
+// sur les tirages contenant chaque numéro, on obtient un delta de popularité
+// par numéro. Même méthode pour les étoiles (rangs 2+1 vs 2+0) et le
+// N° Chance. Signal massif : effet « dates » à ~20 écarts-types sur l'EM.
+function learnPopularity(draws) {
+  const game = state.currentGame;
+  const cfg = (state.cache[game] && state.cache[game].config) || {};
+  const ballCount = cfg.ballCount || 5;
+  const ballMax = cfg.ballMax || 50;
+  const SHRINK = 30; // rétrécissement delta×k/(k+30) : tempère les petits échantillons
+
+  const comb = (n, k) => {
+    if (k < 0 || k > n) return 0;
+    let r = 1;
+    for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+    return Math.round(r);
+  };
+  // P(3 boules)/P(2 boules) sous jeu uniforme
+  const pRatio32 = (comb(ballCount, 3) * comb(ballMax - ballCount, ballCount - 3)) /
+                   (comb(ballCount, 2) * comb(ballMax - ballCount, ballCount - 2));
+
+  // 1. Signal par tirage
+  const ballSig = [];   // { balls, r }
+  const bonusSig = [];  // { keys: étoiles tirées | [N° Chance], s }
+  const frSig = [];     // signature française (EM) : diff FR−EU du signal dates
+  for (const d of draws) {
+    if (!d.prizes) continue;
+    const w = rank => {
+      const p = d.prizes.find(x => x.rank === rank);
+      return p ? (p.winners !== undefined ? p.winners : p.winnersEu) : 0;
+    };
+    let w3 = 0, w2 = 0;
+    if (game === 'euromillions') {
+      // rang 10 = 3+0 (toutes ères), rang 13 = 2+0 (depuis mai 2011)
+      if (d.date >= EM_13_RANKS_START) {
+        w3 = w(10); w2 = w(13);
+        const p10 = d.prizes.find(x => x.rank === 10);
+        const p13 = d.prizes.find(x => x.rank === 13);
+        if (p10 && p13 && p10.winnersFr > 0 && p13.winnersFr > 0 && p10.winnersEu > 0 && p13.winnersEu > 0) {
+          const rEu = Math.log(p10.winnersEu / p13.winnersEu);
+          frSig.push({
+            nd: d.balls.filter(x => x <= 31).length,
+            rEu,
+            diff: Math.log(p10.winnersFr / p13.winnersFr) - rEu,
+            share: p13.winnersFr / p13.winnersEu,
+          });
+        }
+      }
+      // étoiles : ère 12 uniquement (probabilités homogènes) — p(2+1)/p(2+0) = 20/45
+      if (d.date >= STAR_12_ERA_START) {
+        const w21 = w(12), w20 = w(13);
+        if (w21 && w20) bonusSig.push({ keys: d.stars, s: Math.log((w21 / w20) / (20 / 45)) });
+      }
+    } else if (game === 'loto') {
+      if (d.prizes.length <= 6) {
+        // Ancienne ère : rangs 4 (3 boules) et 5 (2 boules), Chance indifférente.
+        w3 = w(4); w2 = w(5);
+        // W(rang 6) = détenteurs du N° Chance (remboursement cumulable)
+        // ≈ popularité × volume/10, volume estimé par le rang 5.
+        const w6 = w(6);
+        if (w6 && w2) {
+          const p2 = comb(5, 2) * comb(44, 3) / comb(49, 5);
+          bonusSig.push({ keys: [d.bonus], s: Math.log(w6 / ((w2 / p2) / 10)) });
+        }
+      } else {
+        w3 = w(6); w2 = w(8); // 3+0 / 2+0
+        // 2+1 / 2+0 : p-ratio = 1/9. Le ratio W(2+1)/W(2+0) = h/(1−h) surestime
+        // le log-facteur de popularité de 10/9 au premier ordre → ×0.9.
+        const w21 = w(7), w20 = w(8);
+        if (w21 && w20) bonusSig.push({ keys: [d.bonus], s: Math.log((w21 / w20) * 9) * 0.9 });
+      }
+    } else {
+      // EuroDreams : rangs 5 (3 numéros) et 6 (2 numéros), Dream indifférent.
+      // La popularité du N° Dream n'est PAS mesurable (aucun rang ne le compte
+      // en dessous du rang 2, quasi jamais gagné).
+      w3 = w(5); w2 = w(6);
+    }
+    if (w3 && w2) ballSig.push({ balls: d.balls, r: Math.log((w3 / w2) / pRatio32) });
+  }
+
+  // 2. Delta par numéro = moyenne du signal quand il sort − moyenne globale
+  const deltasOf = (signals, maxN, keysOf) => {
+    if (signals.length < 50) return null; // trop peu de tirages : signal inutilisable
+    let g = 0;
+    for (const s of signals) g += s.s;
+    g /= signals.length;
+    const sums = new Array(maxN + 1).fill(0);
+    const counts = new Array(maxN + 1).fill(0);
+    for (const s of signals) for (const n of keysOf(s)) { sums[n] += s.s; counts[n]++; }
+    const out = new Array(maxN + 1).fill(0);
+    for (let n = 1; n <= maxN; n++) {
+      if (counts[n]) out[n] = (sums[n] / counts[n] - g) * (counts[n] / (counts[n] + SHRINK));
+    }
+    return out;
+  };
+
+  const ballDelta = deltasOf(ballSig.map(x => ({ keys: x.balls, s: x.r })), ballMax, s => s.keys);
+  if (!ballDelta) return null;
+  const bonusMax = game === 'euromillions' ? (cfg.starMax || 12) : (cfg.bonusMax || 10);
+  const bonusDelta = deltasOf(bonusSig, bonusMax, s => s.keys);
+  // Étoiles EM : comme le ratio boules ne voit que 1/ballCount du log-popularité
+  // de chaque boule, le ratio (2+1)/(2+0) ne voit que 1/starCount = 1/2 de celui
+  // de chaque étoile tirée (vérifié par simulation exacte et par le signal
+  // indépendant du rang 2+2 : pente mesurée 1,99). On remet à l'échelle ici
+  // pour que les deltas bonus soient des log-facteurs directs partout.
+  if (bonusDelta && game === 'euromillions') {
+    const starCount = cfg.starCount || 2;
+    for (let i = 0; i < bonusDelta.length; i++) bonusDelta[i] *= starCount;
+  }
+
+  const ranked = [];
+  for (let n = 1; n <= ballMax; n++) ranked.push({ n, delta: ballDelta[n] });
+  ranked.sort((a, b) => b.delta - a.delta);
+  let bonusRanked = null;
+  if (bonusDelta) {
+    bonusRanked = [];
+    for (let n = 1; n <= bonusMax; n++) bonusRanked.push({ n, delta: bonusDelta[n] });
+    bonusRanked.sort((a, b) => b.delta - a.delta);
+  }
+
+  // Signature française (EM) : part FR des gagnants et amplification de
+  // l'effet dates chez les joueurs français (rapport des pentes des
+  // régressions du signal sur le nombre de dates du tirage)
+  let frSignature = null;
+  if (game === 'euromillions' && frSig.length >= 300) {
+    const n = frSig.length;
+    const mx = frSig.reduce((s, x) => s + x.nd, 0) / n;
+    let vxx = 0, cEu = 0, cDiff = 0;
+    for (const x of frSig) {
+      const dx = x.nd - mx;
+      vxx += dx * dx;
+      cEu += dx * x.rEu;     // Σdx = 0 : covariance sans centrer y
+      cDiff += dx * x.diff;
+    }
+    const slopeEu = cEu / vxx;
+    if (slopeEu > 0.01) {
+      const shares = frSig.map(x => x.share).sort((a, b) => a - b);
+      frSignature = {
+        share: shares[Math.floor(shares.length / 2)],
+        amplification: (cDiff / vxx) / slopeEu,
+        n,
+      };
+    }
+  }
+
+  return {
+    nDraws: ballSig.length,
+    nBonusDraws: bonusSig.length,
+    ballCount,
+    ballDelta,
+    bonusDelta,      // null pour EuroDreams (Dream non mesurable)
+    topOver: ranked.slice(0, 5).map(x => x.n),
+    topUnder: ranked.slice(-5).map(x => x.n).reverse(),
+    bonusOver: bonusRanked ? bonusRanked.slice(0, 3).map(x => x.n) : null,
+    bonusUnder: bonusRanked ? bonusRanked.slice(-4).map(x => x.n).reverse() : null,
+    frSignature,
+  };
+}
+
+// Facteur de co-joueurs estimé vs grille moyenne. Le signal W3/W2 ne « voit »
+// qu'environ 1/ballCount du log-popularité de chaque boule tirée (une seule
+// boule matchée de plus entre les deux rangs), d'où la remise à l'échelle ;
+// les deltas étoiles/chance sont remis à l'échelle dès l'apprentissage
+// (learnPopularity) et sont donc des log-facteurs directs ici.
+function popularityFactor(c, pop) {
+  let logF = 0;
+  for (const n of c.balls) logF += pop.ballCount * (pop.ballDelta[n] || 0);
+  if (pop.bonusDelta) {
+    if (c.stars) { for (const s of c.stars) logF += pop.bonusDelta[s] || 0; }
+    else if (c.bonus !== undefined) logF += pop.bonusDelta[c.bonus] || 0;
+  }
+  return Math.exp(logF);
+}
+
+// Formatage « ±N % » d'un facteur multiplicatif (arrondi d'abord : jamais « −0 % »)
+function pctLabel(factor) {
+  const p = Math.round(Math.abs(factor - 1) * 100);
+  return (p === 0 ? '±0' : (factor >= 1 ? '+' : '−') + p) + ' %';
+}
+
+// --- économie du tirage : volume de joueurs, espérance, partage --------
+// Un rang à probabilité connue transforme son compteur de gagnants en
+// instrument de mesure : gagnants / p(rang) ≈ nombre de grilles jouées.
+// La FDJ ne publie pas ce volume — il est pourtant caché dans chaque tirage.
+// On prend la médiane sur les rangs à gros effectifs (robuste au bruit et aux
+// effets de popularité, cohérence inter-rangs ±10 %).
+function learnEconomics(draws) {
+  const game = state.currentGame;
+  const cfg = (state.cache[game] && state.cache[game].config) || {};
+  const ballCount = cfg.ballCount || 5;
+  const ballMax = cfg.ballMax || 50;
+  const gridCost = cfg.gridCost || 2.5;
+
+  const comb = (n, k) => {
+    if (k < 0 || k > n) return 0;
+    let r = 1;
+    for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+    return Math.round(r);
+  };
+  const pB = mn => comb(ballCount, mn) * comb(ballMax - ballCount, ballCount - mn) / comb(ballMax, ballCount);
+
+  // p(rang) par ère, en inversant les MÊMES tables/fonctions que findPrize —
+  // garantit la cohérence avec le reste de l'app. Mémoïsé par ère.
+  const probsCache = {};
+  const starMaxFor = d => d.date >= STAR_12_ERA_START ? 12 : d.date >= EM_13_RANKS_START ? 11 : 9;
+  const rankProbsFor = draw => {
+    let eraKey;
+    if (game === 'euromillions') eraKey = 'em' + starMaxFor(draw);
+    else if (game === 'loto') eraKey = (draw.prizes && draw.prizes.length <= 6) ? 'lotoOld' : 'lotoNew';
+    else eraKey = 'ed';
+    if (probsCache[eraKey]) return probsCache[eraKey];
+
+    const out = {};
+    const combosByRank = {};
+    const starMax = game === 'euromillions' ? starMaxFor(draw) : 0;
+    const addCombo = (rank, mn, ms) => {
+      if (!rank) return;
+      let p = pB(mn);
+      if (game === 'euromillions') p *= comb(2, ms) * comb(starMax - 2, 2 - ms) / comb(starMax, 2);
+      else if (game === 'loto') p *= (ms === 1 ? 1 : 9) / (cfg.bonusMax || 10);
+      else p *= (ms === 1 ? 1 : 4) / (cfg.bonusMax || 5);
+      out[rank] = (out[rank] || 0) + p;
+      (combosByRank[rank] = combosByRank[rank] || []).push([mn, ms]);
+    };
+    if (game === 'euromillions') {
+      const table = starMax === 12 ? RANK_TABLE_EM : starMax === 11 ? RANK_TABLE_EM_11 : RANK_TABLE_EM_9;
+      for (const key of Object.keys(table)) {
+        const parts = key.split('+');
+        addCombo(table[key], parseInt(parts[0], 10), parseInt(parts[1], 10));
+      }
+    } else if (eraKey === 'lotoNew') {
+      for (const key of Object.keys(RANK_TABLE_LOTO)) {
+        const parts = key.split('+');
+        addCombo(RANK_TABLE_LOTO[key], parseInt(parts[0], 10), parseInt(parts[1], 10));
+      }
+    } else if (eraKey === 'lotoOld') {
+      for (let mn = 0; mn <= 5; mn++) for (let ms = 0; ms <= 1; ms++) addCombo(oldLotoRank(mn, ms), mn, ms);
+      // Rang 6 = remboursement du N° Chance, CUMULABLE avec un rang de boules
+      // (prouvé sur les données) : ses gagnants = tous les détenteurs → p = 1/10.
+      out[6] = 0.1;
+      combosByRank[6] = null;
+    }
+    else {
+      for (let mn = 0; mn <= 6; mn++) for (let ms = 0; ms <= 1; ms++) addCombo(edRank(mn, ms), mn, ms);
+    }
+    // Étiquette lisible par rang, valable pour L'ÈRE du tirage (les rangs ont
+    // changé de sens : « rang 4 » = 4+2 en EM mais « 3 numéros » au vieux LOTO)
+    const labels = {};
+    for (const rank of Object.keys(out)) {
+      const cs = combosByRank[rank];
+      if (!cs) { labels[rank] = 'N° Chance'; continue; }
+      if (cs.length === 1) labels[rank] = cs[0][0] + '+' + cs[0][1];
+      else labels[rank] = cs[0][0] + ' num.';
+    }
+    probsCache[eraKey] = { p: out, label: labels };
+    return probsCache[eraKey];
+  };
+
+  const p1For = d => {
+    if (game === 'euromillions') return 1 / (comb(50, 5) * comb(starMaxFor(d), 2));
+    return 1 / (cfg.totalCombinations || 19068840);
+  };
+
+  // Série chronologique : volume estimé + EV « fixe » (hors jackpot/rente)
+  const chrono = draws.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const MIN_P = 4e-4; // rangs « volume » : gros effectifs uniquement
+  const series = [];
+  let roll = 0;
+  // Hall of shame : z = (gagnants − attendus)/√attendus sur les rangs
+  // « partage » (2 ≤ attendus ≤ 400). Sous choix aléatoire des joueurs,
+  // sd(z) = 1 — mesuré : 1,2 à 4,6 selon le rang. Chaque z extrême est
+  // une soirée où un pattern « humain » a été massivement co-joué.
+  const zByLabel = {};
+  const anomalies = [];
+
+  // Bénéfice contre-tendance en euros : les soirs où le tirage contient peu
+  // de « dates » (≤31), les lots pari-mutuels sont moins partagés — on mesure
+  // l'EV et le lot d'un rang témoin (3 numéros) selon la richesse en dates.
+  const datesLowMax = ballCount === 6 ? 3 : 2;
+  const datesHighMin = ballCount === 6 ? 6 : 4;
+  const evByDates = { low: [], high: [] };
+  const witByDates = { low: [], high: [] };
+  const witnessRankFor = d => {
+    if (game === 'euromillions') return 10; // 3+0, pari-mutuel sur toute la période
+    // LOTO : le rang 6 (3+0) était FIXE à 20 € de mars 2017 à octobre 2019 —
+    // insensible au partage, il diluerait la comparaison. Pari-mutuel depuis nov. 2019.
+    if (game === 'loto') return (d.prizes.length <= 6 || d.date < '2019-11-01') ? null : 6;
+    return 5; // 3 numéros
+  };
+
+  for (const d of chrono) {
+    if (!d.prizes || !d.prizes.length) continue;
+    const probs = rankProbsFor(d);
+    const ests = [];
+    const frEsts = []; // volume FRANÇAIS (EM : sert à l'espérance My Million)
+    let ev = 0;
+    for (const p of d.prizes) {
+      const pr = probs.p[p.rank];
+      if (!pr) continue;
+      const w = p.winners !== undefined ? p.winners : p.winnersEu;
+      if (pr >= MIN_P && w > 30) ests.push(w / pr);
+      if (game === 'euromillions' && pr >= MIN_P && p.winnersFr > 30) frEsts.push(p.winnersFr / pr);
+      // EV : tous les rangs sauf jackpot (et rentes EuroDreams, traitées à part)
+      if (p.rank !== 1 && !(game === 'eurodreams' && p.rank === 2)) ev += pr * (p.prize || 0);
+    }
+    ests.sort((a, b) => a - b);
+    frEsts.sort((a, b) => a - b);
+    const v = ests.length ? ests[Math.floor(ests.length / 2)] : null;
+    if (v) {
+      for (const p of d.prizes) {
+        const pr = probs.p[p.rank];
+        if (!pr) continue;
+        const E = v * pr;
+        if (E < 2 || E > 400) continue;
+        const w = p.winners !== undefined ? p.winners : p.winnersEu;
+        const z = (w - E) / Math.sqrt(E);
+        const label = probs.label[p.rank];
+        (zByLabel[label] = zByLabel[label] || []).push(z);
+        if (z > 4) anomalies.push({ date: d.date, balls: d.balls, label, w, E, z });
+      }
+    }
+    // Buckets « richesse en dates » du tirage (idée 9)
+    if (ev > 0) {
+      const nd = d.balls.filter(x => x <= 31).length;
+      const bucket = nd <= datesLowMax ? 'low' : nd >= datesHighMin ? 'high' : null;
+      if (bucket) {
+        evByDates[bucket].push(ev);
+        const wr = witnessRankFor(d);
+        if (wr) {
+          const pw = d.prizes.find(p => p.rank === wr);
+          if (pw && pw.prize > 0) witByDates[bucket].push(pw.prize);
+        }
+      }
+    }
+
+    series.push({
+      date: d.date,
+      v,
+      vFr: frEsts.length ? frEsts[Math.floor(frEsts.length / 2)] : null,
+      ev,
+      won: !!d.hasWinner,
+      roll,
+    });
+    roll = d.hasWinner ? 0 : roll + 1;
+  }
+
+  const withV = series.filter(s => s.v);
+  if (withV.length < 50) return null;
+
+  const med = a => {
+    const s = [...a].sort((x, y) => x - y);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  const quant = (a, p) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length * p)]; };
+  const dow = date => new Date(date + 'T12:00:00Z').getUTCDay();
+
+  // Agrégats sur une fenêtre récente : les volumes d'il y a 15 ans ne disent
+  // rien du prochain tirage. La validation Poisson, elle, utilise TOUT.
+  const RECENT = 300;
+  const recent = withV.slice(-RECENT);
+  const vMed = med(recent.map(s => s.v));
+
+  const byDay = {};
+  for (const s of recent) { const k = dow(s.date); (byDay[k] = byDay[k] || []).push(s.v); }
+  const dayMed = {};
+  for (const k of Object.keys(byDay)) dayMed[k] = med(byDay[k]);
+
+  const rollBucket = r => (r <= 0 ? 0 : r <= 3 ? 1 : r <= 7 ? 2 : 3);
+  const byRoll = [[], [], [], []];
+  for (const s of recent) byRoll[rollBucket(s.roll)].push(s.v);
+  // EuroDreams n'a PAS de cagnotte progressive (rente fixe à chaque tirage) :
+  // l'« effet rollover » qu'on y mesurerait (±7 %, non monotone) est du bruit
+  // sans mécanisme causal — on le neutralise.
+  const rollMed = game === 'eurodreams'
+    ? [null, null, null, null]
+    : byRoll.map(a => (a.length >= 5 ? med(a) : null));
+
+  // Validation du modèle de Poisson sur tout l'historique :
+  // P(rang 1 gagné) prédite par 1−e^(−V×p1), comparée à la fréquence observée
+  let predSum = 0, wonCount = 0;
+  for (const s of withV) {
+    predSum += 1 - Math.exp(-s.v * p1For(s));
+    if (s.won) wonCount++;
+  }
+  const poisson = { predicted: predSum / withV.length, observed: wonCount / withV.length, n: withV.length, won: wonCount };
+
+  const evMed = med(recent.filter(s => s.ev > 0).map(s => s.ev));
+
+  // EM : My Million — 1 M€ garanti par tirage, réparti sur les grilles FR.
+  // Volume français estimé depuis winnersFr sur les mêmes rangs.
+  const frVols = recent.filter(s => s.vFr).map(s => s.vFr);
+  const vFrMed = frVols.length >= 50 ? med(frVols) : null;
+  const evMyMillion = vFrMed ? 1e6 / vFrMed : null;
+
+  // Rollover en cours (pour le PROCHAIN tirage)
+  let currentRoll = 0;
+  for (let i = series.length - 1; i >= 0; i--) {
+    if (series[i].won) break;
+    currentRoll++;
+  }
+
+  const p1Now = p1For({ date: chrono[chrono.length - 1].date });
+  const lamMed = vMed * p1Now;
+  const shareFactor = (1 - Math.exp(-lamMed)) / lamMed; // E[1/(1+K)], K~Poisson
+  // Jackpot rendant l'espérance égale à la mise (à volume médian)
+  const jStar = (gridCost - evMed) / (p1Now * shareFactor);
+
+  // Volume attendu du prochain tirage : médiane du jour × facteur rollover
+  const predictVolume = dayIdx => {
+    const base = dayMed[dayIdx] || vMed;
+    const rm = rollMed[rollBucket(currentRoll)];
+    return base * (rm ? rm / vMed : 1);
+  };
+
+  // Plus grosse cagnotte annoncée dans les données (LOTO : prize du rang 1)
+  let maxJackpot = 0;
+  if (game === 'loto') {
+    for (const d of chrono) {
+      const p1 = (d.prizes || []).find(p => p.rank === 1);
+      if (p1 && p1.prize > maxJackpot) maxJackpot = p1.prize;
+    }
+  }
+
+  // Synthèse du bénéfice contre-tendance (affichée si assez de tirages)
+  let contrarianEuros = null;
+  if (evByDates.low.length >= 25 && evByDates.high.length >= 25) {
+    contrarianEuros = {
+      evLow: med(evByDates.low),
+      evHigh: med(evByDates.high),
+      nLow: evByDates.low.length,
+      nHigh: evByDates.high.length,
+      witLow: witByDates.low.length >= 25 ? med(witByDates.low) : null,
+      witHigh: witByDates.high.length >= 25 ? med(witByDates.high) : null,
+      lowMax: datesLowMax,
+      highMin: datesHighMin,
+    };
+  }
+
+  // Idée 11 : honnêteté du prédicteur de volume — erreur mesurée en
+  // walk-forward (chaque tirage prédit avec les seuls tirages antérieurs)
+  const dowOf = date => new Date(date + 'T12:00:00Z').getUTCDay();
+  const btErrs = [];
+  {
+    const testN = Math.min(150, Math.floor(withV.length / 3));
+    for (let i = withV.length - testN; i < withV.length; i++) {
+      if (i < 60) continue;
+      const hist = withV.slice(Math.max(0, i - 300), i);
+      const vm = med(hist.map(s => s.v));
+      const dm = {};
+      for (const s of hist) { const k = dowOf(s.date); (dm[k] = dm[k] || []).push(s.v); }
+      const rm = [[], [], [], []];
+      for (const s of hist) rm[(s.roll <= 0 ? 0 : s.roll <= 3 ? 1 : s.roll <= 7 ? 2 : 3)].push(s.v);
+      const t = withV[i];
+      const base = dm[dowOf(t.date)] ? med(dm[dowOf(t.date)]) : vm;
+      const bucket = t.roll <= 0 ? 0 : t.roll <= 3 ? 1 : t.roll <= 7 ? 2 : 3;
+      const rf = game === 'eurodreams' ? null : (rm[bucket].length >= 5 ? med(rm[bucket]) : null);
+      const pred = base * (rf ? rf / vm : 1);
+      btErrs.push(Math.abs(pred - t.v) / t.v);
+    }
+  }
+  const backtestErr = btErrs.length >= 30 ? med(btErrs) : null;
+
+  // Synthèse du hall of shame : surdispersion par rang + pires soirées
+  const sdOf = a => {
+    const m = a.reduce((x, y) => x + y, 0) / a.length;
+    return Math.sqrt(a.reduce((x, y) => x + (y - m) * (y - m), 0) / a.length);
+  };
+  const sdByLabel = Object.entries(zByLabel)
+    .filter(([, zs]) => zs.length >= 100)
+    .map(([label, zs]) => ({ label, sd: sdOf(zs), n: zs.length }))
+    .sort((a, b) => b.sd - a.sd)
+    .slice(0, 3);
+  anomalies.sort((a, b) => b.z - a.z);
+  const shame = { sdByLabel, top: anomalies.slice(0, 5) };
+
+  return {
+    series, withV, vMed,
+    vP10: quant(recent.map(s => s.v), 0.10),
+    vP90: quant(recent.map(s => s.v), 0.90),
+    dayMed, rollMed, rollBucket, poisson, evMed, gridCost,
+    p1Now, shareFactor, jStar, currentRoll, predictVolume, maxJackpot,
+    vFrMed, evMyMillion, shame, contrarianEuros, backtestErr,
+    nRecent: recent.length,
+  };
+}
+
+// --- équité du tirage : chi² + runs test --------------------------------
+// La heatmap montre des écarts bruts que l'œil sur-interprète. Le test du
+// chi² répond à la vraie question — « la loterie est-elle équitable ? » —
+// avec la correction de tirage sans remise (facteur (N−1)/(N−k), Joe 1993).
+// Le runs test sur la parité de la somme vérifie l'indépendance temporelle.
+
+// Fonction de survie de la loi normale (approx. Abramowitz-Stegun, ~1e-7)
+function normalSF(z) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI);
+  const poly = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  const sf = d * poly;
+  return z >= 0 ? sf : 1 - sf;
+}
+
+// p-value du chi² par l'approximation de Wilson–Hilferty
+function chi2PValue(x, df) {
+  const z = (Math.cbrt(x / df) - (1 - 2 / (9 * df))) / Math.sqrt(2 / (9 * df));
+  return normalSF(z);
+}
+
+function learnFairness(draws) {
+  const game = state.currentGame;
+  const cfg = (state.cache[game] && state.cache[game].config) || {};
+  const N = cfg.ballMax || 50;
+  const k = cfg.ballCount || 5;
+  const n = draws.length;
+
+  // Boules : chi² corrigé (les k boules d'un tirage sont dépendantes)
+  const counts = new Array(N + 1).fill(0);
+  for (const d of draws) for (const b of d.balls) counts[b]++;
+  const E = n * k / N;
+  let raw = 0;
+  for (let i = 1; i <= N; i++) raw += (counts[i] - E) * (counts[i] - E) / E;
+  const ballsChi2 = raw * (N - 1) / (N - k);
+  const balls = { chi2: ballsChi2, df: N - 1, p: chi2PValue(ballsChi2, N - 1) };
+
+  // Étoiles (EM, ère 12 uniquement : probabilités homogènes) ou bonus
+  let second = null;
+  if (game === 'euromillions') {
+    const era12 = draws.filter(d => d.stars && d.date >= STAR_12_ERA_START);
+    if (era12.length > 100) {
+      const sc = new Array(13).fill(0);
+      for (const d of era12) for (const s of d.stars) sc[s]++;
+      const Es = era12.length * 2 / 12;
+      let rawS = 0;
+      for (let s = 1; s <= 12; s++) rawS += (sc[s] - Es) * (sc[s] - Es) / Es;
+      const chiS = rawS * 11 / 10;
+      second = { label: 'étoiles', chi2: chiS, df: 11, p: chi2PValue(chiS, 11) };
+    }
+  } else {
+    const bmax = cfg.bonusMax || 10;
+    const bc = new Array(bmax + 1).fill(0);
+    for (const d of draws) if (d.bonus >= 1 && d.bonus <= bmax) bc[d.bonus]++;
+    const Eb = n / bmax;
+    let rawB = 0;
+    for (let b = 1; b <= bmax; b++) rawB += (bc[b] - Eb) * (bc[b] - Eb) / Eb;
+    second = { label: cfg.bonusName || 'bonus', chi2: rawB, df: bmax - 1, p: chi2PValue(rawB, bmax - 1) };
+  }
+
+  // Runs test : la parité de la somme alterne-t-elle « normalement » ?
+  const par = draws.slice().sort((a, b) => a.date.localeCompare(b.date))
+    .map(d => sum(d.balls) % 2);
+  const n1 = par.filter(x => x === 1).length;
+  const n0 = par.length - n1;
+  let R = 1;
+  for (let i = 1; i < par.length; i++) if (par[i] !== par[i - 1]) R++;
+  const muR = 2 * n1 * n0 / par.length + 1;
+  const sdR = Math.sqrt(2 * n1 * n0 * (2 * n1 * n0 - par.length) / (par.length * par.length * (par.length - 1)));
+  const zR = (R - muR) / sdR;
+  const runs = { z: zR, p: 2 * normalSF(Math.abs(zR)) };
+
+  return { balls, second, runs };
 }
 
 // --- vérification d'une combinaison ---------------------------------
@@ -1389,12 +2117,18 @@ async function fetchViaProxy(targetUrl) {
     { name: 'direct',       url: targetUrl,                                                             silent: true },
     { name: 'corsproxy.io', url: 'https://corsproxy.io/?url=' + encodeURIComponent(targetUrl) },
     { name: 'allorigins',   url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl) },
-    { name: 'thingproxy',   url: 'https://thingproxy.freeboard.io/fetch/' + targetUrl },
+    // thingproxy.freeboard.io retiré : service arrêté depuis des années,
+    // chaque tentative n'ajoutait que de la latence d'échec.
   ];
+  // Sans timeout, un proxy qui accepte la connexion sans répondre bloquerait
+  // toute la chaîne de stratégies (et donc l'affichage de la cagnotte).
+  const STRATEGY_TIMEOUT_MS = 8000;
   let lastErr = null;
   for (const s of strategies) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), STRATEGY_TIMEOUT_MS);
     try {
-      const res = await fetch(s.url);
+      const res = await fetch(s.url, { signal: ctrl.signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const text = await res.text();
       if (text && text.length > 500) {
@@ -1407,6 +2141,8 @@ async function fetchViaProxy(targetUrl) {
         console.warn('[EuroAffûté] ' + s.name + ' a échoué pour ' + targetUrl + ' :', err.message);
       }
       lastErr = err;
+    } finally {
+      clearTimeout(timer);
     }
   }
   throw lastErr || new Error('tous les proxies ont échoué');
@@ -1512,6 +2248,7 @@ async function renderNextDraw() {
   const headEl = document.querySelector('.next-draw-head');
   if (!el) return;
   const game = state.currentGame;
+  state.nextDrawAmount = null; // alimenté plus bas si le scraping aboutit
 
   // Toujours afficher la date du prochain tirage
   const nextDate = getNextDrawDate();
@@ -1550,6 +2287,14 @@ async function renderNextDraw() {
         '<div class="next-draw-amount">' + info.amountText + '</div>' +
         '<div class="next-draw-meta">' + (meta || '&nbsp;') + '</div>' +
       '</div>';
+
+    // La cagnotte scrapée alimente le panneau « prochain tirage » de la
+    // section économie (espérance totale jackpot compris). Garde anti-course :
+    // si l'utilisateur a changé d'onglet pendant le fetch, on n'écrit rien.
+    if (state.currentGame === game && info.amountEur > 0) {
+      state.nextDrawAmount = info.amountEur;
+      updateEconTonight();
+    }
   } catch (err) {
     console.warn('[EuroAffûté] next draw ' + game + ' :', err.message);
     // Même si la cagnotte échoue, on affiche la date
@@ -1605,8 +2350,8 @@ function parseRecentJackpots(html) {
 
 async function fetchRecentJackpots() {
   // v2 : v1 avait pu cacher un {} vide (scraping échoué en prod) valable 24h.
-  const CACHE_KEY = 'euroaffute:recentJackpots:v2';
-  const cached = cacheGet(CACHE_KEY, CACHE_TTL.JACKPOT);
+  const CACHE_KEY = CACHE_KEYS.RECENT_JACKPOTS;
+  const cached = cacheGet(CACHE_KEY, CACHE_TTL.RECENT_JACKPOTS);
   if (cached && Object.keys(cached).length > 0) {
     console.log('[EuroAffûté] jackpots récents depuis cache (' + Object.keys(cached).length + ' entrées)');
     return cached;
@@ -1645,7 +2390,8 @@ function htmlToText(html) {
 
 // Scrape la page spécifique d'un tirage pour y trouver le vrai jackpot.
 // Utilise la page anglaise /results/DD-MM-YYYY qui expose :
-//   Jackpot: €48,175,066          (montant par gagnant, précis)
+//   Jackpot: €144,525,198         (montant TOTAL du tirage — pour un tirage
+//                                  multi-gagnants c'est N × la part de chacun)
 //   Total Winners: 1,967,227      (tous rangs confondus)
 //   Outcome: Jackpot Won!         (ou absent si non gagné)
 function parseSingleDrawPage(html, isoDate) {
@@ -1864,42 +2610,6 @@ function parseSecretsDuJeuPage(html, isoDate) {
 
 // --- rendu du dernier tirage ----------------------------------------
 
-// Construit la mini-table "Top 5 rangs par montant distribué" affichée
-// sous les gains. Le 5+2 de l'API ayant un bug de valeur, on accepte en
-// override le vrai jackpot scrapé (total et part par gagnant).
-function buildTopRanksTable(prizes, jackpot52) {
-  if (!prizes || !prizes.length) return '';
-  const jpTotal = (jackpot52 && jackpot52.jackpotTotal) || 0;
-  const jpPer = (jackpot52 && jackpot52.jackpotPerWinner) || 0;
-  const rankTotals = prizes.map(p => {
-    const is52 = p.matched_numbers === 5 && p.matched_stars === 2;
-    const total = is52 ? jpTotal : (p.prize || 0) * (p.winners || 0);
-    return {
-      label: p.matched_numbers + '+' + p.matched_stars,
-      winners: p.winners || 0,
-      perWinner: is52 && jpPer ? jpPer : (p.prize || 0),
-      total: total,
-    };
-  });
-  const top5 = rankTotals.filter(r => r.total > 0).sort((a, b) => b.total - a.total).slice(0, 5);
-  if (!top5.length) return '';
-  let html = '<div class="rank-breakdown">' +
-    '<div class="rank-breakdown-title">Top rangs par montant distribué</div>' +
-    '<table class="rank-table"><thead>' +
-    '<tr><th>Rang</th><th>Total distribué</th><th>Gagnants</th><th>Par gagnant</th></tr>' +
-    '</thead><tbody>';
-  for (const r of top5) {
-    html += '<tr>' +
-      '<td class="rank-label"><strong>' + r.label + '</strong></td>' +
-      '<td class="rank-total">' + formatMoney(r.total) + '</td>' +
-      '<td>' + fmt(r.winners) + '</td>' +
-      '<td>' + formatMoney(r.perWinner) + '</td>' +
-      '</tr>';
-  }
-  html += '</tbody></table></div>';
-  return html;
-}
-
 async function renderLatest() {
   const box = document.getElementById('latest');
   if (!state.draws || state.draws.length === 0) { box.style.display = 'none'; return; }
@@ -2026,15 +2736,35 @@ async function renderLatest() {
   // Tests "contre-tendance" (vert) — évaluent la grille gagnante sur les
   // règles anti-patterns populaires. Utile pour voir si ce tirage aurait
   // "frustré" les joueurs qui jouent des dates, multiples de 7, etc.
+  // Seuil "dates" aligné sur hasBirthdayPattern (6/6 pour EuroDreams, 4 sinon)
+  const btThresh = latest.balls.length >= 6 ? latest.balls.length : 4;
   const contrarianTests = [
-    { ok: !hasBirthdayPattern(latest.balls),    l: '< 4 n° ≤ 31 (dates)' },
+    { ok: !hasBirthdayPattern(latest.balls),    l: '< ' + btThresh + ' n° ≤ 31 (dates)' },
     { ok: !hasArithmeticRun(latest.balls),      l: 'Pas de suite arithmétique' },
-    { ok: !tooManyMultiplesOf7(latest.balls),   l: '≤ 2 multiples de 7' },
-    { ok: !tooManyMultiplesOf5(latest.balls),   l: '≤ 2 multiples de 5' },
     { ok: !hasGridAlignment(latest.balls),      l: 'Pas d\'alignement grille' },
   ];
-  if (latest.stars) {
-    contrarianTests.push({ ok: !hasPopularStars(latest.stars), l: '≥ 1 étoile > 7' });
+  const popIdx = state.popularity;
+  if (popIdx) {
+    // Indice mesuré : à quel point CE tirage était joué (partage des lots)
+    let logB = 0;
+    for (const n of latest.balls) logB += popIdx.ballCount * (popIdx.ballDelta[n] || 0);
+    const bf = Math.exp(logB);
+    contrarianTests.push({ ok: bf < 1, l: 'Numéros ' + (bf < 1 ? 'délaissés' : 'sur-joués') + ' (' + pctLabel(bf) + ' co-joueurs)' });
+    if (popIdx.bonusDelta) {
+      const keys = latest.stars || [latest.bonus];
+      let logS = 0;
+      for (const k of keys) logS += popIdx.bonusDelta[k] || 0;
+      const sf = Math.exp(logS);
+      contrarianTests.push({
+        ok: sf < 1,
+        l: (latest.stars ? 'Étoiles ' + (sf < 1 ? 'délaissées' : 'sur-jouées') : 'N° Chance ' + (sf < 1 ? 'délaissé' : 'sur-joué')) + ' (' + pctLabel(sf) + ')',
+      });
+    }
+  } else {
+    // Repli heuristique si l'indice n'a pas pu être appris
+    contrarianTests.push({ ok: !tooManyMultiplesOf7(latest.balls), l: '≤ 2 multiples de 7' });
+    contrarianTests.push({ ok: !tooManyMultiplesOf5(latest.balls), l: '≤ 2 multiples de 5' });
+    if (latest.stars) contrarianTests.push({ ok: !hasPopularStars(latest.stars), l: '≥ 1 étoile > 7' });
   }
   const passedContrarian = contrarianTests.filter(t => t.ok).length;
   const contrarianHtml =
@@ -2303,14 +3033,37 @@ function renderFrequencies() {
   const expEl = document.getElementById('freqExpectedBall');
   if (expEl) expEl.textContent = Math.round(expected);
 
-  // Amplitude maximale observée pour calibrer la gamme de couleurs
+  // Échelle graduée en ÉCARTS-TYPES théoriques (saturation à ±3σ) : avec
+  // l'ancienne échelle « max observé », la gamme froid→chaud était toujours
+  // entièrement occupée, transformant du bruit pur en signal visuel.
   const ballMax = freq.ballMax || 50;
-  let maxAbsDelta = 0;
-  for (let n = 1; n <= ballMax; n++) {
-    const d = (freq.ballFreq[n] - expected) / expected;
-    if (Math.abs(d) > maxAbsDelta) maxAbsDelta = Math.abs(d);
+  const pBall = (freq.ballCount || 5) / ballMax;
+  const ballSigmaRel = Math.sqrt(expected * (1 - pBall)) / expected;
+  const ballScale = 3 * ballSigmaRel;
+
+  // Badge d'équité (chi² corrigé pour tirage sans remise + runs test)
+  const badge = document.getElementById('fairnessBadge');
+  if (badge) {
+    const fair = state.fairness;
+    if (fair) {
+      const pTxt = p => p < 0.001 ? 'p < 0,001' : 'p ≈ ' + (p < 0.01 ? p.toFixed(3) : p.toFixed(2)).replace('.', ',');
+      // Le verdict dépend des p-values réelles : les données se mettent à jour
+      // toutes les semaines, une fluctuation sous 0,01 ne doit pas afficher
+      // « aucun écart » à côté d'un p qui dit le contraire.
+      const pMin = Math.min(fair.balls.p, fair.second ? fair.second.p : 1, fair.runs.p);
+      const verdict = pMin > 0.01
+        ? 'Aucun écart significatif : le hasard fait son travail.'
+        : 'Un test passe sous p = 0,01 — probablement une fluctuation (9 tests au total), à surveiller.';
+      badge.style.display = '';
+      badge.innerHTML = '<strong>' + (pMin > 0.01 ? 'Équité vérifiée' : 'Équité') + '</strong> — χ² boules : ' +
+        fair.balls.chi2.toFixed(1).replace('.', ',') + ' (' + fair.balls.df + ' ddl, ' + pTxt(fair.balls.p) + ')' +
+        (fair.second ? ' · ' + fair.second.label + ' : ' + fair.second.chi2.toFixed(1).replace('.', ',') + ' (' + pTxt(fair.second.p) + ')' : '') +
+        ' · indépendance temporelle (runs test) : ' + pTxt(fair.runs.p) +
+        '. ' + verdict;
+    } else {
+      badge.style.display = 'none';
+    }
   }
-  const ballScale = Math.max(0.08, maxAbsDelta);
 
   // Rendu des boules
   const ballsEl = document.getElementById('freqBalls');
@@ -2320,6 +3073,7 @@ function renderFrequencies() {
   for (let n = 1; n <= ballMax; n++) {
     const count = freq.ballFreq[n];
     const delta = (count - expected) / expected;
+    const z = delta / ballSigmaRel;
     const cell = document.createElement('div');
     cell.className = 'freq-cell';
     cell.style.background = colorForDelta(delta, ballScale);
@@ -2327,7 +3081,8 @@ function renderFrequencies() {
     const deltaPct = Math.round(delta * 100);
     const sign = deltaPct >= 0 ? '+' : '';
     cell.title = 'Numéro ' + n + ' : sorti ' + count + ' fois · attendu ' +
-      Math.round(expected) + ' · écart ' + sign + deltaPct + '%';
+      Math.round(expected) + ' · écart ' + sign + deltaPct + '% (' +
+      (z >= 0 ? '+' : '') + z.toFixed(1) + 'σ — banal jusqu\'à ±3σ)';
     cell.innerHTML =
       '<div class="freq-num">' + n + '</div>' +
       '<div class="freq-count">' + count + '</div>';
@@ -2345,34 +3100,41 @@ function renderFrequencies() {
     // EuroMillions : étoiles (1..12), échelle calibrée par étoile selon son attendu
     if (starsBlock) starsBlock.style.display = '';
     starsEl.style.gridTemplateColumns = 'repeat(12, 1fr)';
-    let starMaxAbs = 0;
-    for (let n = 1; n <= 12; n++) {
-      const d = (freq.starFreq[n] - freq.starExpected[n]) / freq.starExpected[n];
-      if (Math.abs(d) > starMaxAbs) starMaxAbs = Math.abs(d);
-    }
-    const starScale = Math.max(0.08, starMaxAbs);
+    // σ par étoile : variance binomiale sommée sur les TROIS ères
+    // (2/9 jusqu'en 2011, 2/11 jusqu'en 2016, 2/12 depuis)
+    const starSigmaRel = n => {
+      const p9 = 2 / 9, p11 = 2 / 11, p12 = 2 / 12;
+      const v = (n <= 9 ? freq.drawsEra9 * p9 * (1 - p9) : 0)
+              + (n <= 11 ? freq.drawsEra11 * p11 * (1 - p11) : 0)
+              + freq.drawsEra12 * p12 * (1 - p12);
+      return Math.sqrt(v) / freq.starExpected[n];
+    };
     for (let n = 1; n <= 12; n++) {
       const count = freq.starFreq[n];
       const exp = freq.starExpected[n];
       const delta = (count - exp) / exp;
+      const sRel = starSigmaRel(n);
+      const z = delta / sRel;
       const cell = document.createElement('div');
       cell.className = 'freq-cell';
-      cell.style.background = colorForDelta(delta, starScale);
-      cell.style.color = textForDelta(delta, starScale);
+      cell.style.background = colorForDelta(delta, 3 * sRel);
+      cell.style.color = textForDelta(delta, 3 * sRel);
       const deltaPct = Math.round(delta * 100);
       const sign = deltaPct >= 0 ? '+' : '';
       cell.title = 'Étoile ' + n + ' : sortie ' + count + ' fois · attendu ' +
-        Math.round(exp) + ' · écart ' + sign + deltaPct + '%';
+        Math.round(exp) + ' · écart ' + sign + deltaPct + '% (' +
+        (z >= 0 ? '+' : '') + z.toFixed(1) + 'σ)';
       cell.innerHTML =
         '<div class="freq-num">' + n + '</div>' +
         '<div class="freq-count">' + count + '</div>';
       starsEl.appendChild(cell);
     }
-    // Caveat sur l'étoile 12
+    // Caveat sur les ères d'étoiles
     if (caveat) {
-      caveat.textContent = 'L\'étoile 12 a rejoint le tirage le 24/09/2016, donc ' +
-        freq.drawsEra12 + ' tirages sur ' + (freq.drawsEra11 + freq.drawsEra12) +
-        ' seulement — l\'attendu affiché tient compte de cette différence.';
+      const total = freq.drawsEra9 + freq.drawsEra11 + freq.drawsEra12;
+      caveat.textContent = 'Les étoiles 10-11 ont rejoint le tirage le 10/05/2011 et la 12 le 27/09/2016 ' +
+        '(' + freq.drawsEra12 + ' tirages sur ' + total + ' pour l\'étoile 12) — ' +
+        'les attendus et les σ tiennent compte de ces périodes.';
     }
   } else {
     // LOTO / EuroDreams : bonus frequencies
@@ -2385,16 +3147,13 @@ function renderFrequencies() {
     starsEl.style.gridTemplateColumns = 'repeat(' + bonusMax + ', 1fr)';
     if (caveat) caveat.textContent = '';
 
-    let bonusMaxAbs = 0;
-    for (let n = 1; n <= bonusMax; n++) {
-      const count = freq.bonusFreq[n] || 0;
-      const d = (count - bonusExpected) / bonusExpected;
-      if (Math.abs(d) > bonusMaxAbs) bonusMaxAbs = Math.abs(d);
-    }
-    const bonusScale = Math.max(0.08, bonusMaxAbs);
+    const pBonus = 1 / bonusMax;
+    const bonusSigmaRel = Math.sqrt(totalDraws * pBonus * (1 - pBonus)) / bonusExpected;
+    const bonusScale = 3 * bonusSigmaRel;
     for (let n = 1; n <= bonusMax; n++) {
       const count = freq.bonusFreq[n] || 0;
       const delta = (count - bonusExpected) / bonusExpected;
+      const z = delta / bonusSigmaRel;
       const cell = document.createElement('div');
       cell.className = 'freq-cell';
       cell.style.background = colorForDelta(delta, bonusScale);
@@ -2402,7 +3161,8 @@ function renderFrequencies() {
       const deltaPct = Math.round(delta * 100);
       const sign = deltaPct >= 0 ? '+' : '';
       cell.title = bonusName + ' ' + n + ' : sorti ' + count + ' fois · attendu ' +
-        Math.round(bonusExpected) + ' · écart ' + sign + deltaPct + '%';
+        Math.round(bonusExpected) + ' · écart ' + sign + deltaPct + '% (' +
+        (z >= 0 ? '+' : '') + z.toFixed(1) + 'σ)';
       cell.innerHTML =
         '<div class="freq-num">' + n + '</div>' +
         '<div class="freq-count">' + count + '</div>';
@@ -2412,27 +3172,21 @@ function renderFrequencies() {
 }
 
 // --- estimation Monte Carlo du nombre de combinaisons survivant aux filtres ---
+let _mcRun = 0; // jeton anti-réentrance (changement de jeu pendant le calcul)
+
 function renderRemainingCombos() {
   const el = document.getElementById('remainingCombos');
   if (!el) return;
 
-  // Affichage intermédiaire pendant le calcul (perçu comme instantané mais évite le vide)
-  el.textContent = 'calcul…';
+  const game = state.currentGame;
+  const cfg = (state.cache[game] && state.cache[game].config) || {};
+  const TOTAL_COMBOS = cfg.totalCombinations || 139838160;
+  const SAMPLE_SIZE = 50000;  // IC 95% ≈ ±0.45 point sur le taux de survie
+  const CHUNK = 5000;         // tranches courtes : le thread principal respire
 
-  // Défère sur la tick suivante pour ne pas bloquer le rendu initial
-  setTimeout(() => {
-    const cfg = (state.cache[state.currentGame] && state.cache[state.currentGame].config) || {};
-    const TOTAL_COMBOS = cfg.totalCombinations || 139838160;
-    const SAMPLE_SIZE = 50000;       // compromis vitesse/précision (±0.3%)
-
-    let passed = 0;
-    for (let i = 0; i < SAMPLE_SIZE; i++) {
-      const c = randomCombo();
-      if (passesAll(c, state.filters)) passed++;
-    }
-
-    const estimate = Math.round((passed / SAMPLE_SIZE) * TOTAL_COMBOS);
-    const pctDropped = 100 - (passed / SAMPLE_SIZE) * 100;
+  const finish = (rate) => {
+    const estimate = Math.round(rate * TOTAL_COMBOS);
+    const pctDropped = 100 - rate * 100;
 
     let display;
     if (estimate >= 1e7) display = '≈ ' + (estimate / 1e6).toFixed(0) + ' millions de combinaisons';
@@ -2444,8 +3198,8 @@ function renderRemainingCombos() {
 
     // Met à jour le texte de la section "Note d'honnêteté"
     const gameNames = { euromillions: 'L\'EuroMillions', loto: 'Le LOTO', eurodreams: 'EuroDreams' };
-    const gameName = gameNames[state.currentGame] || 'Ce jeu';
-    const topPrize = state.currentGame === 'eurodreams'
+    const gameName = gameNames[game] || 'Ce jeu';
+    const topPrize = game === 'eurodreams'
       ? 'la rente de 20 000 €/mois'
       : 'le jackpot';
     const realityEl = document.getElementById('realityText1');
@@ -2455,7 +3209,287 @@ function renderRemainingCombos() {
         'en lice : la réduction est <strong>marginale</strong> — on reste à une ' +
         'chance sur des millions de décrocher ' + topPrize + '.';
     }
-  }, 0);
+  };
+
+  // Tout appel invalide un éventuel calcul en cours (y compris quand on sort
+  // par la mémoïsation : sinon un run périmé d'un autre jeu continuerait).
+  const runId = ++_mcRun;
+
+  // Mémoïsation : le résultat ne dépend que de l'historique du jeu — on ne
+  // recalcule que si un nouveau tirage est arrivé (et l'affichage ne
+  // fluctue plus d'un passage d'onglet à l'autre).
+  const memo = state.cache[game] && state.cache[game].remainingRate;
+  if (memo && memo.totalDraws === state.draws.length) {
+    finish(memo.rate);
+    return;
+  }
+
+  el.textContent = 'calcul…';
+  const filters = state.filters;
+  let passed = 0, done = 0;
+
+  const step = () => {
+    // Deux gardes : le jeton (un autre renderRemainingCombos a repris la main)
+    // ET le jeu courant — pendant l'await fetch d'un nouvel onglet, aucun
+    // nouveau render n'a encore eu lieu, mais randomCombo() lirait déjà
+    // state.currentGame du nouveau jeu : le run devient invalide.
+    if (runId !== _mcRun || state.currentGame !== game) return;
+    const n = Math.min(CHUNK, SAMPLE_SIZE - done);
+    for (let i = 0; i < n; i++) {
+      if (passesAll(randomCombo(), filters)) passed++;
+    }
+    done += n;
+    if (done < SAMPLE_SIZE) { setTimeout(step, 0); return; }
+    const rate = passed / SAMPLE_SIZE;
+    if (state.cache[game]) {
+      state.cache[game].remainingRate = { rate, totalDraws: state.draws.length };
+    }
+    finish(rate);
+  };
+  // Défère sur la tick suivante pour ne pas bloquer le rendu initial
+  setTimeout(step, 0);
+}
+
+// --- rendu : économie du tirage ---------------------------------------
+
+const DOW_FR = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+
+function renderEconomics() {
+  const section = document.getElementById('economicsSection');
+  if (!section) return;
+  const eco = state.economics;
+  if (!eco) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  const game = state.currentGame;
+  const top1Name = game === 'eurodreams' ? 'la rente' : 'le jackpot';
+  const M = v => (v / 1e6).toFixed(1).replace('.', ',') + ' M';
+  const pct1 = x => (100 * x).toFixed(1).replace('.', ',') + ' %';
+  const chip = (label, value, sub) =>
+    '<div class="econ-chip"><div class="econ-chip-label">' + label + '</div>' +
+    '<div class="econ-chip-value">' + value + '</div>' +
+    '<div class="econ-chip-sub">' + sub + '</div></div>';
+
+  const lede = document.getElementById('econLede');
+  if (lede) {
+    lede.innerHTML = 'La FDJ ne publie pas le nombre de grilles jouées — mais chaque rang de gain ' +
+      'à probabilité connue le révèle : <strong>gagnants ÷ probabilité ≈ volume joué</strong>. ' +
+      'De là découlent l\'espérance réelle d\'une grille, la probabilité que ' + top1Name +
+      ' tombe, et celle de devoir partager.';
+  }
+
+  // Chips de synthèse
+  const chips = document.getElementById('econChips');
+  if (chips) {
+    const dayEntries = Object.entries(eco.dayMed).sort((a, b) => a[1] - b[1]);
+    const dayLow = dayEntries[0];
+    const dayHigh = dayEntries[dayEntries.length - 1];
+    const roll0 = eco.rollMed[0];
+    const roll3 = eco.rollMed[3];
+    chips.innerHTML =
+      chip('Volume médian', M(eco.vMed) + ' grilles',
+        'sur les ' + eco.nRecent + ' derniers tirages · p10 ' + M(eco.vP10) + ' · p90 ' + M(eco.vP90)) +
+      (dayEntries.length > 1
+        ? chip('Effet jour', DOW_FR[dayHigh[0]] + ' ' + M(dayHigh[1]) + ' <span class="econ-vs">vs</span> ' + DOW_FR[dayLow[0]] + ' ' + M(dayLow[1]),
+            'médianes par jour de tirage')
+        : '') +
+      (roll0 && roll3
+        ? chip('Effet cagnotte', '+' + Math.round(100 * (roll3 / roll0 - 1)) + ' % de volume',
+            'après 8+ reports, vs cagnotte fraîche')
+        : '') +
+      chip('Modèle de Poisson validé', pct1(eco.poisson.predicted) + ' prédit · ' + pct1(eco.poisson.observed) + ' observé',
+        'P(rang 1 gagné) par tirage — ' + fmt(eco.poisson.n) + ' tirages, ' + fmt(eco.poisson.won) + ' gagnés');
+  }
+
+  // Graphique : volume estimé des 80 derniers tirages
+  const chart = document.getElementById('econChart');
+  if (chart) {
+    const pts = eco.withV.slice(-80);
+    const W = 800, H = 190, PL = 10, PR = 10, PT = 30, PB = 24;
+    const vs = pts.map(p => p.v);
+    const vMin = Math.min(...vs), vMax = Math.max(...vs);
+    const x = i => PL + i * (W - PL - PR) / (pts.length - 1);
+    const y = v => PT + (1 - (v - vMin) / (vMax - vMin || 1)) * (H - PT - PB);
+    let line = '', area = '';
+    pts.forEach((p, i) => {
+      line += (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(p.v).toFixed(1);
+    });
+    area = line + 'L' + x(pts.length - 1).toFixed(1) + ',' + (H - PB) + 'L' + PL + ',' + (H - PB) + 'Z';
+    const iMax = vs.indexOf(vMax);
+    const yMed = y(Math.min(Math.max(eco.vMed, vMin), vMax));
+    const dots = pts.map((p, i) =>
+      '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p.v).toFixed(1) + '" r="' + (p.won ? 3.5 : 2) + '"' +
+      (p.won ? ' fill="var(--green)"' : ' fill="var(--accent)" opacity="0.35"') + '>' +
+      '<title>' + p.date + ' · ' + M(p.v) + ' grilles' + (p.won ? ' · rang 1 gagné' : '') + '</title></circle>'
+    ).join('');
+    chart.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" role="img" ' +
+        'aria-label="Volume de grilles jouées par tirage, ' + pts.length + ' derniers tirages">' +
+        '<path d="' + area + '" fill="var(--accent)" opacity="0.08"/>' +
+        '<path d="' + line + '" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linejoin="round"/>' +
+        '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + yMed.toFixed(1) + '" y2="' + yMed.toFixed(1) + '" ' +
+          'stroke="var(--text-faint)" stroke-width="1" stroke-dasharray="5,5"/>' +
+        '<text x="' + (W - PR) + '" y="' + (yMed - 6).toFixed(1) + '" text-anchor="end" class="econ-svg-label">médiane ' + M(eco.vMed) + '</text>' +
+        '<text x="' + x(iMax).toFixed(1) + '" y="' + (y(vMax) - 9).toFixed(1) + '" text-anchor="middle" class="econ-svg-label strong">' + M(vMax) + '</text>' +
+        dots +
+        '<text x="' + PL + '" y="' + (H - 6) + '" class="econ-svg-label">' + pts[0].date + '</text>' +
+        '<text x="' + (W - PR) + '" y="' + (H - 6) + '" text-anchor="end" class="econ-svg-label">' + pts[pts.length - 1].date + '</text>' +
+      '</svg>';
+    const note = document.getElementById('econChartNote');
+    if (note) {
+      note.textContent = 'Volume de grilles estimé par tirage (' + pts.length + ' derniers). ' +
+        'Points verts : rang 1 décroché' +
+        (game === 'eurodreams'
+          ? ' — la rente étant fixe, le volume ne dépend pas des tirages précédents.'
+          : ' — le volume retombe, puis regonfle avec la cagnotte.');
+    }
+  }
+
+  // Panneau espérance
+  const ev = document.getElementById('econEv');
+  if (ev) {
+    const perEuro = Math.round(100 * eco.evMed / eco.gridCost);
+    let html = '<div class="econ-panel-title">Espérance d\'une grille</div>';
+    html += '<p>Hors ' + (game === 'eurodreams' ? 'rentes' : 'jackpot') + ', une grille à ' +
+      formatMoney(eco.gridCost) + ' rend en médiane <strong>' + formatMoney(eco.evMed) + '</strong> — ' +
+      '<strong>' + perEuro + ' centimes par euro joué</strong>.</p>';
+    if (game === 'euromillions') {
+      if (eco.evMyMillion) {
+        const jStarMM = (eco.gridCost - eco.evMed - eco.evMyMillion) / (eco.p1Now * eco.shareFactor);
+        html += '<p>S\'y ajoute, pour les grilles françaises, <strong>My Million</strong> : 1 M€ garanti ' +
+          'par tirage réparti sur ≈ ' + M(eco.vFrMed) + ' de grilles FR, soit ' +
+          '<strong>+' + formatMoney(eco.evMyMillion) + '</strong> par grille. ' +
+          'Même ainsi, le jackpot nécessaire pour une espérance positive (≈ <strong>' +
+          Math.round(jStarMM / 1e6) + ' M€</strong>) dépasse le <strong>plafond réglementaire de 250 M€</strong> : ' +
+          'l\'espérance d\'une grille EuroMillions est négative à chaque tirage, sans exception.</p>';
+      } else {
+        html += '<p>Pour que l\'espérance atteigne la mise, il faudrait un jackpot d\'environ ' +
+          '<strong>' + Math.round(eco.jStar / 1e6) + ' M€</strong> (à volume médian, partage inclus) — ' +
+          'au-dessus du <strong>plafond réglementaire de 250 M€</strong>. L\'espérance d\'une grille ' +
+          'EuroMillions est donc négative à chaque tirage, sans exception.</p>';
+      }
+    } else if (game === 'loto') {
+      html += '<p>Seuil d\'espérance positive : un jackpot d\'environ <strong>' +
+        Math.round(eco.jStar / 1e6) + ' M€</strong> (à volume médian). Plus grosse cagnotte des données : ' +
+        '<strong>' + M(eco.maxJackpot) + '€</strong>' +
+        (eco.maxJackpot > eco.jStar
+          ? ' — le seuil est donc atteignable les très gros soirs, mais le volume grimpe alors avec la cagnotte et re-dilue le gain'
+          : '') + '.</p>';
+    } else {
+      // Rentes EuroDreams capitalisées, sans actualisation. Durées officielles :
+      // rang 1 = 20 000 €/mois pendant 30 ans, rang 2 = 2 000 €/mois pendant 5 ANS.
+      // La rente n'est pas partagée : chaque gagnant la touche en entier
+      // (visible dans les données : 3 gagnants au rang 1 le 2025-05-01, 20 000 € chacun).
+      const rent1 = 20000 * 12 * 30; // 7,2 M€
+      const rent2 = 2000 * 12 * 5;   // 120 k€
+      const evRentes = eco.p1Now * rent1 + 4 * eco.p1Now * rent2;
+      html += '<p>En ajoutant les rentes capitalisées sans actualisation (rang 1 : 20 000 €/mois ' +
+        'sur 30 ans = 7,2 M€ ; rang 2 : 2 000 €/mois sur 5 ans = 120 k€ — versées en entier à ' +
+        'chaque gagnant, sans partage), l\'espérance totale monte à ≈ <strong>' +
+        formatMoney(eco.evMed + evRentes) + '</strong> pour ' + formatMoney(eco.gridCost) +
+        ' — généreux en apparence, mais étalé sur 30 ans.</p>';
+    }
+    ev.innerHTML = html;
+  }
+
+  // Le hall of shame du partage : les soirées où un pattern « humain »
+  // co-joué en masse a pulvérisé le nombre attendu de gagnants
+  const shameEl = document.getElementById('econShame');
+  if (shameEl) {
+    const sh = eco.shame;
+    if (!sh || !sh.top.length || !sh.sdByLabel.length) {
+      shameEl.style.display = 'none';
+    } else {
+      shameEl.style.display = '';
+      const tagsFor = balls => {
+        const tags = [];
+        const sorted = [...balls].sort((a, b) => a - b);
+        if (isAP(sorted)) tags.push('suite arithmétique parfaite');
+        else if (hasArithmeticRun(sorted)) tags.push('suite arithmétique');
+        for (const k of [10, 11, 7, 5]) {
+          if (sorted.every(n => n % k === 0)) { tags.push('tous multiples de ' + k); break; }
+        }
+        if (hasGridAlignment(sorted)) tags.push('alignement grille');
+        const le31 = sorted.filter(n => n <= 31).length;
+        if (le31 === sorted.length) tags.push('100 % dates (≤ 31)');
+        else if (le31 === sorted.length - 1) tags.push(le31 + '/' + sorted.length + ' ≤ 31');
+        if (state.popularity) {
+          let logB = 0;
+          for (const n of sorted) logB += state.popularity.ballCount * (state.popularity.ballDelta[n] || 0);
+          const pf = Math.exp(logB);
+          if (pf > 1.08) tags.push(pctLabel(pf) + ' co-joueurs');
+        }
+        return tags.slice(0, 3);
+      };
+      let html = '<div class="econ-panel-title">Le hall of shame du partage</div>';
+      html += '<p>Si chacun choisissait ses numéros au hasard, l\'écart normalisé du nombre de ' +
+        'gagnants aurait un écart-type de 1. Mesuré : ' +
+        sh.sdByLabel.map(s => '<strong>' + s.sd.toFixed(1).replace('.', ',') + '</strong> au rang ' + s.label).join(' · ') +
+        ' — la preuve directe que les joueurs se concentrent sur les mêmes grilles. Les pires soirées :</p>';
+      html += '<div class="econ-shame-list">';
+      for (const a of sh.top) {
+        const tags = tagsFor(a.balls);
+        const dp = a.date.split('-'); // JJ/MM/AAAA comme le reste du site
+        html += '<div class="econ-shame-row">' +
+          '<span class="econ-shame-date">' + dp[2] + '/' + dp[1] + '/' + dp[0] + '</span>' +
+          '<span class="econ-shame-balls">' +
+            [...a.balls].sort((x, y) => x - y).map(n => '<span class="shame-ball">' + n + '</span>').join('') +
+          '</span>' +
+          '<span class="econ-shame-fact"><strong>' + fmt(a.w) + '</strong> gagnants au rang ' + a.label +
+            ' pour ' + a.E.toFixed(1).replace('.', ',') + ' attendus <strong>(×' + (a.w / a.E).toFixed(1).replace('.', ',') + ')</strong></span>' +
+          (tags.length ? '<span class="econ-shame-tags">' + tags.join(' · ') + '</span>' : '') +
+        '</div>';
+      }
+      html += '</div>';
+      shameEl.innerHTML = html;
+    }
+  }
+
+  updateEconTonight();
+}
+
+// Panneau « prochain tirage » — rafraîchi quand la cagnotte scrapée arrive
+function updateEconTonight() {
+  const el = document.getElementById('econTonight');
+  if (!el) return;
+  const eco = state.economics;
+  if (!eco) { el.innerHTML = ''; return; }
+  const game = state.currentGame;
+  const top1Name = game === 'eurodreams' ? 'la rente' : 'le jackpot';
+  const M = v => (v / 1e6).toFixed(1).replace('.', ',') + ' M';
+
+  const next = getNextDrawDate();
+  const dayIdx = next ? DOW_FR.indexOf(next.dayName) : -1;
+  const vHat = eco.predictVolume(dayIdx >= 0 ? dayIdx : undefined);
+  const lam = vHat * eco.p1Now;
+  const pFall = 1 - Math.exp(-lam);
+  const shareF = (1 - Math.exp(-lam)) / lam;
+
+  let html = '<div class="econ-panel-title">Prochain tirage' +
+    (next ? ' — ' + next.label.toLowerCase() : '') + '</div>';
+  html += '<ul class="econ-facts">';
+  html += '<li>Volume attendu : <strong>≈ ' + M(vHat) + ' grilles</strong> ' +
+    (game === 'eurodreams' ? ''
+      : eco.currentRoll > 0 ? '(cagnotte reportée ' + eco.currentRoll + ' fois)' : '(cagnotte fraîche)') +
+    (eco.backtestErr ? ' — erreur médiane ±' + Math.round(100 * eco.backtestErr) + ' % en backtest' : '') + '</li>';
+  if (game === 'eurodreams') {
+    // La rente EuroDreams n'est PAS partagée : chaque gagnant du rang 1 la
+    // touche en entier (cf. données : plusieurs gagnants à 20 000 € chacun).
+    html += '<li>P(quelqu\'un décroche la rente) : <strong>≈ ' + Math.round(100 * pFall) + ' %</strong> — ' +
+      'versée en entier à chaque gagnant, sans partage</li>';
+  } else {
+    // P(partage | vous gagnez) = 1−e^(−(V−1)p1) ≈ P(quelqu'un gagne) : les
+    // deux pourcentages sont mathématiquement le même chiffre arrondi.
+    html += '<li>P(quelqu\'un décroche ' + top1Name + ') : <strong>≈ ' + Math.round(100 * pFall) + ' %</strong> — ' +
+      'c\'est aussi, si votre grille gagne, votre probabilité de devoir partager (les autres grilles ne dépendent pas de la vôtre)</li>';
+  }
+  if (state.nextDrawAmount && game !== 'eurodreams') {
+    const evTotal = eco.evMed + eco.p1Now * state.nextDrawAmount * shareF;
+    html += '<li>Espérance ce soir, jackpot de ' + M(state.nextDrawAmount) + '€ compris : <strong>' +
+      formatMoney(evTotal) + '</strong> pour ' + formatMoney(eco.gridCost) + ' misés</li>';
+  }
+  html += '</ul>';
+  el.innerHTML = html;
 }
 
 // --- mise à jour des textes dynamiques selon le jeu -------------------
@@ -2516,15 +3550,73 @@ function updateDynamicTexts() {
     }
   }
 
-  // Contrarian rules count & star rule visibility
-  const crc = document.getElementById('contrarianRulesCount');
-  const csr = document.getElementById('contrarianStarRule');
-  if (game === 'euromillions') {
-    if (crc) crc.textContent = 'Les 6 règles appliquées';
-    if (csr) csr.style.display = '';
-  } else {
-    if (crc) crc.textContent = 'Les 5 règles appliquées';
-    if (csr) csr.style.display = 'none';
+  // Indice de popularité mesuré : contenu de la note contre-tendance
+  const prn = document.getElementById('popRuleNumbers');
+  const prb = document.getElementById('popRuleBonus');
+  const pop = state.popularity;
+  if (prn) {
+    if (pop) {
+      const pct = n => pctLabel(Math.exp(pop.ballCount * pop.ballDelta[n]));
+      prn.innerHTML = '<strong>Indice de popularité mesuré</strong> sur ' + fmt(pop.nDraws) +
+        ' tirages (compteurs de gagnants par rang) : privilégie les numéros délaissés (' +
+        pop.topUnder.map(n => '<code>' + n + '</code> <span class="pop-pct">' + pct(n) + '</span>').join(', ') +
+        ') et évite les sur-joués (' +
+        pop.topOver.map(n => '<code>' + n + '</code> <span class="pop-pct">' + pct(n) + '</span>').join(', ') + ')';
+    } else {
+      prn.innerHTML = '<strong>Indice de popularité</strong> indisponible — repli sur les heuristiques historiques (dates ≤ 31, multiples de 5 et 7' +
+        (game === 'euromillions' ? ', étoiles ≤ 7' : '') + ')';
+    }
+  }
+  if (prb) {
+    if (pop && pop.bonusDelta) {
+      const bpct = n => pctLabel(Math.exp(pop.bonusDelta[n]));
+      const isEM = game === 'euromillions';
+      prb.style.display = '';
+      prb.innerHTML = '<strong>' + (isEM ? 'Étoiles' : 'N° Chance') + '</strong> — délaissé' + (isEM ? 'es' : 's') + ' : ' +
+        pop.bonusUnder.map(n => '<code>' + n + '</code> <span class="pop-pct">' + bpct(n) + '</span>').join(', ') +
+        ' · sur-joué' + (isEM ? 'es' : 's') + ' : ' +
+        pop.bonusOver.map(n => '<code>' + n + '</code> <span class="pop-pct">' + bpct(n) + '</span>').join(', ');
+    } else if (game === 'eurodreams' && pop) {
+      prb.style.display = '';
+      prb.innerHTML = '<strong>N° Dream</strong> : popularité non mesurable — les rangs 3 à 6 l\'ignorent, il n\'influence donc pas le partage hors rentes';
+    } else {
+      prb.style.display = 'none';
+    }
+  }
+
+  // Bénéfice contre-tendance chiffré en euros réels (idée 9)
+  const pre = document.getElementById('popRuleEuros');
+  if (pre) {
+    const ce = state.economics && state.economics.contrarianEuros;
+    if (ce) {
+      pre.style.display = '';
+      pre.innerHTML = '<strong>Bénéfice mesuré en euros</strong> — les soirs où le tirage contient peu de ' +
+        'dates (≤ ' + ce.lowMax + ' numéros ≤ 31), l\'espérance hors rang 1 a payé <strong>' +
+        formatMoney(ce.evLow) + '</strong> contre ' + formatMoney(ce.evHigh) + ' les soirs pleins de dates ' +
+        '(≥ ' + ce.highMin + ') : <strong>' + pctLabel(ce.evLow / ce.evHigh) + '</strong>' +
+        (ce.witLow && ce.witHigh
+          ? ' · lot médian du rang « 3 numéros » : ' + formatMoney(ce.witLow) + ' vs ' + formatMoney(ce.witHigh)
+          : '') + '. Jouer contre les dates ne change pas vos chances — mais change ce que payent les lots.';
+    } else {
+      pre.style.display = 'none';
+    }
+  }
+
+  // Signature française (idée 10, EuroMillions)
+  const prf = document.getElementById('popRuleFr');
+  if (prf) {
+    const fr = pop && pop.frSignature;
+    if (fr) {
+      prf.style.display = '';
+      prf.innerHTML = '<strong>Signature française</strong> — ' + Math.round(100 * fr.share) +
+        ' % des gagnants sont français, et l\'effet dates y est ≈ <strong>' +
+        (fr.amplification >= 0 ? '+' : '') + Math.round(100 * fr.amplification) +
+        ' % plus fort</strong> que la moyenne européenne (France comprise — vs le seul ' +
+        'reste de l\'Europe, l\'écart est encore plus grand) : l\'indice ci-dessus, calibré ' +
+        'Europe entière, est donc prudent pour un joueur français.';
+    } else {
+      prf.style.display = 'none';
+    }
   }
 
   // Coût portefeuille
@@ -2560,37 +3652,67 @@ async function renderJackpotTimeline() {
   const data = [];
 
   if (game === 'euromillions') {
-    // EuroMillions : scraping des jackpots (secretsdujeu / euro-millions.com)
+    // EuroMillions : scraping des jackpots. Source primaire : la page des
+    // résultats récents (UNE requête couvre ~60 jours). Les pages par tirage
+    // ne servent que de complément pour les dates manquantes, avec une
+    // concurrence bornée — l'ancien Promise.all sur 15 dates × 3 stratégies
+    // de proxy pouvait déclencher une rafale de dizaines de requêtes,
+    // rate-limitée par les proxies gratuits.
     chartEl.innerHTML = '<div class="jt-status">Récupération des jackpots des 15 derniers tirages…</div>';
-    const scraped = await Promise.all(
-      last15.map(d => fetchSingleDrawJackpot(d.date).catch(err => {
-        console.warn('[EuroAffûté] timeline : scrape ' + d.date + ' échoué', err.message);
-        return null;
-      }))
-    );
 
-    for (let i = 0; i < last15.length; i++) {
-      const d = last15[i];
-      const s = scraped[i];
+    let recent = {};
+    try {
+      recent = await fetchRecentJackpots();
+    } catch (err) {
+      console.warn('[EuroAffûté] timeline : jackpots récents indisponibles,', err.message);
+    }
+
+    const missing = last15.filter(d => !(recent[d.date] && recent[d.date].jackpot));
+    const scrapedByDate = {};
+    const MAX_PARALLEL = 3;
+    for (let i = 0; i < missing.length; i += MAX_PARALLEL) {
+      const batch = missing.slice(i, i + MAX_PARALLEL);
+      const results = await Promise.all(batch.map(d =>
+        fetchSingleDrawJackpot(d.date).catch(err => {
+          console.warn('[EuroAffûté] timeline : scrape ' + d.date + ' échoué', err.message);
+          return null;
+        })
+      ));
+      batch.forEach((d, j) => { scrapedByDate[d.date] = results[j]; });
+    }
+
+    for (const d of last15) {
       const won = d.hasWinner === true;
-      const p52 = d.prizes && d.prizes.find(p => p.matched_numbers === 5 && p.matched_stars === 2);
-      const winners = (p52 && p52.winners) || 0;
+      const p1 = d.prizes && d.prizes.find(p => p.rank === 1);
+      const winners = p1 ? (p1.winnersEu || p1.winners || 0) : 0;
       let jackpot = null;
 
-      if (s) {
-        if (won) {
-          if (s.jackpotPerWinner && s.jackpotWinners) {
-            jackpot = s.jackpotPerWinner * s.jackpotWinners;
-          } else if (s.jackpot && winners > 0) {
-            jackpot = s.jackpot * winners;
+      const r = recent[d.date];
+      if (r && r.jackpot) {
+        // La page de listing affiche le jackpot TOTAL du tirage
+        jackpot = r.jackpot;
+      } else {
+        const s = scrapedByDate[d.date];
+        if (s) {
+          if (won) {
+            if (s.jackpotPerWinner && s.jackpotWinners) {
+              jackpot = s.jackpotPerWinner * s.jackpotWinners;
+            } else if (s.jackpot) {
+              // L'en-tête « Jackpot: » de la page individuelle affiche le
+              // montant TOTAL du tirage (vérifié : tirage à 3 gagnants =
+              // 3 × la part) — ne pas le multiplier par les gagnants.
+              jackpot = s.jackpot;
+            }
+          } else if (s.jackpot) {
+            jackpot = s.jackpot;
           }
-        } else if (s.jackpot) {
-          jackpot = s.jackpot;
         }
       }
 
-      if (jackpot === null && won && p52 && p52.prize && winners > 0) {
-        jackpot = p52.prize * winners;
+      // Repli : les données FDJ locales suffisent pour un tirage gagné
+      // (gain par gagnant × gagnants au rang 1)
+      if (jackpot === null && won && p1 && p1.prize && winners > 0) {
+        jackpot = p1.prize * winners;
       }
 
       if (jackpot !== null && jackpot > 0) {
@@ -2706,8 +3828,10 @@ async function renderJackpotTimeline() {
       // Prochain tirage : cercle ouvert (contour doré, fond transparent) + label "à venir"
       return '<circle cx="' + x + '" cy="' + y + '" r="10" fill="var(--gold)" opacity="0.12" />' +
         '<circle cx="' + x + '" cy="' + y + '" r="4.5" fill="none" stroke="var(--gold)" stroke-width="2" stroke-dasharray="3,2" />' +
-        '<text x="' + x + '" y="' + (y - 12) + '" text-anchor="middle" class="jt-label-val" fill="var(--gold)">' + amountLabel + '</text>' +
-        '<text x="' + x + '" y="' + (y - 26) + '" text-anchor="middle" class="jt-label-x" fill="var(--gold)" opacity="0.7" style="font-size:9px;font-style:italic;">à venir</text>';
+        // Texte en --text-dim : le --gold des thèmes (ex. #F6BE1B) tombe à 1,5:1
+        // de contraste sur fond clair — illisible pour du texte
+        '<text x="' + x + '" y="' + (y - 12) + '" text-anchor="middle" class="jt-label-val" fill="var(--text-dim)">' + amountLabel + '</text>' +
+        '<text x="' + x + '" y="' + (y - 26) + '" text-anchor="middle" class="jt-label-x" fill="var(--text-dim)" opacity="0.85" style="font-size:9px;font-style:italic;">à venir</text>';
     }
     const color = d.won ? 'var(--green)' : 'var(--star)';
     const glow = d.won ? '<circle cx="' + x + '" cy="' + y + '" r="10" fill="var(--green)" opacity="0.18" />' : '';
@@ -2817,37 +3941,46 @@ function randomCombo() {
   }
 }
 
-function passesAll(c, f) {
-  // Règles dures (absolues) : ce qui n'est jamais arrivé
-  if (f.seenFull.has(comboKey(c.balls, c.stars || c.bonus))) return false;
-  const s = sum(c.balls);
+// Règles portant uniquement sur les BOULES (triées — précondition exploitée
+// par les tests min/max). Extraites de passesAll pour que le générateur en
+// partition puisse réparer ses blocs avant l'attribution des étoiles/bonus.
+function ballsPassAll(balls, f) {
+  const s = sum(balls);
   if (s < f.minSum || s > f.maxSum) return false;
-  const r = range(c.balls);
+  const r = range(balls);
   if (r < f.minRange || r > f.maxRange) return false;
-  if (f.rejectAP && isAP(c.balls)) return false;
-  if (f.rejectSameDecade && sameDecade(c.balls)) return false;
+  if (f.rejectAP && isAP(balls)) return false;
+  if (f.rejectSameDecade && sameDecade(balls)) return false;
 
   // Règles "cœur" : ce qui caractérise 80%+ des tirages historiques
   if (s < f.sumP10 || s > f.sumP90) return false;
   if (r < f.rangeP10 || r > f.rangeP90) return false;
-  const ec = evenCount(c.balls);
-  const bl = c.balls.length;
+  const ec = evenCount(balls);
+  const bl = balls.length;
   if (ec === 0 || ec === bl) return false;      // parité mixte
-  const dc = decadesCovered(c.balls);
+  const dc = decadesCovered(balls);
   if (dc < (f.minDecades || 3) || dc > (f.maxDecades || 5)) return false;
   // Au moins un numéro de chaque côté de la moitié
   const hp = f.halfPoint || Math.floor((f.ballMax || 50) / 2);
-  if (c.balls[0] > hp) return false;
-  if (c.balls[bl - 1] <= hp) return false;
+  if (balls[0] > hp) return false;
+  if (balls[bl - 1] <= hp) return false;
 
   // Règles "rares" — seuils adaptés par jeu (appris dans learnFilters)
-  if (maxConsecutiveRun(c.balls) >= (f.consecThreshold || 3)) return false;
-  if (consecutivePairs(c.balls) >= (f.pairsThreshold || 2)) return false;
-  if (maxBallsPerDecade(c.balls) >= (f.sameDecThreshold || 4)) return false;
-  if (maxBallsPerUnit(c.balls) >= (f.sameUnitThreshold || 4)) return false;
-  if (maxGap(c.balls) >= (f.gapThreshold || 30)) return false;
-  const lhCount = c.balls.filter(b => b <= hp).length;
+  if (maxConsecutiveRun(balls) >= (f.consecThreshold || 3)) return false;
+  if (consecutivePairs(balls) >= (f.pairsThreshold || 2)) return false;
+  if (maxBallsPerDecade(balls) >= (f.sameDecThreshold || 4)) return false;
+  if (maxBallsPerUnit(balls) >= (f.sameUnitThreshold || 4)) return false;
+  if (maxGap(balls) >= (f.gapThreshold || 30)) return false;
+  const lhCount = balls.filter(b => b <= hp).length;
   if (lhCount === 0 || lhCount === bl) return false;
+  return true;
+}
+
+function passesAll(c, f) {
+  // Ordre des tests : du moins cher au plus cher (appelé 50 000 fois par le
+  // Monte Carlo) ; le test seenFull, qui ne rejette presque jamais
+  // (~2 000 clés sur des millions), est payé en dernier.
+  if (!ballsPassAll(c.balls, f)) return false;
 
   // Règles étoiles (EuroMillions uniquement)
   if (c.stars && c.stars.length === 2) {
@@ -2855,6 +3988,11 @@ function passesAll(c, f) {
     if (ss < f.starSumP5 || ss > f.starSumP95) return false;
     if (c.stars[1] - c.stars[0] >= 11) return false;
   }
+
+  // Règle dure "jamais sortie à l'identique" — même format que comboKey,
+  // sans re-tri (cf. précondition en tête de fonction)
+  const key = c.balls.join('-') + '|' + (c.stars ? c.stars.join('-') : c.bonus);
+  if (f.seenFull.has(key)) return false;
   return true;
 }
 
@@ -3154,12 +4292,179 @@ function generatePortfolio(f, target = 10) {
   return grids;
 }
 
+// --- portefeuille cœur en PARTITION disjointe --------------------------
+// 10 grilles tirées indépendamment se recouvrent (≈96 paires distinctes sur
+// 100) : en générant les grilles comme une partition des numéros (chaque
+// numéro couvert, recouvrement minimal), P(au moins une grille avec ≥2 bons
+// numéros) gagne +10,4 pts (EM et LOTO) à +6,6 pts (EuroDreams, dont la
+// baseline est déjà à 91 %) À BUDGET IDENTIQUE — gain exact, démontrable.
+// Algorithme : mélanger les numéros, découper en blocs, puis réparer les
+// blocs qui violent les filtres appris par échanges locaux (~15 échanges).
+
+const shuffleArr = a => {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+function buildPartitionPortfolio(f, target = 10) {
+  const game = state.currentGame;
+  const cfg = (state.cache[game] && state.cache[game].config) || {};
+  const ballCount = cfg.ballCount || 5;
+  const ballMax = cfg.ballMax || 50;
+  const slots = target * ballCount;
+  const blockOk = b => ballsPassAll([...b].sort((x, y) => x - y), f);
+
+  for (let attempt = 0; attempt < 12; attempt++) {
+    // Multiset : chaque numéro au moins une fois ; si 10×ballCount dépasse
+    // ballMax (LOTO : 50/49, EuroDreams : 60/40), des extras distincts complètent.
+    const nums = [];
+    for (let n = 1; n <= ballMax; n++) nums.push(n);
+    const extras = shuffleArr([...Array(ballMax).keys()].map(i => i + 1)).slice(0, slots - ballMax);
+    nums.push(...extras);
+    shuffleArr(nums);
+
+    const blocks = [];
+    for (let b = 0; b < target; b++) blocks.push(nums.slice(b * ballCount, (b + 1) * ballCount));
+
+    // 1. Aucun doublon à l'intérieur d'un bloc (échanges gloutons)
+    let ok = true;
+    for (let b = 0; b < target && ok; b++) {
+      for (let tries = 0; new Set(blocks[b]).size !== ballCount; tries++) {
+        if (tries > 300) { ok = false; break; }
+        const dupIdx = blocks[b].findIndex((x, i) => blocks[b].indexOf(x) !== i);
+        const ob = Math.floor(Math.random() * target);
+        const oi = Math.floor(Math.random() * ballCount);
+        if (ob === b) continue;
+        const cand = blocks[ob][oi];
+        if (blocks[b].includes(cand) || blocks[ob].includes(blocks[b][dupIdx])) continue;
+        const tmp = blocks[b][dupIdx];
+        blocks[b][dupIdx] = cand;
+        blocks[ob][oi] = tmp;
+      }
+    }
+    if (!ok) continue;
+
+    // 2. Réparation : échanges entre blocs tant que des blocs violent les filtres
+    const fails = blocks.map(b => !blockOk(b));
+    let score = fails.filter(Boolean).length;
+    for (let iter = 0; score > 0 && iter < 4000; iter++) {
+      const bad = [];
+      fails.forEach((x, i) => { if (x) bad.push(i); });
+      const a = bad[Math.floor(Math.random() * bad.length)];
+      let b = Math.floor(Math.random() * target);
+      if (b === a) b = (b + 1) % target;
+      const i = Math.floor(Math.random() * ballCount);
+      const j = Math.floor(Math.random() * ballCount);
+      const va = blocks[a][i], vb = blocks[b][j];
+      if (va === vb || blocks[a].includes(vb) || blocks[b].includes(va)) continue;
+      blocks[a][i] = vb;
+      blocks[b][j] = va;
+      const na = !blockOk(blocks[a]);
+      const nb = !blockOk(blocks[b]);
+      const newScore = score - (fails[a] ? 1 : 0) - (fails[b] ? 1 : 0) + (na ? 1 : 0) + (nb ? 1 : 0);
+      if (newScore <= score) { fails[a] = na; fails[b] = nb; score = newScore; }
+      else { blocks[a][i] = va; blocks[b][j] = vb; } // rollback
+    }
+    if (score > 0) continue;
+
+    const grids = assignPartitionBonuses(blocks.map(b => [...b].sort((x, y) => x - y)), f, cfg, game);
+    if (grids && grids.every(g => passesAll(g, f))) return grids;
+  }
+  return null; // improbable — l'appelant retombe sur generatePortfolio
+}
+
+// Étoiles/bonus du portefeuille partition : couverture équilibrée là aussi.
+// EM : 10 paires d'étoiles DISTINCTES, chaque étoile utilisée 1 à 2 fois.
+// LOTO : les 10 N° Chance chacun exactement une fois.
+// EuroDreams : chaque N° Dream exactement deux fois.
+function assignPartitionBonuses(blocks, f, cfg, game) {
+  if (game === 'loto') {
+    const chances = shuffleArr([...Array(cfg.bonusMax || 10).keys()].map(i => i + 1));
+    return blocks.map((b, g) => ({ balls: b, bonus: chances[g % chances.length] }));
+  }
+  if (game === 'eurodreams') {
+    const max = cfg.bonusMax || 5;
+    const dreams = shuffleArr([...Array(max).keys()].map(i => i + 1).concat([...Array(max).keys()].map(i => i + 1)));
+    return blocks.map((b, g) => ({ balls: b, bonus: dreams[g % dreams.length] }));
+  }
+  // EuroMillions : 20 emplacements d'étoiles sur 12 valeurs
+  const starMax = cfg.starMax || 12;
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const pool = shuffleArr(
+      [...Array(starMax).keys()].map(i => i + 1)
+        .concat(shuffleArr([...Array(starMax).keys()].map(i => i + 1)).slice(0, 20 - starMax))
+    );
+    const pairs = [];
+    const used = new Set();
+    const remaining = [...pool];
+    let stuck = false;
+    while (pairs.length < 10 && !stuck) {
+      stuck = true;
+      for (let a = 0; a < remaining.length && stuck; a++) {
+        for (let b = a + 1; b < remaining.length && stuck; b++) {
+          const s1 = Math.min(remaining[a], remaining[b]);
+          const s2 = Math.max(remaining[a], remaining[b]);
+          if (s1 === s2 || used.has(s1 + '-' + s2)) continue;
+          const ss = s1 + s2;
+          if (ss < f.starSumP5 || ss > f.starSumP95 || s2 - s1 >= 11) continue;
+          used.add(s1 + '-' + s2);
+          pairs.push([s1, s2]);
+          remaining.splice(b, 1);
+          remaining.splice(a, 1);
+          stuck = false;
+        }
+      }
+    }
+    if (pairs.length === 10) return blocks.map((b, g) => ({ balls: b, stars: pairs[g] }));
+  }
+  return null;
+}
+
+// Probabilité qu'au moins une grille du portefeuille attrape ≥2 des boules
+// tirées — mesurée par Monte Carlo sur le portefeuille réellement généré,
+// comparée à la théorie exacte du tirage indépendant : 1−(1−q)^10.
+function portfolioCoverage(grids, cfg) {
+  const ballCount = cfg.ballCount || 5;
+  const ballMax = cfg.ballMax || 50;
+  const comb = (n, k) => {
+    if (k < 0 || k > n) return 0;
+    let r = 1;
+    for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+    return Math.round(r);
+  };
+  const q = 1 - (comb(ballMax - ballCount, ballCount) + ballCount * comb(ballMax - ballCount, ballCount - 1)) / comb(ballMax, ballCount);
+  const baseline = 1 - Math.pow(1 - q, grids.length);
+  const N = 20000;
+  let hit = 0;
+  for (let s = 0; s < N; s++) {
+    const draw = new Set();
+    while (draw.size < ballCount) draw.add(1 + Math.floor(Math.random() * ballMax));
+    for (const g of grids) {
+      let m = 0;
+      for (const b of g.balls) { if (draw.has(b)) m++; }
+      if (m >= 2) { hit++; break; }
+    }
+  }
+  const covered = new Set();
+  for (const g of grids) for (const b of g.balls) covered.add(b);
+  return { p2: hit / N, baseline, covered: covered.size, ballMax };
+}
+
 // --- détection des patterns populaires (à éviter pour contre-tendance) -----
 
 // 1. Trop de numéros ≤ 31 = pattern "dates de naissance/anniversaire"
+//    EM/LOTO (5 boules, ~3.1 attendues ≤ 31) : 4+ numéros ≤ 31 = signature.
+//    EuroDreams (6 boules sur 40, 4.65 attendues ≤ 31) : un seuil à 4
+//    rejetterait 88.5% de l'espace et, combiné au test d'alignement,
+//    forcerait le numéro 32 dans 100% des grilles générées — seule la
+//    grille 100% dates est une vraie signature humaine dans ce format.
 function hasBirthdayPattern(balls) {
   const lowCount = balls.filter(n => n <= 31).length;
-  return lowCount >= 4;  // 4 ou 5 numéros ≤ 31 → signature anniversaire
+  const threshold = balls.length >= 6 ? balls.length : 4;
+  return lowCount >= threshold;
 }
 
 // 2. Suite arithmétique de 3+ numéros (ex: 5-10-15-20-25, 3-8-13-18-23)
@@ -3206,33 +4511,70 @@ function hasPopularStars(stars) {
   return stars.every(s => s <= 7);  // les 2 étoiles ≤ 7 = combo très joué
 }
 
-// Grille "contre-tendance" : passe passesAll ET aucun pattern populaire
-function isContrarian(c) {
-  if (hasBirthdayPattern(c.balls)) return false;
+// Règles structurelles contre-tendance : les patterns COMBINATOIRES que
+// l'indice de popularité par numéro ne peut pas capturer. Les anciennes
+// heuristiques par numéro (dates ≤31, multiples de 5/7, étoiles ≤7) sont
+// désormais MESURÉES par learnPopularity et gérées par le score — les
+// données montrent d'ailleurs que « ≥3 multiples de 7 » n'était pas
+// significatif (t=1,7) alors que l'effet dates est massif (~20σ).
+function isContrarianStructural(c) {
   if (hasArithmeticRun(c.balls)) return false;
+  if (hasGridAlignment(c.balls)) return false;
+  return true;
+}
+
+// Ancien filtre heuristique complet — conservé comme repli si l'indice de
+// popularité n'est pas calculable (données de gains absentes).
+function isContrarian(c) {
+  if (!isContrarianStructural(c)) return false;
+  if (hasBirthdayPattern(c.balls)) return false;
   if (tooManyMultiplesOf7(c.balls)) return false;
   if (tooManyMultiplesOf5(c.balls)) return false;
-  if (hasGridAlignment(c.balls)) return false;
   // Règle étoiles uniquement pour EuroMillions
   if (c.stars && hasPopularStars(c.stars)) return false;
   return true;
 }
 
 function generateContrarianPortfolio(f, target = 10) {
-  const grids = [];
+  const pop = state.popularity;
   const seenKeys = new Set();
+
+  // Repli heuristique si l'indice n'a pas pu être appris
+  if (!pop) {
+    const grids = [];
+    let tries = 0;
+    while (grids.length < target && tries < 200000) {
+      tries++;
+      const c = randomCombo();
+      if (!passesAll(c, f) || !isContrarian(c)) continue;
+      const k = comboKey(c.balls, c.stars || c.bonus);
+      if (seenKeys.has(k)) continue;
+      seenKeys.add(k);
+      grids.push(c);
+    }
+    return grids;
+  }
+
+  // 1. Pool de candidates : filtres appris + règles structurelles
+  const POOL = 300;
+  const pool = [];
   let tries = 0;
-  while (grids.length < target && tries < 200000) {
+  while (pool.length < POOL && tries < 200000) {
     tries++;
     const c = randomCombo();
-    if (!passesAll(c, f)) continue;
-    if (!isContrarian(c)) continue;
+    if (!passesAll(c, f) || !isContrarianStructural(c)) continue;
     const k = comboKey(c.balls, c.stars || c.bonus);
     if (seenKeys.has(k)) continue;
     seenKeys.add(k);
-    grids.push(c);
+    c.popFactor = popularityFactor(c, pop);
+    pool.push(c);
   }
-  return grids;
+
+  // 2. Les grilles les moins jouées du pool — triées par le MÊME facteur
+  //    calibré que celui affiché (« % co-joueurs »), pour que le classement
+  //    à l'écran soit monotone.
+  pool.sort((a, b) => a.popFactor - b.popFactor);
+  return pool.slice(0, target);
 }
 
 function renderGridList(containerId, grids) {
@@ -3255,13 +4597,17 @@ function renderGridList(containerId, grids) {
     const pairs = evenCount(g.balls);
     const bl = g.balls.length;
     const copyText = g.balls.join(' - ') + '  ★  ' + (g.stars ? g.stars.join(' - ') : g.bonus);
+    // Facteur de co-joueurs estimé (grilles contre-tendance uniquement)
+    const popLabel = g.popFactor !== undefined
+      ? ' · <strong>' + pctLabel(g.popFactor) + ' co-joueurs</strong>'
+      : '';
 
     row.innerHTML =
       '<div class="grid-num">' + String(i + 1).padStart(2, '0') + '</div>' +
       '<div class="grid-numbers">' + ballsHtml +
         '<span class="row-sep">✦</span>' + bonusHtml + '</div>' +
       '<div class="grid-profile">s=' + sum(g.balls) + ' · r=' + range(g.balls) +
-        ' · ' + pairs + 'p/' + (bl - pairs) + 'i · ' + dc + ' diz.</div>' +
+        ' · ' + pairs + 'p/' + (bl - pairs) + 'i · ' + dc + ' diz.' + popLabel + '</div>' +
       '<button class="grid-copy" type="button" title="Copier la grille" aria-label="Copier la grille">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
           '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
@@ -3290,8 +4636,23 @@ function renderGridList(containerId, grids) {
 
 document.getElementById('genCoreBtn').addEventListener('click', () => {
   if (!state.ready) return;
-  const grids = generatePortfolio(state.filters);
+  // Partition disjointe d'abord ; repli sur le tirage indépendant si la
+  // construction échoue (improbable : ~15 échanges suffisent en pratique)
+  const partition = buildPartitionPortfolio(state.filters);
+  const grids = partition || generatePortfolio(state.filters);
   renderGridList('coreGrids', grids);
+  const note = document.getElementById('coreCoverageNote');
+  if (note) {
+    const cfg = (state.cache[state.currentGame] && state.cache[state.currentGame].config) || {};
+    const cov = portfolioCoverage(grids, cfg);
+    note.innerHTML = partition
+      ? 'Ces 10 grilles forment une <strong>partition</strong> : les ' + cov.covered + '/' + cov.ballMax +
+        ' numéros sont couverts, chaque boule tirée sera sur ' + (cov.covered === cov.ballMax && cfg.ballCount * 10 <= cov.ballMax ? 'exactement' : 'au moins') + ' une de vos grilles. ' +
+        'P(au moins une grille avec ≥ 2 bons numéros) ≈ <strong>' + Math.round(100 * cov.p2) + ' %</strong>, ' +
+        'contre ≈ ' + Math.round(100 * cov.baseline) + ' % pour 10 grilles indépendantes — ' +
+        '<strong>+' + Math.round(100 * (cov.p2 - cov.baseline)) + ' points au même prix</strong> (le gain porte sur les petits rangs, pas sur le jackpot).'
+      : 'Partition indisponible — grilles tirées indépendamment (' + cov.covered + '/' + cov.ballMax + ' numéros couverts).';
+  }
 });
 
 document.getElementById('genContrarianBtn').addEventListener('click', () => {
