@@ -2120,8 +2120,8 @@ async function fetchViaProxy(targetUrl) {
   // sites scraped, donc l'erreur est attendue et ne mérite pas d'être logguée.
   const strategies = [
     { name: 'direct',       url: targetUrl,                                                             silent: true },
-    { name: 'allorigins',   url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl) },
     { name: 'jina',         url: 'https://r.jina.ai/' + targetUrl },
+    { name: 'allorigins',   url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl) },
     // Retirés : thingproxy.freeboard.io (service arrêté) et corsproxy.io
     // (clé API obligatoire depuis 2026 : réponse 401). Ces sources ne sont
     // plus qu'un complément — l'essentiel vient de data/jackpots.json.
@@ -3790,12 +3790,21 @@ async function renderJackpotTimeline() {
       }
     }
   }
+  // Le scraping ci-dessus est asynchrone : si l'utilisateur a changé
+  // d'onglet entre-temps, ces données appartiennent à un autre jeu et
+  // ne doivent pas être peintes dans le graphique courant.
+  if (state.currentGame !== game) {
+    console.log('[EuroAffûté] timeline : rendu abandonné (jeu changé pour ' + state.currentGame + ')');
+    return;
+  }
   console.log('[EuroAffûté] timeline : ' + data.length + ' / ' + last15.length + ' tirages exploitables');
 
   // Ajouter le jackpot estimé du prochain tirage comme dernier point
   try {
-    if (NEXT_DRAW_URLS[state.currentGame]) {
+    if (NEXT_DRAW_URLS[game]) {
       const nextInfo = await fetchNextDrawInfo();
+      // Deuxième garde : fetchNextDrawInfo a pu prendre du temps
+      if (state.currentGame !== game) return;
       if (nextInfo && nextInfo.amountEur > 0) {
         // Calculer une date fictive pour le prochain tirage (prochaine date logique)
         const lastDate = data.length > 0 ? data[data.length - 1].date : last15[last15.length - 1].date;

@@ -22,6 +22,9 @@ const OUT_FILE = path.join(DATA_DIR, 'jackpots.json');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
            '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const TIMEOUT_MS = 30000;
+// Pages de tirage récupérées une par une en rattrapage (bornées pour ne pas
+// marteler la source : en régime permanent il en manque 0 ou 1 par run).
+const MAX_GAP_FILL = 6;
 
 const NEXT_DRAW_URLS = {
   euromillions: 'https://www.fdj.fr/jeux-de-tirage/euromillions-my-million/',
@@ -133,6 +136,30 @@ function parseRecentJackpots(html) {
   return out;
 }
 
+// Dates de tirage référencées par la page de résultats (les plus récentes
+// d'abord), qu'un montant ait été extrait ou non.
+function listedDates(html) {
+  const re = /results\/(\d{2})-(\d{2})-(\d{4})/g;
+  const seen = [];
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const iso = m[3] + '-' + m[2] + '-' + m[1];
+    if (!seen.includes(iso)) seen.push(iso);
+  }
+  return seen.sort().reverse();
+}
+
+// Page d'un tirage : "Jackpot: €98,714,021" (montant TOTAL du tirage, y
+// compris quand il est partagé entre plusieurs gagnants).
+function parseSingleDraw(html) {
+  const t = htmlToText(html);
+  const m = /Jackpot:?\s*€\s*([\d,.]+)/i.exec(t);
+  if (!m) return null;
+  const num = parseInt(m[1].replace(/[,.\s]/g, ''), 10);
+  if (isNaN(num) || num < 1e6 || num > 300e6) return null;
+  return { jackpot: num, won: /Jackpot\s+Won/i.test(t) };
+}
+
 // --- main -------------------------------------------------------------
 
 async function main() {
@@ -156,6 +183,7 @@ async function main() {
     recent: Object.assign({}, previous.recent),
   };
   const failures = [];
+  let listingHtml = '';
 
   for (const [game, url] of Object.entries(NEXT_DRAW_URLS)) {
     try {
@@ -171,7 +199,8 @@ async function main() {
   }
 
   try {
-    const recent = parseRecentJackpots(await fetchText(RESULTS_PAGE_URL));
+    listingHtml = await fetchText(RESULTS_PAGE_URL);
+    const recent = parseRecentJackpots(listingHtml);
     const n = Object.keys(recent).length;
     if (n === 0) throw new Error('aucun jackpot parsé');
     Object.assign(out.recent, recent);
@@ -179,6 +208,25 @@ async function main() {
     const kept = Object.keys(out.recent).sort().reverse().slice(0, 60);
     out.recent = Object.fromEntries(kept.map(d => [d, out.recent[d]]));
     console.log('  ✓ jackpots récents : ' + n + ' tirages parsés (' + kept.length + ' conservés)');
+
+    // Rattrapage : certaines dates du listing n'exposent pas leur montant
+    // (le bloc ne contient qu'un encart « prochain tirage estimé »). On va
+    // alors chercher la page du tirage, qui l'affiche toujours. Sans ça, le
+    // navigateur devrait scraper ces dates lui-même — ce qu'il ne peut plus.
+    const wanted = listedDates(listingHtml).slice(0, 16);
+    const missing = wanted.filter(d => !out.recent[d]).slice(0, MAX_GAP_FILL);
+    for (const date of missing) {
+      const parts = date.split('-');
+      const url = 'https://www.euro-millions.com/results/' + parts[2] + '-' + parts[1] + '-' + parts[0];
+      try {
+        const one = parseSingleDraw(await fetchText(url));
+        if (!one) throw new Error('montant introuvable');
+        out.recent[date] = one;
+        console.log('  ✓ rattrapage ' + date + ' : ' + (one.jackpot / 1e6).toFixed(1) + ' M€');
+      } catch (err) {
+        console.warn('  ⚠ rattrapage ' + date + ' impossible : ' + err.message);
+      }
+    }
   } catch (err) {
     console.error('  ✗ jackpots récents : ' + err.message);
     failures.push('recent');
