@@ -167,17 +167,30 @@ function parseSingleDraw(html) {
   return { jackpot: num, won: /Jackpot\s+Won/i.test(t) };
 }
 
-// Dates à couvrir pour la timeline : celles de nos propres données FDJ
-// (source d'autorité), et non celles du listing scrapé.
-function recentEuromillionsDates(limit) {
+// Tirages à couvrir pour la timeline : les nôtres (source d'autorité),
+// et non ceux du listing scrapé.
+function recentEuromillionsDraws(limit) {
   const p = path.join(DATA_DIR, 'euromillions.json');
   if (!fs.existsSync(p)) return [];
   try {
     const d = JSON.parse(fs.readFileSync(p, 'utf-8'));
-    return (d.draws || []).slice(0, limit).map(x => x.date);
+    return (d.draws || []).slice(0, limit);
   } catch {
     return [];
   }
+}
+
+// Tirage GAGNÉ : le jackpot total se déduit exactement de nos données
+// (gain par gagnant x nombre de gagnants au rang 1). Aucune source externe
+// nécessaire — c'est la valeur la plus fiable qui soit.
+function jackpotFromDrawData(draw) {
+  const p1 = (draw.prizes || []).find(p => p.rank === 1);
+  if (!p1) return null;
+  const winners = p1.winnersEu || p1.winners || 0;
+  if (winners > 0 && p1.prize > 0) {
+    return { jackpot: Math.round(p1.prize * winners), won: true };
+  }
+  return null;
 }
 
 // --- main -------------------------------------------------------------
@@ -218,6 +231,16 @@ async function main() {
     }
   }
 
+  // Cagnotte ANNONCÉE avant un tirage : une fois ce tirage passé, c'est la
+  // meilleure estimation de son jackpot si les sources externes sont
+  // inaccessibles (et c'est exactement le montant que le site affichait par
+  // avance pour ce tirage). On la mémorise à chaque run.
+  out.pending = Object.assign({}, previous.pending || {});
+  const emNext = out.nextDraw.euromillions;
+  if (emNext && emNext.drawDate && emNext.amountEur) {
+    out.pending[emNext.drawDate] = emNext.amountEur;
+  }
+
   // 2. Jackpots passés (timeline). Le listing couvre ~17 tirages en une
   //    requête, mais échoue depuis les runners GitHub : best-effort.
   try {
@@ -230,9 +253,28 @@ async function main() {
     console.warn('  ⚠ listing indisponible (' + err.message + ') — complément par page de tirage');
   }
 
-  // 3. Complément : les dates de la timeline encore absentes sont récupérées
-  //    une par une (parsing univoque, relais si l'accès direct est refusé).
-  const wanted = recentEuromillionsDates(TIMELINE_SIZE);
+  // 3. Sources internes, sans aucune dépendance réseau :
+  //    a) tirage gagné -> jackpot exact depuis nos données FDJ
+  //    b) tirage reporté -> cagnotte annoncée avant ce tirage
+  const draws = recentEuromillionsDraws(TIMELINE_SIZE);
+  const wanted = draws.map(d => d.date);
+  for (const draw of draws) {
+    if (out.recent[draw.date]) continue;
+    const exact = jackpotFromDrawData(draw);
+    if (exact) {
+      out.recent[draw.date] = exact;
+      console.log('  ✓ tirage ' + draw.date + ' : ' + (exact.jackpot / 1e6).toFixed(1) + ' M€ (calculé depuis les données FDJ)');
+      continue;
+    }
+    const announced = out.pending[draw.date];
+    if (announced) {
+      out.recent[draw.date] = { jackpot: announced, won: false, est: true };
+      console.log('  ✓ tirage ' + draw.date + ' : ' + (announced / 1e6).toFixed(1) + ' M€ (cagnotte annoncée)');
+    }
+  }
+
+  // 4. Dernier recours : la page du tirage (souvent bloquée depuis un
+  //    runner GitHub, et le relais r.jina.ai rate-limite sans clé API).
   const missing = wanted.filter(d => !out.recent[d]).slice(0, MAX_GAP_FILL);
   for (const date of missing) {
     const parts = date.split('-');
@@ -251,6 +293,9 @@ async function main() {
   // Borne la taille : on ne garde que les 60 tirages les plus récents
   const kept = Object.keys(out.recent).sort().reverse().slice(0, 60);
   out.recent = Object.fromEntries(kept.map(d => [d, out.recent[d]]));
+  // Les annonces déjà consommées (ou trop anciennes) ne servent plus
+  const pendingKept = Object.keys(out.pending).sort().reverse().slice(0, 8);
+  out.pending = Object.fromEntries(pendingKept.map(d => [d, out.pending[d]]));
 
   // Échec seulement si la timeline reste largement découverte : une source
   // momentanément indisponible ne doit pas alarmer tant que les valeurs déjà
@@ -267,7 +312,8 @@ async function main() {
   // existant pour que le workflow ne committe pas un diff de pur bruit.
   const sameContent = previous.nextDraw && previous.recent &&
     JSON.stringify(previous.nextDraw) === JSON.stringify(out.nextDraw) &&
-    JSON.stringify(previous.recent) === JSON.stringify(out.recent);
+    JSON.stringify(previous.recent) === JSON.stringify(out.recent) &&
+    JSON.stringify(previous.pending || {}) === JSON.stringify(out.pending);
   if (sameContent && previous.updated) out.updated = previous.updated;
 
   fs.writeFileSync(OUT_FILE, JSON.stringify(out), 'utf-8');
