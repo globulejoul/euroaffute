@@ -178,6 +178,14 @@ function parseLotoCSV(rows) {
     const chance = parseInt(r.numero_chance, 10);
     if (isNaN(chance) || chance < 1 || chance > 10) continue;
 
+    // Second tirage (depuis nov. 2019) : 5 numéros de plus, sans N° Chance.
+    // L'app les compte parmi les « numéros déjà sortis ensemble ».
+    const second = [];
+    for (let i = 1; i <= 5; i++) {
+      const n = parseInt(r[`boule_${i}_second_tirage`], 10);
+      if (!isNaN(n) && n >= 1 && n <= 49) second.push(n);
+    }
+
     // Prizes — le nombre de rangs varie selon la période
     const prizes = [];
     for (let rank = 1; rank <= 9; rank++) {
@@ -190,13 +198,15 @@ function parseLotoCSV(rows) {
       }
     }
 
-    draws.push({
+    const draw = {
       date,
       day: (r.jour_de_tirage || '').trim(),
       balls: balls.sort((a, b) => a - b),
       bonus: chance,
       prizes,
-    });
+    };
+    if (second.length === 5 && new Set(second).size === 5) draw.second = second.sort((a, b) => a - b);
+    draws.push(draw);
   }
   return draws;
 }

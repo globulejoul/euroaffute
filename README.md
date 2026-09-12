@@ -5,7 +5,7 @@
 Un outil d'analyse statistique qui télécharge l'intégralité des tirages EuroMillions, LOTO et EuroDreams depuis les archives officielles de la FDJ, en déduit des règles de distribution, mesure ce que jouent réellement les autres joueurs, et génère des grilles filtrées.
 
 > [!NOTE]
-> Cet outil n'augmente pas vos chances de gagner — l'espérance d'une grille EuroMillions est négative à chaque tirage, sans exception (c'est calculé et affiché). Il élimine les combinaisons statistiquement improbables et privilégie les grilles délaissées par les autres joueurs pour réduire le partage en cas de gain.
+> Cet outil n'augmente pas vos chances de gagner : chaque grille a exactement la même probabilité de sortir, et l'espérance d'une grille est négative à presque tous les tirages (c'est calculé et affiché — seule exception mesurée : les soirs de plafond EuroMillions). Il exclut ce qui n'est jamais sorti et garde les grilles **délaissées par les autres joueurs**, mesurées dans les compteurs de gagnants : mêmes chances, jackpot et lots moins partagés.
 
 ## Fonctionnalités
 
@@ -21,27 +21,28 @@ Les tables de rangs de gains sont **résolues par ère** : EuroMillions 9/11/12 
 
 ### Analyse statistique
 
-- **Règles dures** — Patterns jamais observés en 20 ans (progressions arithmétiques, même dizaine, etc.)
-- **Distribution cœur** — Bornes p10–p90 apprises pour la somme, le range, la parité, la couverture des dizaines
-- **Seuils adaptatifs par jeu** — Gap max, paires consécutives, concentration par dizaine calibrés sur les données réelles de chaque jeu
-- **Badge « Équité vérifiée »** — χ² global avec correction de tirage sans remise (Joe 1993) + runs test d'indépendance temporelle ; la heatmap de fréquences est graduée en **écarts-types théoriques** (saturation ±3σ) pour ne pas transformer le bruit en signal visuel
+- **Règles dures** — Numéros déjà sortis ensemble (seconds tirages LOTO inclus), patterns jamais observés en 20 ans (progressions arithmétiques, même dizaine), bornes absolues de somme et de range
+- **Règle cœur = indice de co-joueurs** — Le cœur retient les 80 % de grilles (réglable : 70 / 80 / 90 %) les moins jouées d'après le modèle de popularité mesuré ; sous tirage uniforme, autant de tirages y tombent (vérifié : 79 % en EM, 81 % au LOTO). Les anciennes bornes p10–p90 sur la somme, le range, les paires consécutives ou les trous ne faisaient que redécouvrir la loi combinatoire (p10/p90 observés = p10/p90 théoriques) et rejetaient autant de grilles délaissées que de grilles sur-jouées : zone acceptée mesurée à −1 % de co-joueurs en EM, contre −11 % (cœur à 80 %) à −15 % (cœur à 70 %) aujourd'hui
+- **Badge « Équité vérifiée »** — χ² global avec correction de tirage sans remise (Joe 1993), runs test d'indépendance temporelle, et taux de sortie par tranche de « retard » (9,9 à 10,2 % pour 10 % attendus en EM : attendre un numéro ne sert à rien) ; la heatmap de fréquences est graduée en **écarts-types théoriques** (saturation ±3σ) pour ne pas transformer le bruit en signal visuel
 
 ### Indice de popularité mesuré
 
 Les compteurs de gagnants par rang (winnersFr/winnersEu) révèlent ce que jouent les autres : à volume donné, un tirage plein de numéros populaires produit plus de gagnants « 3 numéros » par gagnant « 2 numéros ». Ce signal — insensible au volume de ventes — donne un **delta de popularité par numéro, étoile et N° Chance** (effet « dates ≤ 31 » à ~20 écarts-types ; N° Chance 7 sur-joué de ~+47 %). Le bénéfice est chiffré en euros : les soirs pauvres en dates, l'espérance hors rang 1 a payé +21 % (EM), et le lot du rang « 3 numéros » +26 à +56 %.
 
+Le modèle complet ajoute aux numéros sept **structures combinatoires**, ajustées ensemble par moindres carrés et validées hors échantillon (30 % des tirages : R² 0,55 → 0,78 en EM, 0,61 → 0,81 au LOTO) : l'effet dates est **convexe** (chaque paire de numéros ≤ 31 ajoute +20 % de co-joueurs en EM, +34 % au LOTO — une grille 100 % dates est partagée bien au-delà du produit de ses numéros), les **paires consécutives sont délaissées** (−14 % par paire en EM, −21 % au LOTO : les joueurs « étalent » leurs numéros), la même ligne de la grille aussi (−9 %), tandis que les alignements de 3+ (+12 %) et les paires de multiples de 7 (+7 %) sont sur-joués. Une étoile ou un N° Chance qui répète l'un des numéros de la grille est joué +6,5 à +7 % de plus (« même chiffre fétiche »). Personne, en revanche, ne joue mesurablement les numéros chauds, froids, ceux du tirage précédent ni la date du jour.
+
 ### Économie du tirage
 
 - **Volume de joueurs par tirage** — la série que la FDJ ne publie pas, reconstruite par `gagnants ÷ probabilité` (graphique, effet jour, élasticité à la cagnotte)
-- **Espérance réelle d'une grille** — rangs fixes + My Million + seuil de jackpot rendant l'espérance positive (EM : ≈ 280 M€, au-dessus du plafond de 250 M€ → jamais)
+- **Espérance réelle d'une grille** — rangs fixes + My Million ; le jackpot seul ne suffit jamais (seuil ≈ 280 M€ à volume médian, au-dessus du plafond de 250 M€), **mais au plafond l'excédent est reversé au rang 5+1** : mesuré sur 16 soirs plafonnés 2019–2025, +0,41 € par grille, soit une espérance d'environ 2,5 € pour 2,50 € — le seul cas où une grille vaut sa mise (panneau « soir de plafond » quand la cagnotte annoncée atteint 250 M€)
 - **Modèle de Poisson du jackpot** — validé sur l'historique (23,0 % prédit vs 22,7 % observé sur 1 973 tirages EM) ; panneau « prochain tirage » : volume attendu (± erreur mesurée en walk-forward), P(le jackpot tombe), P(devoir partager), espérance jackpot compris
 - **Hall of shame du partage** — surdispersion des gagnants (sd(z) jusqu'à 4,6 pour 1,0 attendu sous hasard) et les pires soirées où un pattern « humain » a pulvérisé les lots (ex. LOTO 11/03/2026, 10-12-14-16-18 : 41 gagnants à 5 numéros pour 2,2 attendus)
 
 ### Génération de grilles
 
-- **Grille filtrée** — Combinaison aléatoire passant l'ensemble des règles apprises
-- **Portefeuille cœur en partition disjointe** — 10 grilles couvrant 100 % des numéros (recouvrement minimal) : P(au moins une grille avec ≥ 2 bons numéros) gagne jusqu'à ~10 points à budget identique
-- **Portefeuille contre-tendance calibré** — les 10 grilles les moins jouées d'un pool de candidates, triées par l'indice de popularité **mesuré** (plus deux règles structurelles : suites arithmétiques, alignements grille) ; chaque grille affiche son % de co-joueurs estimé (jusqu'à −56 %)
+- **Grille filtrée** — Combinaison aléatoire passant les règles dures et la règle cœur, affichée avec son indice de co-joueurs
+- **Portefeuille cœur en partition disjointe** — 10 grilles couvrant 100 % des numéros (recouvrement minimal) : P(au moins une grille avec ≥ 2 bons numéros) gagne jusqu'à ~10 points à budget identique ; les étoiles / N° Chance les moins joués vont aux blocs les plus populaires pour que chaque grille reste sous le seuil du cœur
+- **Portefeuille contre-tendance calibré** — les 10 grilles les moins jouées d'un pool de 300 candidates du cœur, triées par l'indice complet (numéros + structures + étoiles ou N° Chance, plus deux règles structurelles : suites arithmétiques, alignements grille) ; chaque grille affiche son % de co-joueurs estimé (typiquement −43 à −58 % en EM, −52 à −66 % au LOTO)
 
 ### Visualisations
 
@@ -53,7 +54,7 @@ Les compteurs de gagnants par rang (winnersFr/winnersEu) révèlent ce que jouen
 ### Audit de grille
 
 Saisissez vos numéros fétiches pour vérifier :
-- Passage ou rejet par chaque filtre (avec détail et pourcentage historique)
+- Passage ou rejet par chaque règle, et l'indice de co-joueurs de la grille avec son détail (paires de dates, paires consécutives, étoile qui répète un numéro…)
 - Plus proche voisin dans l'historique
 - Simulation « si j'avais joué cette grille à chaque tirage » avec bilan net, calculée avec les règles de gains de chaque époque
 
@@ -86,7 +87,7 @@ node scripts/update-jackpots.js # cagnottes → data/jackpots.json
 node scripts/validate-data.js   # garde-fou d'intégrité (exécuté aussi en CI)
 ```
 
-Le script télécharge les archives ZIP depuis l'API FDJ, extrait les CSV, parse les tirages, applique `scripts/corrections.json` (tirages absents des archives, champs erronés — ex. le LOTO du 04/11/2019 tombé à la couture entre deux ZIP), et génère les fichiers `data/*.json`. Une garde anti-régression refuse d'écraser un historique par moins de données (`EUROAFFUTE_FORCE=1` pour outrepasser).
+Le script télécharge les archives ZIP depuis l'API FDJ, extrait les CSV, parse les tirages (pour le LOTO, le second tirage de 5 numéros, depuis nov. 2019, est conservé dans le champ `second` et exclu lui aussi du générateur), applique `scripts/corrections.json` (tirages absents des archives, champs erronés — ex. le LOTO du 04/11/2019 tombé à la couture entre deux ZIP), et génère les fichiers `data/*.json`. Une garde anti-régression refuse d'écraser un historique par moins de données (`EUROAFFUTE_FORCE=1` pour outrepasser).
 
 ## Sources de données
 
@@ -146,10 +147,10 @@ euroaffute/
 ## Comment ça marche
 
 1. **Chargement** — Le JSON du jeu sélectionné est chargé, parsé et mis en cache de session (changement d'onglet ≈ 15 ms)
-2. **Apprentissage** — `learnFilters()` extrait les seuils statistiques ; `learnPopularity()` mesure la popularité de chaque numéro dans les compteurs de gagnants ; `learnEconomics()` reconstruit le volume de joueurs, l'espérance et le modèle de Poisson ; `learnFairness()` calcule les tests d'équité
-3. **Filtrage** — `passesAll()` applique les règles apprises pour accepter ou rejeter une combinaison
+2. **Apprentissage** — `learnPopularity()` mesure la popularité des numéros, des structures et des étoiles/bonus dans les compteurs de gagnants (modèle joint par moindres carrés, validé hors échantillon) ; `learnFilters()` en déduit le seuil du cœur par Monte Carlo sur 20 000 grilles aléatoires, plus les règles dures ; `learnEconomics()` reconstruit le volume de joueurs, l'espérance, le modèle de Poisson et l'excédent des soirs de plafond ; `learnFairness()` calcule les tests d'équité
+3. **Filtrage** — `passesAll()` applique les règles dures puis compare l'indice de co-joueurs de la grille complète au seuil du cœur
 4. **Estimation Monte Carlo** — 50 000 combinaisons testées par tranches (thread principal jamais bloqué), résultat mémoïsé par jeu
 5. **Rendu** — Toutes les sections sont recalculées au changement de jeu
 
 > [!IMPORTANT]
-> Les seuils sont **adaptatifs par jeu**. EuroDreams (6 boules sur 40, densité 15%) utilise des seuils différents d'EuroMillions (5 boules sur 50, densité 10%) — par exemple, 3 numéros consécutifs sont acceptés en EuroDreams (3.9% des tirages) mais rejetés en EuroMillions (2.4%).
+> La couverture du cœur (70 / 80 / 90 %) est un choix de confort, pas une probabilité de gain : élargir le cœur fait tomber plus de tirages dedans mais accepte des grilles plus partagées (mesuré hors échantillon en EM : −14 % de co-joueurs à 70 %, −9 % à 80 %, −5 % à 90 % ; au LOTO −23 / −18 / −12 %). Le portefeuille contre-tendance, lui, prend les grilles les moins jouées du cœur quelle que soit la couverture.

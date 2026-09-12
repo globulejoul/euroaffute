@@ -2047,3 +2047,30 @@ footer a:hover { color: var(--accent); }
   .history-col-date { font-size: 0.65rem; }
   .history-score { font-size: 0.7rem; padding: 0.15rem 0.35rem; }
 }
+
+/* --- règle cœur : sélecteur de couverture + lignes informatives ------- */
+.core-cov {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--line);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.core-cov button {
+  font: inherit;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.core-cov button:hover { color: var(--text); border-color: var(--text-dim); }
+.core-cov button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.core-cov button.active { color: var(--accent); border-color: var(--accent); font-weight: 700; }
+.core-cov small { flex-basis: 100%; font-size: 0.7rem; line-height: 1.5; }
+.rule-status.info { color: var(--text-dim); font-weight: 400; }

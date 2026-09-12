@@ -109,6 +109,15 @@ function validateGame(game) {
       if (new Set(d.balls).size !== d.balls.length) err(game, `${where} : boules dupliquées (${d.balls})`);
     }
 
+    // Second tirage LOTO (optionnel, depuis nov. 2019) : mêmes contraintes que les boules
+    if (d.second !== undefined) {
+      if (!Array.isArray(d.second) || d.second.length !== spec.ballCount
+          || d.second.some(b => !Number.isInteger(b) || b < 1 || b > spec.ballMax)
+          || new Set(d.second).size !== d.second.length) {
+        err(game, `${where} : second tirage invalide (${JSON.stringify(d.second)})`);
+      }
+    }
+
     // Étoiles / bonus
     if (spec.stars) {
       if (!Array.isArray(d.stars) || d.stars.length !== spec.stars.count) {
