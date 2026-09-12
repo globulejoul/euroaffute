@@ -49,6 +49,15 @@ jobs:
         continue-on-error: true
         run: node scripts/update-data.js
 
+      # Cagnottes (fdj.fr, euro-millions.com) : récupérées ICI car le
+      # navigateur ne peut pas les lire (aucun en-tête CORS) et les proxies
+      # CORS publics sont morts. Non bloquant : une cagnotte indisponible ne
+      # doit pas empêcher la mise à jour des tirages.
+      - name: Récupérer les cagnottes
+        id: jackpots
+        continue-on-error: true
+        run: node scripts/update-jackpots.js
+
       # Bloque le commit si les données produites sont incohérentes
       # (bornes, doublons, continuité calendaire, structure des gains).
       - name: Valider l'intégrité des données
@@ -75,6 +84,10 @@ jobs:
           git commit -m "data: mise à jour automatique des tirages ($DATE)"
           git pull --rebase origin main
           git push
+
+      - name: Signaler une cagnotte indisponible
+        if: steps.jackpots.outcome == 'failure'
+        run: echo "::warning::update-jackpots.js a échoué — cagnottes possiblement périmées"
 
       - name: Signaler un échec de téléchargement
         if: steps.update.outcome == 'failure'

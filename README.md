@@ -82,6 +82,7 @@ npx serve
 ```bash
 # Nécessite Node.js 20+
 node scripts/update-data.js
+node scripts/update-jackpots.js # cagnottes → data/jackpots.json
 node scripts/validate-data.js   # garde-fou d'intégrité (exécuté aussi en CI)
 ```
 
@@ -101,7 +102,9 @@ https://www.sto.api.fdj.fr/anonymous/service-draw-info/v3/documentations/
 | LOTO | 4 fichiers ZIP | oct. 2008 → présent |
 | EuroDreams | 1 fichier ZIP | nov. 2023 → présent |
 
-Les jackpots en temps réel sont scrapés depuis [fdj.fr](https://www.fdj.fr), [secretsdujeu.com](https://www.secretsdujeu.com) et [euro-millions.com](https://www.euro-millions.com) via proxies CORS (timeout 8 s par stratégie).
+Les cagnottes (prochain tirage et jackpots récents) proviennent de [fdj.fr](https://www.fdj.fr) et [euro-millions.com](https://www.euro-millions.com). Ces sites n'envoient **aucun en-tête CORS** : un navigateur ne peut pas les lire directement, et les proxies CORS publics utilisés auparavant sont devenus inutilisables (corsproxy.io exige une clé API, allorigins time-out).
+
+Elles sont donc récupérées **côté serveur** par `scripts/update-jackpots.js` dans GitHub Actions — où la contrainte CORS n'existe pas — puis committées dans `data/jackpots.json` (~1 Ko), que l'app lit en same-origin. Le scraping via proxy ne subsiste qu'en repli, pour la fraîcheur intra-journée.
 
 ## Architecture
 
@@ -117,9 +120,11 @@ euroaffute/
 ├── data/
 │   ├── euromillions.json   # ~1 970 tirages (JSON minifié)
 │   ├── loto.json           # ~2 800 tirages
-│   └── eurodreams.json     # ~290 tirages
+│   ├── eurodreams.json     # ~290 tirages
+│   └── jackpots.json       # Cagnottes (produites par GitHub Actions)
 ├── scripts/
 │   ├── update-data.js      # Pipeline de téléchargement et parsing FDJ
+│   ├── update-jackpots.js  # Cagnottes côté serveur (contourne le CORS)
 │   ├── corrections.json    # Correctifs manuels des archives FDJ (sources documentées)
 │   └── validate-data.js    # Garde-fou d'intégrité (CI + local)
 └── .github/

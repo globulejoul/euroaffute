@@ -425,6 +425,11 @@
 // =====================================================================
 
 // Sources de données (JSON générés par scripts/update-data.js)
+// Cagnottes récupérées côté serveur par le workflow GitHub Actions : le
+// navigateur ne peut pas lire fdj.fr (aucun en-tête CORS) et les proxies
+// CORS publics sont morts (corsproxy.io exige une clé, allorigins time-out).
+const JACKPOTS_URL = 'data/jackpots.json';
+
 const DATA_URLS = {
   euromillions: 'data/euromillions.json',
   loto: 'data/loto.json',
@@ -2115,10 +2120,11 @@ async function fetchViaProxy(targetUrl) {
   // sites scraped, donc l'erreur est attendue et ne mérite pas d'être logguée.
   const strategies = [
     { name: 'direct',       url: targetUrl,                                                             silent: true },
-    { name: 'corsproxy.io', url: 'https://corsproxy.io/?url=' + encodeURIComponent(targetUrl) },
     { name: 'allorigins',   url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl) },
-    // thingproxy.freeboard.io retiré : service arrêté depuis des années,
-    // chaque tentative n'ajoutait que de la latence d'échec.
+    { name: 'jina',         url: 'https://r.jina.ai/' + targetUrl },
+    // Retirés : thingproxy.freeboard.io (service arrêté) et corsproxy.io
+    // (clé API obligatoire depuis 2026 : réponse 401). Ces sources ne sont
+    // plus qu'un complément — l'essentiel vient de data/jackpots.json.
   ];
   // Sans timeout, un proxy qui accepte la connexion sans répondre bloquerait
   // toute la chaîne de stratégies (et donc l'affichage de la cagnotte).
@@ -2190,6 +2196,40 @@ function parseNextDraw(html) {
   return out;
 }
 
+// Cagnottes produites par GitHub Actions (scripts/update-jackpots.js) et
+// servies en same-origin : aucune requête tierce, aucun CORS. Mémoïsé pour
+// la session ; un fichier absent est mémorisé comme un échec (pas de retry).
+let _localJackpots;
+async function fetchLocalJackpots() {
+  if (_localJackpots !== undefined) return _localJackpots;
+  try {
+    const res = await fetch(JACKPOTS_URL, { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    _localJackpots = await res.json();
+  } catch (err) {
+    console.warn('[EuroAffûté] jackpots.json indisponible :', err.message);
+    _localJackpots = null;
+  }
+  return _localJackpots;
+}
+
+// Une cagnotte ne vaut que jusqu'à son tirage : passé cette date, le montant
+// serait celui d'un tirage déjà joué — mieux vaut retomber sur le scraping.
+function localNextDrawFor(data, game) {
+  const entry = data && data.nextDraw && data.nextDraw[game];
+  if (!entry || !entry.amountEur) return null;
+  const now = new Date();
+  const iso = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') +
+              '-' + String(now.getDate()).padStart(2, '0');
+  if (entry.drawDate && entry.drawDate < iso) return null;
+  return {
+    amountEur: entry.amountEur,
+    amountText: fmt(Math.round(entry.amountEur)) + ' €',
+    nextDay: entry.nextDay || null,
+    nextDate: entry.nextDate || null,
+  };
+}
+
 async function fetchNextDrawInfo() {
   const game = state.currentGame;
   const url = NEXT_DRAW_URLS[game];
@@ -2201,6 +2241,14 @@ async function fetchNextDrawInfo() {
     console.log('[EuroAffûté] prochain tirage ' + game + ' depuis cache');
     return cached;
   }
+  // 1. Source principale : le JSON committé par le workflow (same-origin)
+  const local = localNextDrawFor(await fetchLocalJackpots(), game);
+  if (local) {
+    console.log('[EuroAffûté] prochain tirage ' + game + ' depuis data/jackpots.json');
+    cacheSet(cacheKey, local);
+    return local;
+  }
+  // 2. Repli : scraping direct via proxy (fraîcheur intra-journée)
   const html = await fetchViaProxy(url);
   const parsed = parseNextDraw(html);
   if (!parsed.amountEur) throw new Error('montant introuvable dans la page FDJ');
@@ -2356,6 +2404,15 @@ async function fetchRecentJackpots() {
     console.log('[EuroAffûté] jackpots récents depuis cache (' + Object.keys(cached).length + ' entrées)');
     return cached;
   }
+  // Source principale : JSON committé par le workflow (same-origin)
+  const data = await fetchLocalJackpots();
+  if (data && data.recent && Object.keys(data.recent).length > 0) {
+    console.log('[EuroAffûté] jackpots récents depuis data/jackpots.json (' +
+      Object.keys(data.recent).length + ' entrées)');
+    cacheSet(CACHE_KEY, data.recent);
+    return data.recent;
+  }
+  // Repli : scraping via proxy
   const html = await fetchViaProxy(RESULTS_PAGE_URL);
   const parsed = parseRecentJackpots(html);
   // Ne cache que si le parse a réellement abouti à quelque chose.
