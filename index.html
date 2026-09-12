@@ -3499,10 +3499,11 @@ function renderRemainingCombos() {
       : 'le jackpot';
     const realityEl = document.getElementById('realityText1');
     if (realityEl) {
-      realityEl.innerHTML = gameName + ' compte <strong>' + fmt(TOTAL_COMBOS) + '</strong> combinaisons possibles. Même ' +
-        'avec nos filtres, il reste <strong>' + display + '</strong> ' +
-        'en lice : la réduction est <strong>marginale</strong> — on reste à une ' +
-        'chance sur des millions de décrocher ' + topPrize + '.';
+      realityEl.innerHTML = gameName + ' compte <strong>' + fmt(TOTAL_COMBOS) + '</strong> combinaisons. ' +
+        'Nos filtres en gardent <strong>' + display + '</strong> comme candidates, mais ce nombre ne change ' +
+        'pas vos chances : chaque grille jouée a <strong>1 chance sur ' + fmt(TOTAL_COMBOS) + '</strong> de ' +
+        'décrocher ' + topPrize + ', quel que soit le tri. Les filtres choisissent <em>laquelle</em> vous jouez, ' +
+        'pas combien de chances elle a.';
     }
   };
 
