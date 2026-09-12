@@ -4,10 +4,10 @@
 // dans data/jackpots.json.
 //
 // Pourquoi : le navigateur ne peut pas lire fdj.fr ni euro-millions.com
-// (pas d'en-tête CORS). L'app passait par des proxies CORS publics, qui
-// sont tous morts (corsproxy.io exige une clé API, allorigins time-out).
-// Ici, pas de CORS : GitHub Actions télécharge directement et committe le
-// résultat, que l'app lit en same-origin.
+// (aucun en-tête CORS), et les proxies CORS publics dont dépendait l'app
+// sont morts (corsproxy.io exige une clé API, allorigins time-out). Ici,
+// pas de CORS : GitHub Actions télécharge, committe, et l'app lit le JSON
+// en same-origin.
 //
 // Usage :  node scripts/update-jackpots.js
 // Sortie : data/jackpots.json
@@ -22,9 +22,11 @@ const OUT_FILE = path.join(DATA_DIR, 'jackpots.json');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
            '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const TIMEOUT_MS = 30000;
-// Pages de tirage récupérées une par une en rattrapage (bornées pour ne pas
-// marteler la source : en régime permanent il en manque 0 ou 1 par run).
+// Pages de tirage récupérées une par une, en complément du listing (bornées
+// pour ne pas marteler la source : en régime permanent il en manque 0 ou 1).
 const MAX_GAP_FILL = 6;
+// Nombre de tirages affichés par la timeline de l'app
+const TIMELINE_SIZE = 16;
 
 const NEXT_DRAW_URLS = {
   euromillions: 'https://www.fdj.fr/jeux-de-tirage/euromillions-my-million/',
@@ -54,7 +56,22 @@ async function fetchText(url) {
   }
 }
 
-// --- parsing de la page FDJ -------------------------------------------
+// euro-millions.com refuse les IP de datacenter : depuis un runner GitHub
+// l'accès direct échoue, alors qu'il passe depuis une machine personnelle.
+// r.jina.ai refait la requête depuis sa propre infrastructure.
+// Réservé aux pages de TIRAGE : sur le listing, son rendu texte omet les
+// liens des tirages les plus récents tout en gardant leurs montants, ce qui
+// désynchroniserait le pairage date/montant.
+async function fetchDrawPage(url) {
+  try {
+    return await fetchText(url);
+  } catch (err) {
+    console.warn('    ⚠ accès direct refusé (' + err.message + ') — relais r.jina.ai');
+    return await fetchText('https://r.jina.ai/' + url);
+  }
+}
+
+// --- parsing de la page FDJ (cagnotte du prochain tirage) -------------
 
 const MONTHS = {
   janv: 1, jan: 1, 'févr': 2, fev: 2, mars: 3, avr: 4, mai: 5, juin: 6,
@@ -68,8 +85,8 @@ function parseNextDraw(html) {
   const titleText = titleMatch ? titleMatch[1] : '';
 
   // "17 M€" / "17,5 M€" (la FDJ insère des espaces insécables) ou "17 millions €"
-  const compactRe = /([0-9]+(?:[.,][0-9]+)?)[\s  ]*M€/i;
-  const longRe = /([0-9]+(?:[.,][0-9]+)?)[\s  ]*millions?[\s  ]*(?:€|d’euros?|d'euros?)/i;
+  const compactRe = /([0-9]+(?:[.,][0-9]+)?)[\s  ]*M€/i;
+  const longRe = /([0-9]+(?:[.,][0-9]+)?)[\s  ]*millions?[\s  ]*(?:€|d’euros?|d'euros?)/i;
 
   const m = compactRe.exec(titleText) || longRe.exec(titleText)
          || compactRe.exec(html) || longRe.exec(html);
@@ -79,7 +96,7 @@ function parseNextDraw(html) {
   }
 
   // "ce mardi 15 sept." / "ce samedi 12 septembre 2026"
-  const dateRe = /(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)[\s ]+([0-9]{1,2})[\s ]+(janv|jan|févr|fev|mars|avr|mai|juin|juil|août|aout|sept|oct|nov|déc|dec)[a-zé.]*(?:[\s ]+(\d{4}))?/i;
+  const dateRe = /(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)[\s ]+([0-9]{1,2})[\s ]+(janv|jan|févr|fev|mars|avr|mai|juin|juil|août|aout|sept|oct|nov|déc|dec)[a-zé.]*(?:[\s ]+(\d{4}))?/i;
   const mDate = dateRe.exec(titleText) || dateRe.exec(html);
   if (mDate) {
     out.nextDay = mDate[1].toLowerCase();
@@ -97,7 +114,7 @@ function parseNextDraw(html) {
   return out;
 }
 
-// --- parsing des jackpots récents (euro-millions.com/results) ---------
+// --- parsing des jackpots passés (euro-millions.com) ------------------
 
 function htmlToText(html) {
   return html
@@ -109,6 +126,9 @@ function htmlToText(html) {
     .replace(/\s+/g, ' ');
 }
 
+// Page de listing : montant situé entre deux liens de tirage consécutifs.
+// Certaines dates n'exposent qu'un encart « prochain tirage estimé » — elles
+// sont ignorées ici, puis complétées par leur page de tirage.
 function parseRecentJackpots(html) {
   const out = {};
   const linkRe = /results\/(\d{2})-(\d{2})-(\d{4})/g;
@@ -136,21 +156,8 @@ function parseRecentJackpots(html) {
   return out;
 }
 
-// Dates de tirage référencées par la page de résultats (les plus récentes
-// d'abord), qu'un montant ait été extrait ou non.
-function listedDates(html) {
-  const re = /results\/(\d{2})-(\d{2})-(\d{4})/g;
-  const seen = [];
-  let m;
-  while ((m = re.exec(html)) !== null) {
-    const iso = m[3] + '-' + m[2] + '-' + m[1];
-    if (!seen.includes(iso)) seen.push(iso);
-  }
-  return seen.sort().reverse();
-}
-
-// Page d'un tirage : "Jackpot: €98,714,021" (montant TOTAL du tirage, y
-// compris quand il est partagé entre plusieurs gagnants).
+// Page d'un tirage : "Jackpot: €98,714,021" — montant TOTAL du tirage,
+// y compris quand il est partagé entre plusieurs gagnants.
 function parseSingleDraw(html) {
   const t = htmlToText(html);
   const m = /Jackpot:?\s*€\s*([\d,.]+)/i.exec(t);
@@ -158,6 +165,19 @@ function parseSingleDraw(html) {
   const num = parseInt(m[1].replace(/[,.\s]/g, ''), 10);
   if (isNaN(num) || num < 1e6 || num > 300e6) return null;
   return { jackpot: num, won: /Jackpot\s+Won/i.test(t) };
+}
+
+// Dates à couvrir pour la timeline : celles de nos propres données FDJ
+// (source d'autorité), et non celles du listing scrapé.
+function recentEuromillionsDates(limit) {
+  const p = path.join(DATA_DIR, 'euromillions.json');
+  if (!fs.existsSync(p)) return [];
+  try {
+    const d = JSON.parse(fs.readFileSync(p, 'utf-8'));
+    return (d.draws || []).slice(0, limit).map(x => x.date);
+  } catch {
+    return [];
+  }
 }
 
 // --- main -------------------------------------------------------------
@@ -183,8 +203,8 @@ async function main() {
     recent: Object.assign({}, previous.recent),
   };
   const failures = [];
-  let listingHtml = '';
 
+  // 1. Cagnotte du prochain tirage (fdj.fr)
   for (const [game, url] of Object.entries(NEXT_DRAW_URLS)) {
     try {
       const parsed = parseNextDraw(await fetchText(url));
@@ -198,38 +218,49 @@ async function main() {
     }
   }
 
+  // 2. Jackpots passés (timeline). Le listing couvre ~17 tirages en une
+  //    requête, mais échoue depuis les runners GitHub : best-effort.
   try {
-    listingHtml = await fetchText(RESULTS_PAGE_URL);
-    const recent = parseRecentJackpots(listingHtml);
-    const n = Object.keys(recent).length;
-    if (n === 0) throw new Error('aucun jackpot parsé');
+    const recent = parseRecentJackpots(await fetchText(RESULTS_PAGE_URL));
+    const found = Object.keys(recent).length;
+    if (found === 0) throw new Error('aucun jackpot parsé');
     Object.assign(out.recent, recent);
-    // Borne la taille : on ne garde que les 60 tirages les plus récents
-    const kept = Object.keys(out.recent).sort().reverse().slice(0, 60);
-    out.recent = Object.fromEntries(kept.map(d => [d, out.recent[d]]));
-    console.log('  ✓ jackpots récents : ' + n + ' tirages parsés (' + kept.length + ' conservés)');
-
-    // Rattrapage : certaines dates du listing n'exposent pas leur montant
-    // (le bloc ne contient qu'un encart « prochain tirage estimé »). On va
-    // alors chercher la page du tirage, qui l'affiche toujours. Sans ça, le
-    // navigateur devrait scraper ces dates lui-même — ce qu'il ne peut plus.
-    const wanted = listedDates(listingHtml).slice(0, 16);
-    const missing = wanted.filter(d => !out.recent[d]).slice(0, MAX_GAP_FILL);
-    for (const date of missing) {
-      const parts = date.split('-');
-      const url = 'https://www.euro-millions.com/results/' + parts[2] + '-' + parts[1] + '-' + parts[0];
-      try {
-        const one = parseSingleDraw(await fetchText(url));
-        if (!one) throw new Error('montant introuvable');
-        out.recent[date] = one;
-        console.log('  ✓ rattrapage ' + date + ' : ' + (one.jackpot / 1e6).toFixed(1) + ' M€');
-      } catch (err) {
-        console.warn('  ⚠ rattrapage ' + date + ' impossible : ' + err.message);
-      }
-    }
+    console.log('  ✓ listing : ' + found + ' tirages parsés');
   } catch (err) {
-    console.error('  ✗ jackpots récents : ' + err.message);
-    failures.push('recent');
+    console.warn('  ⚠ listing indisponible (' + err.message + ') — complément par page de tirage');
+  }
+
+  // 3. Complément : les dates de la timeline encore absentes sont récupérées
+  //    une par une (parsing univoque, relais si l'accès direct est refusé).
+  const wanted = recentEuromillionsDates(TIMELINE_SIZE);
+  const missing = wanted.filter(d => !out.recent[d]).slice(0, MAX_GAP_FILL);
+  for (const date of missing) {
+    const parts = date.split('-');
+    const url = 'https://www.euro-millions.com/results/' +
+                parts[2] + '-' + parts[1] + '-' + parts[0];
+    try {
+      const one = parseSingleDraw(await fetchDrawPage(url));
+      if (!one) throw new Error('montant introuvable');
+      out.recent[date] = one;
+      console.log('  ✓ tirage ' + date + ' : ' + (one.jackpot / 1e6).toFixed(1) + ' M€');
+    } catch (err) {
+      console.warn('  ⚠ tirage ' + date + ' : ' + err.message);
+    }
+  }
+
+  // Borne la taille : on ne garde que les 60 tirages les plus récents
+  const kept = Object.keys(out.recent).sort().reverse().slice(0, 60);
+  out.recent = Object.fromEntries(kept.map(d => [d, out.recent[d]]));
+
+  // Échec seulement si la timeline reste largement découverte : une source
+  // momentanément indisponible ne doit pas alarmer tant que les valeurs déjà
+  // committées suffisent à l'affichage.
+  if (wanted.length) {
+    const covered = wanted.filter(d => out.recent[d]).length;
+    const ok = covered >= Math.min(wanted.length, 10);
+    console.log('  ' + (ok ? '✓' : '✗') + ' timeline : ' + covered + '/' + wanted.length +
+                ' tirages couverts (' + kept.length + ' conservés)');
+    if (!ok) failures.push('timeline');
   }
 
   // Horodatage stable : si rien n'a bougé, on conserve celui du fichier
