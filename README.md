@@ -13,9 +13,9 @@ Un outil d'analyse statistique qui télécharge l'intégralité des tirages Euro
 
 | Jeu | Boules | Complémentaire | Tirages | Depuis |
 |-----|--------|----------------|---------|--------|
-| EuroMillions | 5 sur 50 | 2 étoiles (1–12) | ~1 970 | fév. 2004 |
-| LOTO | 5 sur 49 | 1 N° Chance (1–10) | ~2 800 | oct. 2008 |
-| EuroDreams | 6 sur 40 | 1 N° Dream (1–5) | ~290 | nov. 2023 |
+| EuroMillions | 5 sur 50 | 2 étoiles (1–12) | ~1 980 | fév. 2004 |
+| LOTO | 5 sur 49 | 1 N° Chance (1–10) | ~2 810 | oct. 2008 |
+| EuroDreams | 6 sur 40 | 1 N° Dream (1–5) | ~300 | nov. 2023 |
 
 Les tables de rangs de gains sont **résolues par ère** : EuroMillions 9/11/12 étoiles (rangs 6↔7 et 8↔9 inversés selon l'époque), LOTO 6 rangs (2008-2017) puis 9 rangs, EuroDreams où le N° Dream ne distingue que les rangs 1-2 — chaque mapping validé contre les ratios hypergéométriques des compteurs de gagnants.
 
@@ -104,7 +104,18 @@ https://www.sto.api.fdj.fr/anonymous/service-draw-info/v3/documentations/
 
 Les cagnottes (prochain tirage et jackpots récents) proviennent de [fdj.fr](https://www.fdj.fr) et [euro-millions.com](https://www.euro-millions.com). Ces sites n'envoient **aucun en-tête CORS** : un navigateur ne peut pas les lire directement, et les proxies CORS publics utilisés auparavant sont devenus inutilisables (corsproxy.io exige une clé API, allorigins time-out).
 
-Elles sont donc récupérées **côté serveur** par `scripts/update-jackpots.js` dans GitHub Actions — où la contrainte CORS n'existe pas — puis committées dans `data/jackpots.json` (~1 Ko), que l'app lit en same-origin. Le scraping via proxy ne subsiste qu'en repli, pour la fraîcheur intra-journée.
+Elles sont donc récupérées **côté serveur** par `scripts/update-jackpots.js` dans GitHub Actions — où la contrainte CORS n'existe pas — puis committées dans `data/jackpots.json` (~1 Ko), que l'app lit en same-origin. Côté navigateur, le scraping via proxy ne subsiste qu'en repli pour la fraîcheur intra-journée.
+
+Subtilité : `euro-millions.com` refuse les IP de datacenter, donc son listing échoue depuis un runner GitHub (il répond normalement depuis une machine personnelle), et le relais `r.jina.ai` rate-limite sans clé API. Les jackpots passés de la timeline sont donc remplis par ordre de fiabilité décroissante :
+
+| Source | Exactitude | Disponibilité |
+|--------|-----------|---------------|
+| Listing `euro-millions.com` (~17 tirages en une requête) | exacte | hors datacenter |
+| Page du tirage (complément, relais `r.jina.ai` si refus) | exacte | aléatoire |
+| **Données FDJ du dépôt** — tirage gagné : gain par gagnant × gagnants au rang 1 | exacte | toujours |
+| **Cagnotte annoncée** avant le tirage, mémorisée à chaque run (`pending`) | estimation (`est: true`) | toujours |
+
+Les deux dernières lignes ne dépendent d'aucun service tiers : même avec `euro-millions.com` totalement injoignable, la timeline reste complète. Validation croisée du calcul depuis les données FDJ : pour le tirage du 11/09/2026 il donne 111 516 282 €, soit exactement la valeur publiée par euro-millions.com.
 
 ## Architecture
 
@@ -118,9 +129,9 @@ euroaffute/
 │   ├── loto.css            # Thème LOTO (bleu/rouge)
 │   └── eurodreams.css      # Thème EuroDreams (violet/rose)
 ├── data/
-│   ├── euromillions.json   # ~1 970 tirages (JSON minifié)
-│   ├── loto.json           # ~2 800 tirages
-│   ├── eurodreams.json     # ~290 tirages
+│   ├── euromillions.json   # ~1 980 tirages (JSON minifié)
+│   ├── loto.json           # ~2 810 tirages
+│   ├── eurodreams.json     # ~300 tirages
 │   └── jackpots.json       # Cagnottes (produites par GitHub Actions)
 ├── scripts/
 │   ├── update-data.js      # Pipeline de téléchargement et parsing FDJ
