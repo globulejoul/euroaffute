@@ -58,6 +58,15 @@ jobs:
         continue-on-error: true
         run: node scripts/update-jackpots.js
 
+      # Modèle de popularité « Flash + joueurs manuels » : réajusté seulement
+      # pour un jeu qui a un nouveau tirage, en repartant des paramètres déjà
+      # publiés (une à deux minutes). Non bloquant : en cas d'échec, l'app
+      # garde les paramètres précédents de data/popularity.json.
+      - name: Ajuster le modèle de popularité
+        id: popularity
+        continue-on-error: true
+        run: node scripts/fit-popularity.js
+
       # Bloque le commit si les données produites sont incohérentes
       # (bornes, doublons, continuité calendaire, structure des gains).
       - name: Valider l'intégrité des données
@@ -88,6 +97,10 @@ jobs:
       - name: Signaler une cagnotte indisponible
         if: steps.jackpots.outcome == 'failure'
         run: echo "::warning::update-jackpots.js a échoué — cagnottes possiblement périmées"
+
+      - name: Signaler un modèle de popularité non réajusté
+        if: steps.popularity.outcome == 'failure'
+        run: echo "::warning::fit-popularity.js a échoué — l'app garde les paramètres précédents"
 
       - name: Signaler un échec de téléchargement
         if: steps.update.outcome == 'failure'

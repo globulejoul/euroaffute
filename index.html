@@ -422,6 +422,7 @@
 
 </div>
 
+<script src="js/core.js"></script>
 <script>
 // =====================================================================
 // EuroAffûté v3 — multi-jeux, données FDJ, filtres appris
@@ -432,6 +433,12 @@
 // navigateur ne peut pas lire fdj.fr (aucun en-tête CORS) et les proxies
 // CORS publics sont morts (corsproxy.io exige une clé, allorigins time-out).
 const JACKPOTS_URL = 'data/jackpots.json';
+// Paramètres du modèle de popularité « Flash + joueurs manuels », ajustés
+// hors ligne par scripts/fit-popularity.js (une à trois minutes par jeu : trop
+// pour un navigateur). L'app ne fait que les évaluer ; sans ce fichier, elle
+// retombe sur son modèle local (moindres carrés sur le ratio W3/W2).
+const POPULARITY_URL = 'data/popularity.json';
+const POPULARITY_FORMAT = 1;
 
 const DATA_URLS = {
   euromillions: 'data/euromillions.json',
@@ -441,8 +448,8 @@ const DATA_URLS = {
 
 // Couverture du cœur : part des grilles (et donc des tirages, sous tirage
 // uniforme) retenue par la règle cœur — les grilles les moins partagées.
-// Frontière mesurée (walk-forward) : 70 % → −14 % de co-joueurs (EM) / −23 % (LOTO),
-// 80 % → −9 % / −18 %, 90 % → −5 % / −12 %.
+// La frontière couverture / partage est mesurée dans les données et affichée
+// à côté du sélecteur (learnFilters : coreFrontier).
 const CORE_COVERAGE_DEFAULT = 0.8;
 const CORE_COVERAGE_OPTIONS = [0.7, 0.8, 0.9];
 
@@ -625,9 +632,7 @@ function lowerHalfCount(balls, halfPoint) { return balls.filter(b => b <= (halfP
 
 // --- fréquences ------------------------------------------------------
 
-// L'étoile 12 a rejoint le tirage le 24 septembre 2016.
-// Avant cette date, les étoiles étaient tirées dans 1-11.
-const STAR_12_ERA_START = '2016-09-24';
+// (STAR_12_ERA_START et EM_13_RANKS_START : dans js/core.js)
 
 function computeFrequencies(draws) {
   const game = state.currentGame;
@@ -743,71 +748,7 @@ function matchesAgainst(userCombo, draw) {
   return { mn, ms };
 }
 
-// Tables officielles FDJ : (boules matchées, étoiles/bonus matchés) → rang.
-// La signification des rangs a CHANGÉ au fil des ans : chaque table est
-// résolue selon l'ère du tirage (par date ou par nombre de rangs).
-
-// EuroMillions — ère 12 étoiles (depuis le 27/09/2016) : 13 rangs
-const RANK_TABLE_EM = {
-  '5+2': 1, '5+1': 2, '5+0': 3, '4+2': 4, '4+1': 5, '3+2': 6,
-  '4+0': 7, '2+2': 8, '3+1': 9, '3+0': 10, '1+2': 11, '2+1': 12, '2+0': 13,
-};
-// EuroMillions — ère 11 étoiles (10/05/2011 → 23/09/2016) : le 4+0 (rang 6)
-// passait devant le 3+2 (rang 7), plus fréquent avec 11 étoiles.
-const RANK_TABLE_EM_11 = {
-  '5+2': 1, '5+1': 2, '5+0': 3, '4+2': 4, '4+1': 5, '4+0': 6,
-  '3+2': 7, '2+2': 8, '3+1': 9, '3+0': 10, '1+2': 11, '2+1': 12, '2+0': 13,
-};
-// EuroMillions — ère 9 étoiles (13/02/2004 → 06/05/2011) : 12 rangs
-// seulement (pas de 2+0), et 3+1 (rang 8) devant 2+2 (rang 9).
-const RANK_TABLE_EM_9 = {
-  '5+2': 1, '5+1': 2, '5+0': 3, '4+2': 4, '4+1': 5, '4+0': 6,
-  '3+2': 7, '3+1': 8, '2+2': 9, '3+0': 10, '1+2': 11, '2+1': 12,
-};
-// Premier tirage EM à 13 rangs (vérifié dans les données)
-const EM_13_RANKS_START = '2011-05-10';
-
-// LOTO moderne (depuis le 06/03/2017) : 9 rangs. Le rang 9 (remboursement
-// 2,20 €) est gagné dès que le N° Chance est trouvé — avec 0 OU 1 bon numéro.
-const RANK_TABLE_LOTO = {
-  '5+1': 1, '5+0': 2, '4+1': 3, '4+0': 4, '3+1': 5, '3+0': 6,
-  '2+1': 7, '2+0': 8, '1+1': 9, '0+1': 9,
-};
-
-// Ancien LOTO (06/10/2008 → 04/03/2017, tirages à 6 rangs) : le N° Chance ne
-// comptait que seul (rang 6, remboursement ~2 €), les rangs 2 à 5 l'ignoraient.
-// NB : le remboursement Chance était cumulable avec un rang de boules ; on ne
-// retient ici que le rang principal (léger sous-comptage assumé).
-function oldLotoRank(mn, ms) {
-  if (mn === 5) return ms ? 1 : 2;
-  if (mn === 4) return 3;
-  if (mn === 3) return 4;
-  if (mn === 2) return 5;
-  return ms ? 6 : null;
-}
-
-// EuroDreams : 6 rangs — le N° Dream ne distingue QUE les rangs 1 et 2 ;
-// en dessous, seuls les numéros comptent (rang 3 = 5 numéros … rang 6 = 2).
-function edRank(mn, ms) {
-  if (mn === 6) return ms ? 1 : 2;
-  if (mn >= 2) return 8 - mn;  // 5→3, 4→4, 3→5, 2→6
-  return null;
-}
-
-// Rang atteint par (mn, ms) sur ce tirage, selon le jeu ET l'ère du tirage
-function resolveRank(game, draw, mn, ms) {
-  if (game === 'euromillions') {
-    const table = draw.date >= STAR_12_ERA_START ? RANK_TABLE_EM
-                : draw.date >= EM_13_RANKS_START ? RANK_TABLE_EM_11
-                : RANK_TABLE_EM_9;
-    return table[mn + '+' + ms] || null;
-  }
-  if (game === 'loto') {
-    if (draw.prizes && draw.prizes.length <= 6) return oldLotoRank(mn, ms);
-    return RANK_TABLE_LOTO[mn + '+' + ms] || null;
-  }
-  return edRank(mn, ms);
-}
+// (tables de rangs par ère et resolveRank : dans js/core.js)
 
 function findPrize(draw, mn, ms) {
   if (!draw.prizes) return null;
@@ -1023,6 +964,25 @@ async function fetchDrawsJson() {
   return json;
 }
 
+// Modèle de popularité publié (same-origin). Mémoïsé pour la session ; un
+// fichier absent ou d'un autre format est mémorisé comme tel (pas de retry) :
+// l'app garde alors son modèle local.
+let _popularityJson;
+async function fetchPopularityJson() {
+  if (_popularityJson !== undefined) return _popularityJson;
+  try {
+    const res = await fetch(POPULARITY_URL, { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (!json || json.version !== POPULARITY_FORMAT || !json.games) throw new Error('format inattendu');
+    _popularityJson = json;
+  } catch (err) {
+    console.warn('[EuroAffûté] popularity.json indisponible (' + err.message + ') — modèle local');
+    _popularityJson = null;
+  }
+  return _popularityJson;
+}
+
 async function loadDraws() {
   const dot = document.getElementById('statusDot');
   const txt = document.getElementById('statusText');
@@ -1053,7 +1013,9 @@ async function loadDraws() {
         cached.remainingRate = null;
       }
     } else {
-      const json = await fetchDrawsJson();
+      // Le modèle de popularité publié se charge en même temps que les
+      // tirages : learnPopularity, synchrone, le trouvera déjà en mémoire
+      const [json] = await Promise.all([fetchDrawsJson(), fetchPopularityJson()]);
       // L'utilisateur a pu changer d'onglet pendant le fetch : tout ce qui
       // suit (apprentissage des filtres — qui lit state.currentGame —, écriture
       // du cache, rendus) appartiendrait au mauvais jeu. On abandonne ; le
@@ -1251,38 +1213,93 @@ function learnFilters(draws) {
   // des tirages y tombent — la part réelle est mesurée ci-dessous.
   const pop = state.popularity;
   const coverage = state.coreCoverage || CORE_COVERAGE_DEFAULT;
-  let coreLogMax = null, coreBallLogMax = null, coreDrawShare = null, coreSharing = null;
+  let coreLogMax = null, coreBallLogMax = null, coreDrawShare = null, coreSharing = null, coreFrontier = null;
   if (pop) {
-    const NB = 20000;
-    const full = new Float64Array(NB), ballsOnly = new Float64Array(NB);
-    for (let i = 0; i < NB; i++) {
-      const c = randomCombo();
-      ballsOnly[i] = ballLogFactor(c.balls, pop);
-      full[i] = ballsOnly[i] + bonusLogFactor(c, pop);
+    let ballThreshold; // couverture → seuil de l'indice des numéros seuls
+    if (pop.gen) {
+      // Modèle publié : seuils EXACTS, les mêmes d'un chargement à l'autre.
+      // L'ajustement fournit les quantiles de log G sur toutes les grilles de
+      // numéros (énumérées une à une), par tranches égales.
+      const g = pop.gen, q = g.quantiles, last = q.length - 1;
+      const toLog = lg => Math.log(g.pi + (1 - g.pi) * Math.exp(lg));
+      ballThreshold = cov => {
+        const x = cov * last, i0 = Math.min(last - 1, Math.floor(x));
+        return toLog(q[i0] + (x - i0) * (q[i0 + 1] - q[i0]));
+      };
+      coreBallLogMax = ballThreshold(coverage);
+      // Grille complète : numéros et étoiles (ou N° Chance) se tirent
+      // indépendamment — on croise les tranches de numéros avec les valeurs,
+      // équiprobables, de la table. (« Même chiffre fétiche » négligé ici : il
+      // ne touche qu'une grille sur cinq à dix, pour 6 à 7 %.)
+      const bonusLogs = Object.keys(g.bonus).map(k => g.bonus[k].manual);
+      if (bonusLogs.length) {
+        const mixes = new Float64Array(last * bonusLogs.length);
+        let k = 0;
+        for (let i = 0; i < last; i++) {
+          const mid = (q[i] + q[i + 1]) / 2;
+          for (const b of bonusLogs) mixes[k++] = mid + b;
+        }
+        mixes.sort();
+        coreLogMax = toLog(mixes[Math.min(mixes.length - 1, Math.floor(mixes.length * coverage))]);
+      } else {
+        coreLogMax = coreBallLogMax;
+      }
+    } else {
+      // Modèle local : seuils par Monte Carlo sur 20 000 grilles aléatoires
+      const NB = 20000;
+      const full = new Float64Array(NB), ballsOnly = new Float64Array(NB);
+      for (let i = 0; i < NB; i++) {
+        const c = randomCombo();
+        ballsOnly[i] = ballLogFactor(c.balls, pop);
+        full[i] = gridLogFactor(c, pop);
+      }
+      full.sort();
+      ballsOnly.sort();
+      ballThreshold = cov => ballsOnly[Math.min(NB - 1, Math.floor(NB * cov))];
+      coreLogMax = full[Math.min(NB - 1, Math.floor(NB * coverage))];
+      coreBallLogMax = ballThreshold(coverage);
     }
-    full.sort();
-    ballsOnly.sort();
-    const idx = Math.min(NB - 1, Math.floor(NB * coverage));
-    coreLogMax = full[idx];
-    coreBallLogMax = ballsOnly[idx];
-    // Part des tirages historiques tombés dans le cœur
-    let inCore = 0;
-    for (const d of draws) if (gridLogFactor(d, pop) <= coreLogMax) inCore++;
-    coreDrawShare = inCore / draws.length;
-    // Partage MESURÉ de la zone acceptée : signal W3/W2 moyen des tirages tombés
-    // dans le cœur vs tous les tirages — indépendant du modèle qui trace le seuil
-    if (pop.signals && pop.signals.length >= 100) {
-      let sIn = 0, nIn = 0, sAll = 0;
-      for (const s of pop.signals) {
-        sAll += s.r;
-        if (ballLogFactor(s.balls, pop) <= coreBallLogMax) { sIn += s.r; nIn++; }
-      }
-      if (nIn >= 30) coreSharing = Math.exp(ballCount * (sIn / nIn - sAll / pop.signals.length));
-      let sSeq = 0, nSeq = 0;
-      for (const s of pop.signals) if (hasSequenceRun(s.balls, seqMaxStep)) { sSeq += s.r; nSeq++; }
-      if (nSeq >= 20 && nSeq < pop.signals.length) {
-        seqSharing = Math.exp(ballCount * (sSeq / nSeq - (sAll - sSeq) / (pop.signals.length - nSeq)));
-      }
+    // Part des tirages historiques tombés dans le cœur. En EuroMillions, sur
+    // l'ère des 12 étoiles seulement : la popularité des étoiles est mesurée
+    // sur elle, et les tirages d'avant n'avaient que des étoiles 1-9 ou 1-11,
+    // toutes plus jouées que la moyenne d'aujourd'hui.
+    const comparable = game === 'euromillions' ? draws.filter(d => d.date >= STAR_12_ERA_START) : draws;
+    if (comparable.length >= 100) {
+      let inCore = 0;
+      for (const d of comparable) if (gridLogFactor(d, pop) <= coreLogMax) inCore++;
+      coreDrawShare = inCore / comparable.length;
+    }
+    // Partage MESURÉ d'une zone de grilles, sans passer par le modèle qui en
+    // trace le contour : gagnants ayant TOUS les numéros, observés ÷ attendus
+    // au volume exact, pour les tirages tombés dans la zone. Repli quand ces
+    // gagnants sont trop rares (EuroDreams) : signal W3/W2 moyen des tirages de
+    // la zone, remis à l'échelle de la grille entière.
+    const obs = pop.shareObs || [];
+    let obsW = 0;
+    for (const o of obs) obsW += o.w;
+    const direct = obsW >= 1000;
+    const sample = direct ? obs : (pop.signals && pop.signals.length >= 100 ? pop.signals : null);
+    if (sample) {
+      // inZone : un booléen par tirage ; vsRest : comparer au reste plutôt qu'à l'ensemble
+      const measure = (inZone, minDraws, vsRest) => {
+        let w = 0, e = 0, n = 0, W = 0, E = 0;
+        sample.forEach((o, i) => {
+          const a = direct ? o.w : o.r, b = direct ? o.e : 1;
+          W += a; E += b;
+          if (inZone[i]) { w += a; e += b; n++; }
+        });
+        if (n < minDraws || n === sample.length) return null;
+        const zone = w / e, ref = vsRest ? (W - w) / (E - e) : W / E;
+        return direct ? zone / ref : Math.exp(ballCount * (zone - ref));
+      };
+      const lf = sample.map(o => ballLogFactor(o.balls, pop));
+      coreSharing = measure(lf.map(v => v <= coreBallLogMax), 30, false);
+      seqSharing = measure(sample.map(o => hasSequenceRun(o.balls, seqMaxStep)), 20, true);
+      // Frontière couverture / partage, affichée à côté du sélecteur
+      coreFrontier = CORE_COVERAGE_OPTIONS.map(cov => {
+        const thr = ballThreshold(cov);
+        return { cov, sharing: measure(lf.map(v => v <= thr), 30, false) };
+      });
     }
   }
 
@@ -1315,57 +1332,28 @@ function learnFilters(draws) {
     coreBallLogMax,
     coreDrawShare,
     coreSharing,
+    coreFrontier,
   };
 }
 
 // --- indice de popularité mesuré --------------------------------------
-// Les compteurs de gagnants par rang cachent une mesure directe de ce que
-// jouent les autres : à volume de ventes donné, un tirage plein de numéros
+// Deux modèles. Le modèle PUBLIÉ (« Flash + joueurs manuels », ajusté hors
+// ligne sur les gagnants à 2, 3, 4 et 5 numéros au volume exact — cf.
+// js/core.js et scripts/fit-popularity.js) sert dès qu'il existe pour le jeu.
+// Le modèle LOCAL ci-dessous, appris ici même, est son repli (EuroDreams,
+// fichier absent) et fournit ce que le publié ne mesure pas (signature
+// française, signal W3/W2).
+//
+// Modèle local — les compteurs de gagnants par rang cachent une mesure de ce
+// que jouent les autres : à volume de ventes donné, un tirage plein de numéros
 // populaires produit PLUS de gagnants « 3 numéros » par gagnant « 2 numéros ».
 // Le ratio W3/W2 est insensible au volume ET aux étoiles/bonus (ils se
 // simplifient entre rangs à même nombre d'étoiles). En moyennant ce signal
 // sur les tirages contenant chaque numéro, on obtient un delta de popularité
 // par numéro. Même méthode pour les étoiles (rangs 2+1 vs 2+0) et le
 // N° Chance. Signal massif : effet « dates » à ~20 écarts-types sur l'EM.
-// --- structures combinatoires d'une grille -----------------------------
-// Les joueurs ne choisissent pas des numéros indépendants : ils cochent des
-// dates (jour + mois), évitent les numéros qui se suivent, « étalent » sur la
-// grille… Chaque trait est compté sur la grille triée et pèse dans le modèle
-// de popularité avec un coefficient MESURÉ (moindres carrés, cf. learnPopularity).
-const STRUCT_FEATURES = [
-  { key: 'pairLow31', label: 'Paires de dates (deux numéros ≤ 31)', one: 'paire de dates', many: 'paires de dates', unit: 'par paire' },
-  { key: 'pairLow12', label: 'Paires de mois (deux numéros ≤ 12)', one: 'paire de mois', many: 'paires de mois', unit: 'par paire' },
-  { key: 'adjacent', label: 'Paires consécutives (n, n+1)', one: 'paire consécutive', many: 'paires consécutives', unit: 'par paire' },
-  { key: 'sameRow', label: 'Paires sur la même ligne de la grille', one: 'paire sur une même ligne', many: 'paires sur une même ligne', unit: 'par paire' },
-  { key: 'sameCol', label: 'Paires dans la même colonne de la grille', one: 'paire dans une même colonne', many: 'paires dans une même colonne', unit: 'par paire' },
-  { key: 'gridAlign', label: 'Alignement de 3+ sur une ligne ou une colonne', one: 'alignement de 3+', many: 'alignements de 3+', unit: 'si présent' },
-  { key: 'mult7', label: 'Paires de multiples de 7', one: 'paire de multiples de 7', many: 'paires de multiples de 7', unit: 'par paire' },
-];
-// Largeur de la grille FDJ : 10 colonnes (EM, LOTO), 8 (EuroDreams)
-function gridWidthFor(game) { return game === 'eurodreams' ? 8 : 10; }
-
-function structFeatures(sorted, width) {
-  const K = sorted.length;
-  let adjacent = 0, sameCol = 0, sameRow = 0, pairLow31 = 0, pairLow12 = 0, mult7 = 0;
-  const cols = new Array(width).fill(0);
-  const rows = new Array(8).fill(0);
-  for (let i = 0; i < K; i++) {
-    const a = sorted[i];
-    cols[(a - 1) % width]++;
-    rows[Math.floor((a - 1) / width)]++;
-    if (i > 0 && a - sorted[i - 1] === 1) adjacent++;
-    for (let j = i + 1; j < K; j++) {
-      const b = sorted[j];
-      if ((a - 1) % width === (b - 1) % width) sameCol++;
-      if (Math.floor((a - 1) / width) === Math.floor((b - 1) / width)) sameRow++;
-      if (b <= 31) pairLow31++;
-      if (b <= 12) pairLow12++;
-      if (a % 7 === 0 && b % 7 === 0) mult7++;
-    }
-  }
-  const gridAlign = (cols.some(c => c >= 3) || rows.some(r => r >= 3)) ? 1 : 0;
-  return [pairLow31, pairLow12, adjacent, sameRow, sameCol, gridAlign, mult7];
-}
+// (structures combinatoires d'une grille : STRUCT_FEATURES, gridWidthFor,
+// structFeatures — dans js/core.js, partagé avec scripts/fit-popularity.js)
 
 // Moindres carrés par équations normales (Gauss-Jordan, p ≤ ~60 colonnes).
 // Retourne le vecteur des coefficients, ou null si le système est singulier.
@@ -1530,9 +1518,6 @@ function learnPopularity(draws) {
     for (let i = 0; i < bonusDelta.length; i++) bonusDelta[i] *= starCount;
   }
 
-  const ranked = [];
-  for (let n = 1; n <= ballMax; n++) ranked.push({ n, delta: ballDelta[n] });
-  ranked.sort((a, b) => b.delta - a.delta);
   let bonusRanked = null;
   if (bonusDelta) {
     bonusRanked = [];
@@ -1636,6 +1621,42 @@ function learnPopularity(draws) {
   // (t = 12), +7 % au LOTO (t = 18). Non mesurable pour le N° Dream.
   const coincidenceLog = game === 'euromillions' ? Math.log(1.065) : game === 'loto' ? Math.log(1.07) : 0;
 
+  // Modèle publié « Flash + joueurs manuels » (data/popularity.json) : quand
+  // il existe pour ce jeu, c'est lui qui donne l'indice de co-joueurs. Le
+  // modèle local ci-dessus reste le repli (EuroDreams, fichier absent).
+  const gen = publishedModel(game, cfg);
+
+  // Popularité d'un numéro pris seul et des étoiles / N° Chance, pour
+  // l'affichage — même forme quel que soit le modèle : facteur de co-joueurs
+  // (1 = joué comme la moyenne).
+  const numberFactor = new Array(ballMax + 1).fill(1);
+  for (let n = 1; n <= ballMax; n++) {
+    numberFactor[n] = gen && gen.single
+      ? gen.pi + (1 - gen.pi) * gen.single[n - 1]   // part des grilles jouées contenant n, rapportée à k/N
+      : Math.exp(ballCount * ballDelta[n]);
+  }
+  const byFactor = [];
+  for (let n = 1; n <= ballMax; n++) byFactor.push(n);
+  byFactor.sort((a, b) => numberFactor[b] - numberFactor[a]);
+  let bonusItems = null; // [{ label, factor }] du plus au moins joué
+  if (gen && Object.keys(gen.bonus).length) {
+    bonusItems = Object.keys(gen.bonus).map(k => ({ label: k, factor: Math.exp(gen.bonus[k].log) }));
+  } else if (bonusRanked) {
+    bonusItems = bonusRanked.map(x => ({ label: String(x.n), factor: Math.exp(x.delta) }));
+  }
+  if (bonusItems) bonusItems.sort((a, b) => b.factor - a.factor);
+
+  // Partage OBSERVÉ au rang « tous les numéros » : gagnants et attendus au
+  // volume exact, par tirage — pour mesurer ce que vaut une zone de grilles
+  // sans passer par aucun modèle (cf. learnFilters).
+  const pAll = 1 / comb(ballMax, ballCount);
+  const shareObs = [];
+  for (const r of drawLevels(game, cfg, draws)) {
+    if (r.v !== null && r.W[ballCount] !== undefined) {
+      shareObs.push({ balls: r.draw.balls, w: r.W[ballCount], e: r.v * pAll });
+    }
+  }
+
   return {
     nDraws: ballSig.length,
     nBonusDraws: bonusSig.length,
@@ -1643,24 +1664,67 @@ function learnPopularity(draws) {
     ballMax,
     ballDelta,
     bonusDelta,      // null pour EuroDreams (Dream non mesurable)
-    topOver: ranked.slice(0, 5).map(x => x.n),
-    topUnder: ranked.slice(-5).map(x => x.n).reverse(),
-    bonusOver: bonusRanked ? bonusRanked.slice(0, 3).map(x => x.n) : null,
-    bonusUnder: bonusRanked ? bonusRanked.slice(-4).map(x => x.n).reverse() : null,
+    numberFactor,
+    topOver: byFactor.slice(0, 5),
+    topUnder: byFactor.slice(-5).reverse(),
+    bonusOver: bonusItems ? bonusItems.slice(0, 3) : null,
+    bonusUnder: bonusItems ? bonusItems.slice(-4).reverse() : null,
     frSignature,
-    model,           // null si trop peu de tirages : repli sur les deltas par numéro
+    model,           // modèle local : null si trop peu de tirages (repli sur les deltas par numéro)
+    gen,             // modèle publié, prioritaire : null s'il n'existe pas pour ce jeu
     coincidenceLog,
-    signals: ballSig.map(s => ({ balls: s.balls, r: s.r })), // pour mesurer le partage du cœur
+    signals: ballSig.map(s => ({ balls: s.balls, r: s.r })), // repli pour mesurer le partage du cœur
+    shareObs,
   };
 }
 
-// Log-facteur de co-joueurs des NUMÉROS d'une grille (triés) vs grille moyenne.
-// Le signal W3/W2 ne « voit » qu'environ 1/ballCount du log-popularité de
-// chaque boule tirée (une seule boule matchée de plus entre les deux rangs),
-// d'où la remise à l'échelle ×ballCount. Modèle complet (numéros + structures)
-// si disponible, sinon repli sur les deltas par numéro.
+// Modèle publié pour ce jeu, prêt à évaluer — ou null (jeu non ajusté,
+// fichier absent, dimensions incompatibles).
+function publishedModel(game, cfg) {
+  const g = _popularityJson && _popularityJson.games && _popularityJson.games[game];
+  if (!g || g.ballMax !== (cfg.ballMax || 50) || g.ballCount !== (cfg.ballCount || 5)) return null;
+  if (!Array.isArray(g.theta) || g.theta.length !== g.ballMax) return null;
+  if (!Array.isArray(g.quantiles) || g.quantiles.length < 3 || !g.gamma) return null;
+  if (!(g.pi > 0 && g.pi < 1) || !isFinite(g.logZ)) return null;
+  const pi = g.pi;
+  // Étoiles / N° Chance : facteur MESURÉ T (1 = joué comme la moyenne). Les
+  // Flash étant uniformes là aussi, T = π + (1−π) × facteur chez les joueurs
+  // manuels — borné à 0,02 si une valeur ressortait sous la part de Flash.
+  const bonus = {};
+  const table = (g.bonus && g.bonus.table) || {};
+  for (const k of Object.keys(table)) {
+    const T = table[k];
+    if (!(T > 0)) continue;
+    bonus[k] = { log: Math.log(T), manual: Math.log(Math.max(0.02, (T - pi) / (1 - pi))) };
+  }
+  return {
+    m: preparePopModel(g), pi, bonus,
+    quantiles: g.quantiles, single: Array.isArray(g.single) ? g.single : null, gamma: g.gamma,
+    validation: g.validation || null, asOf: g.asOf, from: g.from, nFit: g.nFit,
+  };
+}
+
+// Clé d'une grille dans la table des étoiles (« 3-7 ») ou des N° Chance (« 7 »)
+function bonusKey(c) {
+  if (c.stars) return Math.min(c.stars[0], c.stars[1]) + '-' + Math.max(c.stars[0], c.stars[1]);
+  return String(c.bonus);
+}
+
+// Log-facteur de co-joueurs des NUMÉROS d'une grille (triés) vs grille moyenne,
+// étoiles / N° Chance quelconques.
+// Modèle publié : π + (1−π) × G — la part de Flash (uniforme) fait plancher,
+// aucune grille ne descend sous π.
+// Modèle local (repli) : le signal W3/W2 ne « voit » qu'environ 1/ballCount du
+// log-popularité de chaque boule tirée (une seule boule matchée de plus entre
+// les deux rangs), d'où la remise à l'échelle ×ballCount — une extrapolation
+// qui exagère aux extrêmes (mesuré en EM : pente 0,83 aux gagnants à 5
+// numéros, et −30 % observés là où elle annonce −44 %). Numéros + structures
+// si disponible, sinon deltas par numéro.
 function ballLogFactor(sorted, pop) {
   if (!pop) return 0;
+  if (pop.gen) {
+    return Math.log(pop.gen.pi + (1 - pop.gen.pi) * Math.exp(manualBallLog(sorted, pop.gen.m)));
+  }
   if (pop.model) {
     const m = pop.model;
     return pop.ballCount * (scoreNumbers(sorted, m.beta) - m.baseNumbers +
@@ -1671,19 +1735,43 @@ function ballLogFactor(sorted, pop) {
   return s;
 }
 
-// Log-facteur des étoiles / N° Chance : deltas par valeur (déjà remis à
-// l'échelle dans learnPopularity) + « même chiffre fétiche » quand une étoile
-// ou le N° Chance répète l'un des numéros de la grille.
+// Log-facteur des étoiles / N° Chance d'une grille, numéros quelconques.
+// Modèle publié : valeur MESURÉE de la table (paire d'étoiles ou N° Chance).
+// Modèle local : deltas par valeur (déjà remis à l'échelle dans
+// learnPopularity). Dans les deux cas, + « même chiffre fétiche » quand une
+// étoile ou le N° Chance répète l'un des numéros de la grille.
 function bonusLogFactor(c, pop) {
   if (!pop) return 0;
   let s = 0;
   const keys = c.stars ? c.stars : (c.bonus !== undefined ? [c.bonus] : []);
-  if (pop.bonusDelta) for (const k of keys) s += pop.bonusDelta[k] || 0;
+  if (pop.gen) {
+    const b = pop.gen.bonus[bonusKey(c)];
+    if (b) s += b.log;
+  } else if (pop.bonusDelta) {
+    for (const k of keys) s += pop.bonusDelta[k] || 0;
+  }
   if (pop.coincidenceLog) for (const k of keys) if (c.balls.includes(k)) s += pop.coincidenceLog;
   return s;
 }
 
-function gridLogFactor(c, pop) { return ballLogFactor(c.balls, pop) + bonusLogFactor(c, pop); }
+// Log-facteur de co-joueurs de la grille COMPLÈTE vs grille moyenne.
+// Modèle publié : les Flash ignorent numéros ET étoiles, seuls les joueurs
+// manuels cumulent les deux préférences — π + (1−π) × G_numéros × G_étoiles,
+// et non le produit des deux facteurs (qui descendrait sous le plancher π :
+// une grille à −30 % de numéros et −27 % d'étoiles est à −38 %, pas −49 %).
+function gridLogFactor(c, pop) {
+  if (pop && pop.gen) {
+    const g = pop.gen;
+    const b = g.bonus[bonusKey(c)];
+    let s = Math.log(g.pi + (1 - g.pi) * Math.exp(manualBallLog(c.balls, g.m) + (b ? b.manual : 0)));
+    if (pop.coincidenceLog) {
+      const keys = c.stars ? c.stars : (c.bonus !== undefined ? [c.bonus] : []);
+      for (const k of keys) if (c.balls.includes(k)) s += pop.coincidenceLog;
+    }
+    return s;
+  }
+  return ballLogFactor(c.balls, pop) + bonusLogFactor(c, pop);
+}
 
 // Facteur de co-joueurs estimé d'une grille complète vs grille moyenne
 function popularityFactor(c, pop) { return Math.exp(gridLogFactor(c, pop)); }
@@ -1695,178 +1783,32 @@ function popularityBreakdown(c, pop) {
   if (!pop) return '';
   const parts = [];
   const items = [];
-  if (pop.model) {
-    const fx = structFeatures(c.balls, pop.model.width);
+  const structured = pop.gen || pop.model;
+  if (structured) {
+    const fx = structFeatures(c.balls, pop.gen ? pop.gen.m.width : pop.model.width);
     STRUCT_FEATURES.forEach((ft, j) => {
       if (fx[j]) items.push(fx[j] > 1 ? fx[j] + ' ' + ft.many : '1 ' + ft.one);
     });
   }
-  parts.push('numéros' + (pop.model ? ' et structures' : '') + ' ' + pctLabel(Math.exp(ballLogFactor(c.balls, pop))) +
+  parts.push('numéros' + (structured ? ' et structures' : '') + ' ' + pctLabel(Math.exp(ballLogFactor(c.balls, pop))) +
     (items.length ? ' (' + items.join(', ') + ')' : ''));
-  if (pop.bonusDelta) {
+  const hasBonus = pop.gen ? !!pop.gen.bonus[bonusKey(c)] : !!pop.bonusDelta;
+  if (hasBonus) {
     const keys = c.stars ? c.stars : (c.bonus !== undefined ? [c.bonus] : []);
     const coinc = pop.coincidenceLog ? keys.filter(k => c.balls.includes(k)).length : 0;
     parts.push((c.stars ? 'étoiles ' : 'N° Chance ') + pctLabel(Math.exp(bonusLogFactor(c, pop))) +
       (coinc ? ' (' + coinc + ' × même chiffre qu\'un numéro)' : ''));
   }
-  return parts.join(' · ');
+  // Modèle publié : les deux pourcentages ne se multiplient pas
+  return parts.join(' · ') + (pop.gen && hasBonus
+    ? ' — les deux ne se multiplient pas : ' + Math.round(100 * pop.gen.pi) + ' % des grilles sont des Flash, indifférents aux uns comme aux autres'
+    : '');
 }
 
 // Formatage « ±N % » d'un facteur multiplicatif (arrondi d'abord : jamais « −0 % »)
 function pctLabel(factor) {
   const p = Math.round(Math.abs(factor - 1) * 100);
   return (p === 0 ? '±0' : (factor >= 1 ? '+' : '−') + p) + ' %';
-}
-
-// --- volume exact par les dotations ------------------------------------
-// Dans un jeu en répartition, la dotation d'un rang (lot × gagnants) est une
-// part FIXE des mises : dotation = c × V, où c — les euros de dotation du
-// rang par grille jouée — ne dépend que du règlement, pas des numéros
-// sortis. Des numéros populaires font plus de gagnants, mais le lot baisse
-// d'autant : le produit ne bouge pas. « gagnants ÷ probabilité », lui, gonfle
-// avec la popularité (écart-type mesuré contre le volume exact : 13 % en EM,
-// 19 % au LOTO, 15 % en EuroDreams ; jusqu'à +58 à +86 % les soirs de dates).
-//
-// Régimes de répartition — deux tirages du même règlement ont les mêmes
-// rapports de dotation entre rangs, à l'arrondi des lots près. On regroupe
-// donc les tirages par cette signature, sans coder une seule date ; retrouvés
-// seuls : EM août 2004, mai 2011, sept. 2016, fév. 2020 ; LOTO nov. 2019 ;
-// EuroDreams oct. 2025.
-//
-// Constante c — elle s'apprend sans connaître le règlement : sur des tirages
-// uniformes, E[gagnants / (V × p)] = 1 exactement, quoi que jouent les
-// joueurs. Or gagnants / (p × dotation) = 1 / (p × lot) : c est donc la
-// moyenne harmonique de p × lot sur le régime, et V = lot × gagnants / c.
-// Précision : ±0,3 % d'un tirage à l'autre (arrondi des lots), plus une
-// erreur commune au régime de 0,3 % (700 tirages) à 2 % (20 tirages).
-//
-// Non mesurable ainsi : les rangs à lot fixe (remboursements, LOTO de mars
-// 2017 à octobre 2019) et les régimes de moins de 20 tirages → null, et
-// l'appelant se replie sur gagnants ÷ probabilité.
-//
-// lists : par tirage, en ordre chronologique, ses rangs « volume »
-//         [{ key, pr, w, prize }] — key = ère de la table des rangs + rang.
-function exactVolumes(lists) {
-  const FIX_RUN = 4;     // ≥ 4 lots identiques d'affilée : lot fixe, pas une répartition
-  // Tolérance de la signature : au-dessus de l'arrondi des lots (écart
-  // interne mesuré ≤ 1,9 %), en dessous du plus petit changement de règlement
-  // connu (EuroDreams 2025 : 5,4 % au plus près ; EM : 16 %)
-  const TOL = 0.035;
-  const MIN_DRAWS = 20;  // régime plus court : constante trop bruitée
-  const SPLIT_T = 6;     // saut de niveau (t de Student) qui coupe un régime
-  const MIN_SEG = 30;    // tirages minimum de part et d'autre d'une coupe
-  const median = a => {
-    const s = [...a].sort((x, y) => x - y);
-    const m = s.length >> 1;
-    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-  };
-
-  // 1. Lots fixes : une série de lots identiques ne mesure pas les mises
-  const fixed = new Set();
-  const byKey = new Map();
-  for (const list of lists) {
-    for (const c of list) {
-      if (!(c.prize > 0)) continue;
-      if (!byKey.has(c.key)) byKey.set(c.key, []);
-      byKey.get(c.key).push(c);
-    }
-  }
-  for (const seq of byKey.values()) {
-    for (let s = 0, i = 1; i <= seq.length; i++) {
-      if (i < seq.length && seq[i].prize === seq[s].prize) continue;
-      if (i - s >= FIX_RUN) for (let j = s; j < i; j++) fixed.add(seq[j]);
-      s = i;
-    }
-  }
-  const usable = lists.map(list => list.filter(c => c.prize > 0 && !fixed.has(c)));
-
-  // 2. Régimes : tirages dont les log-dotations coïncident à un décalage
-  //    commun près — ce décalage, c'est le volume. Chaque tirage rejoint le
-  //    régime dont la signature moyenne lui ressemble le plus, ou en ouvre un.
-  const regimes = [];
-  usable.forEach((use, t) => {
-    if (use.length < 2) return;
-    const logPool = use.map(c => Math.log(c.prize * c.w));
-    let home = null, off = 0, best = TOL;
-    for (const R of regimes) {
-      const diffs = [];
-      use.forEach((c, i) => {
-        if (R.n.has(c.key)) diffs.push(logPool[i] - R.sum.get(c.key) / R.n.get(c.key));
-      });
-      if (diffs.length < 2) continue;
-      const m = median(diffs);
-      const dev = Math.max(...diffs.map(x => Math.abs(x - m)));
-      if (dev <= best) { home = R; off = m; best = dev; }
-    }
-    if (!home) {
-      home = { sum: new Map(), n: new Map(), pr: new Map(), draws: [] };
-      regimes.push(home);
-    }
-    use.forEach((c, i) => {
-      home.sum.set(c.key, (home.sum.get(c.key) || 0) + logPool[i] - off);
-      home.n.set(c.key, (home.n.get(c.key) || 0) + 1);
-      home.pr.set(c.key, c.pr);
-    });
-    home.draws.push(t);
-  });
-
-  // 3. Une revalorisation uniforme des dotations (prix de la grille…) garde
-  //    leurs rapports : la signature ne la voit pas. On la cherche comme un
-  //    saut de niveau de log(p × lot) sur le rang le plus probable, le moins
-  //    bruité. Aucun dans l'historique (t ≤ 3,6) ; il faut une quarantaine de
-  //    tirages pour qu'un saut de 10 % passe le seuil.
-  const splitLevel = (draws, key) => {
-    const N = draws.length;
-    if (N < 2 * MIN_SEG) return [draws];
-    const cnt = new Float64Array(N + 1), s1 = new Float64Array(N + 1), s2 = new Float64Array(N + 1);
-    draws.forEach((t, i) => {
-      const c = usable[t].find(x => x.key === key);
-      const y = c ? Math.log(c.pr * c.prize) : 0;
-      cnt[i + 1] = cnt[i] + (c ? 1 : 0);
-      s1[i + 1] = s1[i] + y;
-      s2[i + 1] = s2[i] + y * y;
-    });
-    let cutAt = 0, tMax = 0;
-    for (let cut = MIN_SEG; cut <= N - MIN_SEG; cut++) {
-      const n1 = cnt[cut], n2 = cnt[N] - n1;
-      if (n1 < MIN_SEG || n2 < MIN_SEG) continue;
-      const m1 = s1[cut] / n1, m2 = (s1[N] - s1[cut]) / n2;
-      const ss = (s2[cut] - n1 * m1 * m1) + (s2[N] - s2[cut] - n2 * m2 * m2);
-      const tv = Math.abs(m2 - m1) / Math.sqrt(ss / (n1 + n2 - 2) * (1 / n1 + 1 / n2));
-      if (tv > tMax) { tMax = tv; cutAt = cut; }
-    }
-    if (tMax < SPLIT_T) return [draws];
-    return splitLevel(draws.slice(0, cutAt), key).concat(splitLevel(draws.slice(cutAt), key));
-  };
-
-  // 4. Constante de chaque rang (moyenne harmonique de p × lot), puis volume
-  //    du tirage = médiane des estimations de ses rangs
-  const out = new Array(lists.length).fill(null);
-  for (const R of regimes) {
-    let ref = null;
-    for (const [key, pr] of R.pr) {
-      if (R.n.get(key) >= 0.9 * R.draws.length && (ref === null || pr > R.pr.get(ref))) ref = key;
-    }
-    const segments = ref === null ? [R.draws] : splitLevel(R.draws, ref);
-    for (const seg of segments) {
-      if (seg.length < MIN_DRAWS) continue;
-      const inv = new Map(), n = new Map();
-      for (const t of seg) {
-        for (const c of usable[t]) {
-          inv.set(c.key, (inv.get(c.key) || 0) + 1 / (c.pr * c.prize));
-          n.set(c.key, (n.get(c.key) || 0) + 1);
-        }
-      }
-      for (const t of seg) {
-        const ests = [];
-        for (const c of usable[t]) {
-          if (n.get(c.key) >= MIN_DRAWS) ests.push(c.prize * c.w * inv.get(c.key) / n.get(c.key));
-        }
-        if (ests.length) out[t] = median(ests);
-      }
-    }
-  }
-  return out;
 }
 
 // --- économie du tirage : volume de joueurs, espérance, partage --------
@@ -1890,64 +1832,11 @@ function learnEconomics(draws) {
     for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1);
     return Math.round(r);
   };
-  const pB = mn => comb(ballCount, mn) * comb(ballMax - ballCount, ballCount - mn) / comb(ballMax, ballCount);
 
-  // p(rang) par ère, en inversant les MÊMES tables/fonctions que findPrize —
-  // garantit la cohérence avec le reste de l'app. Mémoïsé par ère.
-  const probsCache = {};
-  const starMaxFor = d => d.date >= STAR_12_ERA_START ? 12 : d.date >= EM_13_RANKS_START ? 11 : 9;
-  const rankProbsFor = draw => {
-    let eraKey;
-    if (game === 'euromillions') eraKey = 'em' + starMaxFor(draw);
-    else if (game === 'loto') eraKey = (draw.prizes && draw.prizes.length <= 6) ? 'lotoOld' : 'lotoNew';
-    else eraKey = 'ed';
-    if (probsCache[eraKey]) return probsCache[eraKey];
-
-    const out = {};
-    const combosByRank = {};
-    const starMax = game === 'euromillions' ? starMaxFor(draw) : 0;
-    const addCombo = (rank, mn, ms) => {
-      if (!rank) return;
-      let p = pB(mn);
-      if (game === 'euromillions') p *= comb(2, ms) * comb(starMax - 2, 2 - ms) / comb(starMax, 2);
-      else if (game === 'loto') p *= (ms === 1 ? 1 : 9) / (cfg.bonusMax || 10);
-      else p *= (ms === 1 ? 1 : 4) / (cfg.bonusMax || 5);
-      out[rank] = (out[rank] || 0) + p;
-      (combosByRank[rank] = combosByRank[rank] || []).push([mn, ms]);
-    };
-    if (game === 'euromillions') {
-      const table = starMax === 12 ? RANK_TABLE_EM : starMax === 11 ? RANK_TABLE_EM_11 : RANK_TABLE_EM_9;
-      for (const key of Object.keys(table)) {
-        const parts = key.split('+');
-        addCombo(table[key], parseInt(parts[0], 10), parseInt(parts[1], 10));
-      }
-    } else if (eraKey === 'lotoNew') {
-      for (const key of Object.keys(RANK_TABLE_LOTO)) {
-        const parts = key.split('+');
-        addCombo(RANK_TABLE_LOTO[key], parseInt(parts[0], 10), parseInt(parts[1], 10));
-      }
-    } else if (eraKey === 'lotoOld') {
-      for (let mn = 0; mn <= 5; mn++) for (let ms = 0; ms <= 1; ms++) addCombo(oldLotoRank(mn, ms), mn, ms);
-      // Rang 6 = remboursement du N° Chance, CUMULABLE avec un rang de boules
-      // (prouvé sur les données) : ses gagnants = tous les détenteurs → p = 1/10.
-      out[6] = 0.1;
-      combosByRank[6] = null;
-    }
-    else {
-      for (let mn = 0; mn <= 6; mn++) for (let ms = 0; ms <= 1; ms++) addCombo(edRank(mn, ms), mn, ms);
-    }
-    // Étiquette lisible par rang, valable pour L'ÈRE du tirage (les rangs ont
-    // changé de sens : « rang 4 » = 4+2 en EM mais « 3 numéros » au vieux LOTO)
-    const labels = {};
-    for (const rank of Object.keys(out)) {
-      const cs = combosByRank[rank];
-      if (!cs) { labels[rank] = 'N° Chance'; continue; }
-      if (cs.length === 1) labels[rank] = cs[0][0] + '+' + cs[0][1];
-      else labels[rank] = cs[0][0] + ' num.';
-    }
-    probsCache[eraKey] = { p: out, label: labels, era: eraKey };
-    return probsCache[eraKey];
-  };
+  // p(rang) par ère : makeRankProbs (js/core.js) inverse les MÊMES tables et
+  // fonctions que findPrize — cohérence garantie avec le reste de l'app.
+  const starMaxFor = emStarMax;
+  const rankProbsFor = makeRankProbs(game, cfg);
 
   const p1For = d => {
     if (game === 'euromillions') return 1 / (comb(50, 5) * comb(starMaxFor(d), 2));
@@ -1956,27 +1845,19 @@ function learnEconomics(draws) {
 
   // Série chronologique : volume + EV « fixe » (hors jackpot/rente)
   const chrono = draws.slice().sort((a, b) => a.date.localeCompare(b.date));
-  const MIN_P = 4e-4; // rangs « volume » : gros effectifs uniquement
   const med = a => {
     const s = [...a].sort((x, y) => x - y);
     const m = Math.floor(s.length / 2);
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   };
-  // Pré-passe : rangs « volume » de chaque tirage, puis volume exact par les
-  // dotations — il faut tout l'historique pour reconnaître les régimes
+  // Pré-passe : rangs « volume » de chaque tirage (gros effectifs, cf.
+  // volumeRanks), puis volume exact par les dotations — il faut tout
+  // l'historique pour reconnaître les régimes
   const scored = [];
   for (const d of chrono) {
     if (!d.prizes || !d.prizes.length) continue;
     const probs = rankProbsFor(d);
-    const vol = [];
-    for (const p of d.prizes) {
-      const pr = probs.p[p.rank];
-      const w = p.winners !== undefined ? p.winners : p.winnersEu;
-      if (pr >= MIN_P && w > 30) {
-        vol.push({ key: probs.era + ':' + p.rank, pr, w, prize: p.prize || 0, wFr: p.winnersFr || 0 });
-      }
-    }
-    scored.push({ d, probs, vol });
+    scored.push({ d, probs, vol: volumeRanks(d, probs) });
   }
   const vExact = exactVolumes(scored.map(s => s.vol));
   const series = [];
@@ -2493,26 +2374,42 @@ function renderRules() {
     core.push({
       active: true,
       name: 'Indice de co-joueurs sous le seuil : ' + pctLabel(Math.exp(f.coreLogMax)) + ' vs grille moyenne',
-      detail: 'Les ' + Math.round(100 * f.coreCoverage) + ' % de grilles les moins jouées d\'après le modèle mesuré (numéros, structures' +
-        (pop.bonusDelta ? ', ' + bonusLabel : '') + ') — seuil élevé en apparence : la popularité se concentre sur peu de grilles très jouées',
+      detail: 'Les ' + Math.round(100 * f.coreCoverage) + ' % de grilles les moins jouées d\'après le modèle ' +
+        (pop.gen ? '« Flash + joueurs manuels »' : 'mesuré') + ' (numéros, structures' +
+        (pop.bonusOver ? ', ' + bonusLabel : '') + ') — seuil élevé en apparence : la popularité se concentre sur peu de grilles très jouées',
       evidence: (f.coreDrawShare !== null ? '<strong>' + Math.round(100 * f.coreDrawShare) + ' %</strong> des tirages' : '') +
         (f.coreSharing !== null ? ' · zone acceptée : <strong>' + pctLabel(f.coreSharing) + '</strong> co-joueurs' : ''),
     });
-    if (pop.model) {
-      for (const ft of pop.model.featCoef) {
-        core.push({
-          info: true,
-          name: ft.label,
-          detail: 'Effet mesuré sur le partage, ' + ft.unit + (ft.logFactor < 0 ? ' — délaissé par les joueurs' : ' — sur-joué'),
-          evidence: pctLabel(Math.exp(ft.logFactor)) + ' co-joueurs',
-        });
-      }
-    }
-    if (pop.bonusDelta) {
+    if (pop.gen) {
       core.push({
         info: true,
-        name: (f.hasStars ? 'Étoiles' : bonusLabel) + ' : popularité par valeur + « même chiffre fétiche »',
-        detail: (f.hasStars ? 'Une étoile' : 'Un ' + bonusLabel) + ' égal à l\'un des numéros de la grille est plus joué',
+        name: 'Flash : ' + Math.round(100 * pop.gen.pi) + ' % des grilles jouées',
+        detail: 'Tirées uniformément par le terminal, elles font plancher : même la grille la plus délaissée garde ces co-joueurs-là',
+        evidence: 'plancher ' + pctLabel(pop.gen.pi) + ' co-joueurs',
+      });
+    }
+    // Structures : co-joueurs par unité (modèle local), ou préférence des
+    // seuls joueurs manuels (modèle publié — les Flash la diluent ensuite)
+    const structRows = pop.gen
+      ? STRUCT_FEATURES.map(ft => Object.assign({}, ft, { logFactor: pop.gen.gamma[ft.key] || 0 }))
+      : (pop.model ? pop.model.featCoef : []);
+    for (const ft of structRows) {
+      core.push({
+        info: true,
+        name: ft.label,
+        detail: (pop.gen ? 'Préférence mesurée chez les joueurs manuels, ' : 'Effet mesuré sur le partage, ') + ft.unit +
+          (ft.logFactor < 0 ? ' — délaissé par les joueurs' : ' — sur-joué'),
+        evidence: pctLabel(Math.exp(ft.logFactor)) + (pop.gen ? ' chez les manuels' : ' co-joueurs'),
+      });
+    }
+    if (pop.bonusOver) {
+      core.push({
+        info: true,
+        name: (f.hasStars ? (pop.gen ? 'Paires d\'étoiles' : 'Étoiles') : bonusLabel) + ' : popularité ' +
+          (pop.gen ? 'mesurée valeur par valeur' : 'par valeur') + ' + « même chiffre fétiche »',
+        detail: f.hasStars
+          ? 'Une étoile égale à l\'un des numéros de la grille est plus jouée'
+          : 'Un ' + bonusLabel + ' égal à l\'un des numéros de la grille est plus joué',
         evidence: pctLabel(Math.exp(pop.coincidenceLog)) + ' par coïncidence',
       });
     }
@@ -2550,9 +2447,10 @@ function renderRules() {
       CORE_COVERAGE_OPTIONS.map(c =>
         '<button type="button" data-cov="' + c + '"' + (c === f.coreCoverage ? ' class="active"' : '') + '>' +
         Math.round(100 * c) + ' %</button>').join('') +
-      '<small>Plus le cœur est large, plus de tirages y tombent — et moins la zone est délaissée. ' +
-      'Mesuré hors échantillon : 70 % → ' + (f.game === 'loto' ? '−23' : '−14') + ' % de co-joueurs, 90 % → ' +
-      (f.game === 'loto' ? '−12' : '−5') + ' %.</small>';
+      '<small>Plus le cœur est large, plus de tirages y tombent — et moins la zone est délaissée.' +
+      (f.coreFrontier && f.coreFrontier.every(x => x.sharing !== null)
+        ? ' Co-joueurs mesurés dans la zone : ' + f.coreFrontier.map(x => Math.round(100 * x.cov) + ' % → ' + pctLabel(x.sharing)).join(', ') + '.'
+        : '') + '</small>';
     cov.addEventListener('click', e => {
       const b = e.target.closest('button[data-cov]');
       if (b) setCoreCoverage(parseFloat(b.dataset.cov));
@@ -4116,9 +4014,12 @@ function updateDynamicTexts() {
   const pop = state.popularity;
   if (prn) {
     if (pop) {
-      const pct = n => pctLabel(Math.exp(pop.ballCount * pop.ballDelta[n]));
-      prn.innerHTML = '<strong>Indice de popularité mesuré</strong> sur ' + fmt(pop.nDraws) +
-        ' tirages (compteurs de gagnants par rang) : privilégie les numéros délaissés (' +
+      const pct = n => pctLabel(pop.numberFactor[n]);
+      prn.innerHTML = '<strong>Indice de popularité mesuré</strong> sur ' + fmt(pop.gen ? pop.gen.nFit : pop.nDraws) +
+        (pop.gen
+          ? ' tirages (gagnants à 2, 3, 4 et 5 numéros, rapportés au volume exact)'
+          : ' tirages (compteurs de gagnants par rang)') +
+        ' : privilégie les numéros délaissés (' +
         pop.topUnder.map(n => '<code>' + n + '</code> <span class="pop-pct">' + pct(n) + '</span>').join(', ') +
         ') et évite les sur-joués (' +
         pop.topOver.map(n => '<code>' + n + '</code> <span class="pop-pct">' + pct(n) + '</span>').join(', ') + ')';
@@ -4130,7 +4031,27 @@ function updateDynamicTexts() {
   // Structures mesurées (modèle complet) et validation hors échantillon
   const prs = document.getElementById('popRuleStructure');
   if (prs) {
-    if (pop && pop.model) {
+    if (pop && pop.gen) {
+      // Modèle publié : part de Flash, préférences des joueurs manuels,
+      // validation hors échantillon faite à l'ajustement
+      const g = pop.gen;
+      const item = k => '<span class="pop-pct">' + pctLabel(Math.exp(g.gamma[k] || 0)) + '</span>';
+      const p1 = x => (100 * x).toFixed(1).replace('.', ',') + ' %';
+      const v = g.validation;
+      prs.style.display = '';
+      prs.innerHTML = '<strong>Flash et joueurs manuels</strong> — ' + Math.round(100 * g.pi) + ' % des grilles sont des Flash, ' +
+        'tirées uniformément : elles font plancher (aucune grille ne descend sous <strong>' + pctLabel(g.pi) +
+        '</strong> de co-joueurs) et diluent tout le reste. Chez les joueurs manuels, le partage ne se résume pas aux numéros : ' +
+        'paires de dates ' + item('pairLow31') + ' et de mois ' + item('pairLow12') + ' par paire (une grille 100 % dates ' +
+        'est bien plus partagée que ne le dit le produit de ses numéros), ' +
+        'paires consécutives ' + item('adjacent') + ' (délaissées : ils « étalent » leurs numéros), ' +
+        'même ligne ' + item('sameRow') + ', même colonne ' + item('sameCol') + ', alignement de 3+ ' + item('gridAlign') +
+        ', paires de multiples de 7 ' + item('mult7') +
+        (v ? ' · validé hors échantillon sur ' + fmt(v.nTest) + ' tirages : le nombre de gagnants est prévu à <strong>' +
+          p1(v.rmse[2]) + '</strong> près à 2 numéros (' + p1(v.rmseNoModel[2]) + ' sans modèle), ' + p1(v.rmse[3]) + ' à 3, ' +
+          p1(v.rmse[4]) + ' à 4 ; pour le cinquième des tirages annoncé le moins joué, ' + pctLabel(v.leastPlayed.predicted) +
+          ' de gagnants à 5 numéros prédits, ' + pctLabel(v.leastPlayed.observed) + ' observés' : '');
+    } else if (pop && pop.model) {
       const item = k => { const ft = pop.model.featCoef.find(x => x.key === k); return ft ? '<span class="pop-pct">' + pctLabel(Math.exp(ft.logFactor)) + '</span>' : ''; };
       const v = pop.model.validation;
       prs.style.display = '';
@@ -4156,14 +4077,16 @@ function updateDynamicTexts() {
       ' : autant de chances de gagner qu\'une grille quelconque, moins de monde avec qui partager.';
   }
   if (prb) {
-    if (pop && pop.bonusDelta) {
-      const bpct = n => pctLabel(Math.exp(pop.bonusDelta[n]));
+    if (pop && pop.bonusOver) {
       const isEM = game === 'euromillions';
+      const list = items => items.map(x => '<code>' + x.label + '</code> <span class="pop-pct">' + pctLabel(x.factor) + '</span>').join(', ');
       prb.style.display = '';
-      prb.innerHTML = '<strong>' + (isEM ? 'Étoiles' : 'N° Chance') + '</strong> — délaissé' + (isEM ? 'es' : 's') + ' : ' +
-        pop.bonusUnder.map(n => '<code>' + n + '</code> <span class="pop-pct">' + bpct(n) + '</span>').join(', ') +
-        ' · sur-joué' + (isEM ? 'es' : 's') + ' : ' +
-        pop.bonusOver.map(n => '<code>' + n + '</code> <span class="pop-pct">' + bpct(n) + '</span>').join(', ');
+      // Modèle publié, EM : les 66 paires sont mesurées une à une (une paire
+      // n'est pas le produit de ses deux étoiles : les consécutives sont délaissées)
+      prb.innerHTML = '<strong>' + (isEM ? (pop.gen ? 'Paires d\'étoiles' : 'Étoiles') : 'N° Chance') + '</strong>' +
+        (pop.gen ? ' (mesuré' + (isEM ? 'es une à une' : 's un à un') + ')' : '') +
+        ' — délaissé' + (isEM ? 'es' : 's') + ' : ' + list(pop.bonusUnder) +
+        ' · sur-joué' + (isEM ? 'es' : 's') + ' : ' + list(pop.bonusOver);
     } else if (game === 'eurodreams' && pop) {
       prb.style.display = '';
       prb.innerHTML = '<strong>N° Dream</strong> : popularité non mesurable — les rangs 3 à 6 l\'ignorent, il n\'influence donc pas le partage hors rentes';
@@ -4978,7 +4901,8 @@ function assignPartitionBonuses(blocks, f, cfg, game) {
 
   if (game === 'loto') {
     const chances = shuffleArr([...Array(cfg.bonusMax || 10).keys()].map(i => i + 1));
-    if (pop && pop.bonusDelta) chances.sort((a, b) => (pop.bonusDelta[a] || 0) - (pop.bonusDelta[b] || 0));
+    // N° Chance du moins joué au plus joué (le mélange laisse l'ordre des ex æquo au hasard)
+    if (pop) chances.sort((a, b) => bonusLogFactor({ balls: [], bonus: a }, pop) - bonusLogFactor({ balls: [], bonus: b }, pop));
     const out = new Array(blocks.length);
     order.forEach((g, i) => { out[g] = { balls: blocks[g], bonus: chances[i % chances.length] }; });
     return out;
@@ -5007,7 +4931,7 @@ function assignPartitionBonuses(blocks, f, cfg, game) {
           const s1 = Math.min(remaining[a], remaining[b]);
           const s2 = Math.max(remaining[a], remaining[b]);
           if (s1 === s2 || used.has(s1 + '-' + s2)) continue;
-          const total = ballLogs[g] + bonusLogFactor({ balls: blocks[g], stars: [s1, s2] }, pop);
+          const total = gridLogFactor({ balls: blocks[g], stars: [s1, s2] }, pop);
           if (f.coreLogMax !== null && pop && total > f.coreLogMax) continue;
           if (!best || total < best.total) best = { a, b, s1, s2, total };
         }
