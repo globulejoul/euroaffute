@@ -864,7 +864,10 @@ footer a:hover { color: var(--accent); }
   color: var(--text-dim);
   line-height: 1.55;
 }
-.contrarian-note strong {
+/* Titres seulement : le titre de la note et l'intitulé en tête de chaque règle.
+   Un <strong> au fil du texte reste une simple mise en gras. */
+.contrarian-note > strong,
+.contrarian-rules li > strong:first-child {
   display: block;
   margin-bottom: 0.35rem;
   font-family: 'JetBrains Mono', monospace;

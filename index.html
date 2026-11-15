@@ -330,6 +330,7 @@
       <div class="grid-list" id="contrarianGrids">
         <div class="grid-empty">Cliquez sur « Tirer 10 grilles »</div>
       </div>
+      <p class="contrarian-foot" id="contrarianValueNote"></p>
       <div class="contrarian-note">
         <strong id="contrarianRulesCount">La méthode</strong>
         <ul class="contrarian-rules">
@@ -506,6 +507,8 @@ function switchGame(game) {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '<div class="grid-empty">Cliquez sur « Tirer 10 grilles »</div>';
   });
+  const valueNote = document.getElementById('contrarianValueNote');
+  if (valueNote) valueNote.innerHTML = '';
   // Réinitialise l'audit
   const auditResult = document.getElementById('auditResult');
   if (auditResult) auditResult.classList.remove('show');
@@ -1092,6 +1095,7 @@ async function loadDraws() {
     renderRemainingCombos();
     renderEconomics();
     updateDynamicTexts();
+    scheduleValueTables(game); // espérance par grille : tables prêtes avant le premier clic
     // Sections conditionnelles selon le jeu
     const timeline = document.getElementById('jackpotTimeline');
     const nextDrawSection = document.querySelector('.next-draw');
@@ -1214,6 +1218,8 @@ function learnFilters(draws) {
   const pop = state.popularity;
   const coverage = state.coreCoverage || CORE_COVERAGE_DEFAULT;
   let coreLogMax = null, coreBallLogMax = null, coreDrawShare = null, coreSharing = null, coreFrontier = null;
+  let popularLogFactor = null; // indice d'une grille très jouée : une sur cent l'est davantage
+  let typicalLogFactor = null; // indice médian : une grille au hasard sur deux est en dessous
   if (pop) {
     let ballThreshold; // couverture → seuil de l'indice des numéros seuls
     if (pop.gen) {
@@ -1241,6 +1247,8 @@ function learnFilters(draws) {
         }
         mixes.sort();
         coreLogMax = toLog(mixes[Math.min(mixes.length - 1, Math.floor(mixes.length * coverage))]);
+        popularLogFactor = toLog(mixes[Math.min(mixes.length - 1, Math.floor(mixes.length * 0.99))]);
+        typicalLogFactor = toLog(mixes[Math.floor(mixes.length * 0.5)]);
       } else {
         coreLogMax = coreBallLogMax;
       }
@@ -1333,6 +1341,8 @@ function learnFilters(draws) {
     coreDrawShare,
     coreSharing,
     coreFrontier,
+    popularLogFactor,
+    typicalLogFactor,
   };
 }
 
@@ -1700,6 +1710,7 @@ function publishedModel(game, cfg) {
   return {
     m: preparePopModel(g), pi, bonus,
     quantiles: g.quantiles, single: Array.isArray(g.single) ? g.single : null, gamma: g.gamma,
+    bonusKind: g.bonus ? g.bonus.kind : null,
     validation: g.validation || null, asOf: g.asOf, from: g.from, nFit: g.nFit,
   };
 }
@@ -1859,7 +1870,8 @@ function learnEconomics(draws) {
     const probs = rankProbsFor(d);
     scored.push({ d, probs, vol: volumeRanks(d, probs) });
   }
-  const vExact = exactVolumes(scored.map(s => s.vol));
+  const volumeSeg = [];
+  const vExact = exactVolumes(scored.map(s => s.vol), volumeSeg);
   const series = [];
   let roll = 0;
   // Hall of shame : z = (gagnants − attendus)/√attendus sur les rangs
@@ -2125,6 +2137,41 @@ function learnEconomics(draws) {
   const worst = [...worstByDate.values()].sort((a, b) => b.w / b.E - a.w / a.E);
   const shame = { sdByLabel, top: worst.slice(0, 5) };
 
+  // Dotation par grille jouée de chaque rang, sous le règlement en cours : ce
+  // qu'une grille gagnante se partage (cf. gridValue, js/core.js). Médiane sur
+  // les tirages du régime courant où le rang a été gagné — insensible aux
+  // reports d'un rang resté sans gagnant et aux soirs de plafond.
+  let valueRanks = null;
+  const lastSeg = volumeSeg[scored.length - 1];
+  const probs = scored[scored.length - 1].probs;
+  // (probs.combos absent : js/core.js sorti d'un cache plus ancien que la page,
+  // le temps d'un déploiement — on se passe alors de l'espérance par grille)
+  if (lastSeg !== undefined && probs.combos) {
+    const current = [];
+    for (let i = scored.length - 1; i >= 0 && current.length < RECENT; i--) if (volumeSeg[i] === lastSeg) current.push(i);
+    const ranks = [];
+    let fixedEv = 0, top = null;
+    for (const key of Object.keys(probs.combos)) {
+      const rank = parseInt(key, 10);
+      const combos = probs.combos[key];
+      if (!combos) continue;
+      if (rank === 1) {
+        if (combos.length === 1) top = { p: probs.p[rank], m: combos[0][0], s: combos[0][1] };
+        continue;
+      }
+      const pools = [], lots = new Set();
+      for (const i of current) {
+        const p = scored[i].d.prizes.find(x => x.rank === rank);
+        const w = p ? (p.winners !== undefined ? p.winners : p.winnersEu) : 0;
+        if (w > 0 && p.prize > 0) { pools.push(p.prize * w / vExact[i]); lots.add(p.prize); }
+      }
+      if (pools.length < 10) continue;
+      if (lots.size === 1) fixedEv += probs.p[rank] * [...lots][0];       // lot fixe : pas de partage
+      else if (combos.length === 1) ranks.push({ rank, m: combos[0][0], s: combos[0][1], p: probs.p[rank], pool: med(pools) });
+    }
+    if (current.length >= 20 && ranks.length) valueRanks = { ranks, fixedEv, top, nDraws: current.length };
+  }
+
   // Tirages dont le volume n'a pas pu être mesuré par les dotations (lots
   // fixes) : pour le dire tel quel à l'écran
   const loose = withV.filter(s => !s.exact);
@@ -2150,6 +2197,7 @@ function learnEconomics(draws) {
     // Soir de plafond EM : espérance totale, jackpot de 250 M€ et My Million
     // (tous deux partagés au volume mesuré les soirs de plafond) + excédent
     // reversé au rang 5+1
+    valueRanks,
     capOverflow, nCapNights, capVolume, capFrVolume,
     myMillionAt, evMyMillionAtCap,
     evAtCap: capOverflow !== null ? (() => {
@@ -3671,6 +3719,138 @@ function renderRemainingCombos() {
   setTimeout(step, 0);
 }
 
+// --- espérance d'une grille au prochain tirage -------------------------
+// Toutes les grilles ont les mêmes chances de sortir ; ce qui les distingue,
+// c'est avec combien d'autres gagnants elles partageraient chaque lot.
+// gridValue (js/core.js) le chiffre rang par rang avec le modèle publié. On en
+// retient l'ÉCART à une grille tirée au hasard, ajouté à l'espérance « ce
+// soir » du panneau économie : une seule référence dans toute la page.
+
+// Conditions du prochain tirage : volume attendu, soir de plafond, My Million,
+// et espérance d'une grille au hasard (null tant que la cagnotte est inconnue)
+function tonightSetup() {
+  const eco = state.economics;
+  const game = state.currentGame;
+  const next = getNextDrawDate();
+  const dayIdx = next ? DOW_FR.indexOf(next.dayName) : -1;
+  // Soir de plafond (EM) : l'excédent du jackpot est reversé au rang 5+1, et
+  // il se joue bien plus de grilles qu'un soir de report ordinaire — le
+  // volume attendu est celui mesuré les soirs plafonnés passés.
+  const capped = game === 'euromillions' && eco.capOverflow !== null && state.nextDrawAmount >= 249.5e6;
+  const atCapVolume = !!(capped && eco.capVolume);
+  const vHat = atCapVolume ? eco.capVolume : eco.predictVolume(dayIdx >= 0 ? dayIdx : undefined);
+  const lam = vHat * eco.p1Now;
+  const shareF = (1 - Math.exp(-lam)) / lam;
+  // EM : My Million, 1 M€ à partager entre les grilles françaises du soir
+  const evMM = game !== 'euromillions' ? 0
+    : atCapVolume ? (eco.evMyMillionAtCap || 0)
+    : eco.myMillionAt(vHat);
+  const amount = game !== 'eurodreams' && state.nextDrawAmount ? state.nextDrawAmount : null;
+  const evTotal = amount
+    ? eco.evMed + eco.p1Now * amount * shareF + (capped ? eco.capOverflow : 0) + evMM
+    : null;
+  return { next, capped, atCapVolume, vHat, lam, pFall: 1 - Math.exp(-lam), shareF, evMM, amount, evTotal };
+}
+
+// Marginales du modèle publié pour un jeu (popTables, js/core.js) : une passe
+// sur toutes les grilles, ≈ 0,3 s. Faite par tranches après le chargement
+// pour ne pas figer la page, gardée avec le jeu. finishNow : la terminer
+// séance tenante (premier clic avant la fin des tranches).
+// (Le moteur vient de js/core.js, qui peut sortir d'un cache plus ancien que
+// la page le temps d'un déploiement : sans lui, pas d'espérance par grille.)
+const HAS_VALUE_ENGINE = typeof popTablesInit === 'function' && typeof popTablesRun === 'function' &&
+  typeof gridValue === 'function' && typeof bonusLevels === 'function';
+function valueTablesFor(game, finishNow) {
+  const cached = state.cache[game];
+  const gen = cached && cached.popularity && cached.popularity.gen;
+  if (!gen || !HAS_VALUE_ENGINE) return null;
+  if (!cached.valueTables) cached.valueTables = popTablesInit(gen.m);
+  const t = cached.valueTables;
+  if (finishNow && !t.done) popTablesRun(t, t.N);
+  return t.done ? t : null;
+}
+function scheduleValueTables(game) {
+  const step = () => {
+    const cached = state.cache[game];
+    const gen = cached && cached.popularity && cached.popularity.gen;
+    if (!gen || !HAS_VALUE_ENGINE) return;
+    if (!cached.valueTables) cached.valueTables = popTablesInit(gen.m);
+    const t = cached.valueTables;
+    if (t.done) return;
+    popTablesRun(t, t.next); // une tranche : les grilles d'un même plus petit numéro
+    if (!t.done) setTimeout(step, 0);
+  };
+  setTimeout(step, 0);
+}
+
+// Espérance d'une grille au prochain tirage — ou null (jeu sans modèle
+// publié, règlement trop récent pour connaître ses dotations).
+//   total : espérance de la grille ; base : celle d'une grille au hasard
+//   pShare / pShareRef : risque de partager le jackpot si elle le décroche
+//   byLevel : { nombre de numéros → lots attendus, grille et référence }
+function gridWorth(c) {
+  const game = state.currentGame;
+  const eco = state.economics, pop = state.popularity;
+  if (!eco || !eco.valueRanks || !pop || !pop.gen) return null;
+  const t = valueTablesFor(game, true);
+  if (!t) return null;
+  const su = tonightSetup();
+  const cached = state.cache[game];
+  const key = Math.round(su.vHat) + '|' + su.amount + '|' + su.capped;
+  if (!cached.worth || cached.worth.key !== key) {
+    const vr = eco.valueRanks;
+    const manual = {};
+    for (const k of Object.keys(pop.gen.bonus)) manual[k] = Math.exp(pop.gen.bonus[k].manual);
+    // Soir de plafond : l'excédent du jackpot s'ajoute à la dotation du rang 5+1
+    const ranks = vr.ranks.map(r => (su.capped && r.m === 5 && r.s === 1
+      ? Object.assign({}, r, { pool: r.pool + eco.capOverflow }) : r));
+    const ctx = {
+      t, pi: pop.gen.pi, ranks, V: su.vHat,
+      bonus: Object.keys(manual).length ? bonusLevels(pop.gen.bonusKind, manual) : null,
+      jackpot: vr.top ? Object.assign({ amount: su.amount }, vr.top) : null,
+    };
+    cached.worth = { key, ctx, ref: gridValue(ctx, null, null) };
+  }
+  const { ctx, ref } = cached.worth;
+  const v = gridValue(ctx, sortAsc(c.balls), c.stars ? c.stars : c.bonus);
+  const jack = x => (x.jackpot && x.jackpot.ev) || 0;
+  const byLevel = {};
+  v.ranks.forEach((r, i) => {
+    const b = (byLevel[r.m] = byLevel[r.m] || { grid: 0, ref: 0 });
+    b.grid += r.ev;
+    b.ref += ref.ranks[i].ev;
+  });
+  // Référence : l'espérance « ce soir » du panneau économie, ou l'espérance
+  // hors jackpot tant que la cagnotte n'est pas connue
+  const base = su.evTotal !== null ? su.evTotal : eco.evMed + su.evMM;
+  const gain = (v.evRanks + jack(v)) - (ref.evRanks + jack(ref));
+  return {
+    total: base + gain, base, gain, amount: su.amount, evMM: su.evMM, capped: su.capped,
+    pShare: v.jackpot ? v.jackpot.pShare : null,
+    pShareRef: ref.jackpot ? ref.jackpot.pShare : null,
+    byLevel,
+  };
+}
+
+// Une espérance au-dessus de la mise (soir de plafond, grille délaissée) n'est
+// pas une promesse : elle tient presque toute dans des lots à une chance sur
+// des millions. À dire chaque fois que le cas se présente.
+function worthCaveat(total) {
+  return total >= getGridCost()
+    ? ' Au-dessus de la mise — mais cette espérance tient presque toute dans des gains à une chance sur plusieurs millions : ce n\'est pas un placement.'
+    : '';
+}
+
+// Ce que l'espérance affichée comprend : « jackpot de 26,0 M€ et My Million compris »
+function worthScope(w) {
+  if (!w.amount) return 'hors jackpot';
+  const parts = ['jackpot de ' + (w.amount / 1e6).toFixed(1).replace('.', ',') + ' M€'];
+  if (w.evMM) parts.push('My Million');
+  if (w.capped) parts.push('excédent du plafond');
+  const last = parts.pop();
+  return (parts.length ? parts.join(', ') + ' et ' : '') + last + ' compris';
+}
+
 // --- rendu : économie du tirage ---------------------------------------
 
 const DOW_FR = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
@@ -3901,17 +4081,7 @@ function updateEconTonight() {
   const top1Name = game === 'eurodreams' ? 'la rente' : 'le jackpot';
   const M = v => (v / 1e6).toFixed(1).replace('.', ',') + ' M';
 
-  const next = getNextDrawDate();
-  const dayIdx = next ? DOW_FR.indexOf(next.dayName) : -1;
-  // Soir de plafond (EM) : l'excédent du jackpot est reversé au rang 5+1, et
-  // il se joue bien plus de grilles qu'un soir de report ordinaire — le
-  // volume attendu est celui mesuré les soirs plafonnés passés.
-  const capped = game === 'euromillions' && eco.capOverflow !== null && state.nextDrawAmount >= 249.5e6;
-  const atCapVolume = capped && eco.capVolume;
-  const vHat = atCapVolume ? eco.capVolume : eco.predictVolume(dayIdx >= 0 ? dayIdx : undefined);
-  const lam = vHat * eco.p1Now;
-  const pFall = 1 - Math.exp(-lam);
-  const shareF = (1 - Math.exp(-lam)) / lam;
+  const { next, capped, atCapVolume, vHat, lam, pFall, evMM, evTotal } = tonightSetup();
 
   let html = '<div class="econ-panel-title">Prochain tirage' +
     (next ? ' — ' + next.label.toLowerCase() : '') + '</div>';
@@ -3929,18 +4099,21 @@ function updateEconTonight() {
     html += '<li>P(quelqu\'un décroche la rente) : <strong>≈ ' + Math.round(100 * pFall) + ' %</strong> — ' +
       'versée en entier à chaque gagnant, sans partage</li>';
   } else {
-    // P(partage | vous gagnez) = 1−e^(−(V−1)p1) ≈ P(quelqu'un gagne) : les
-    // deux pourcentages sont mathématiquement le même chiffre arrondi.
+    // P(partage | votre grille gagne) = 1−e^(−V × p1 × F), F étant le facteur
+    // de co-joueurs de la grille : pour une grille au hasard (F ≈ 1), c'est
+    // la probabilité que quelqu'un gagne ; elle va du plancher des Flash
+    // (F = π) aux grilles très jouées (une sur cent l'est davantage).
+    const gen = state.popularity && state.popularity.gen;
+    const popular = state.filters && state.filters.popularLogFactor;
+    const pShareAt = factor => Math.round(100 * (1 - Math.exp(-lam * factor))) + ' %';
     html += '<li>P(quelqu\'un décroche ' + top1Name + ') : <strong>≈ ' + Math.round(100 * pFall) + ' %</strong> — ' +
-      'c\'est aussi, si votre grille gagne, votre probabilité de devoir partager (les autres grilles ne dépendent pas de la vôtre)</li>';
+      (gen && popular
+        ? 'c\'est aussi, à peu de chose près, le risque de devoir partager pour une grille au hasard qui gagnerait ; il dépend de la grille : de ≈ ' +
+          pShareAt(gen.pi) + ' pour les plus délaissées à ≈ ' + pShareAt(Math.exp(popular)) + ' pour les très jouées (une grille sur cent l\'est davantage)'
+        : 'c\'est aussi, si votre grille gagne, votre probabilité de devoir partager') + '</li>';
   }
-  if (state.nextDrawAmount && game !== 'eurodreams') {
-    // EM : My Million, 1 M€ à partager entre les grilles françaises du soir
-    const evMM = game !== 'euromillions' ? 0
-      : atCapVolume ? (eco.evMyMillionAtCap || 0)
-      : eco.myMillionAt(vHat);
-    const evTotal = eco.evMed + eco.p1Now * state.nextDrawAmount * shareF + (capped ? eco.capOverflow : 0) + evMM;
-    html += '<li>Espérance ce soir, jackpot de ' + M(state.nextDrawAmount) + '€' +
+  if (evTotal !== null) {
+    html += '<li>Espérance ce soir d\'une grille au hasard, jackpot de ' + M(state.nextDrawAmount) + '€' +
       (evMM ? ' et My Million (+' + formatMoney(evMM) + ')' : '') + ' compris' +
       (capped ? ', plus l\'excédent du plafond reversé au rang 5+1 (+' + formatMoney(eco.capOverflow) + ')' : '') +
       ' : <strong>' + formatMoney(evTotal) + '</strong> pour ' + formatMoney(eco.gridCost) + ' misés' +
@@ -4549,12 +4722,17 @@ function renderCombo(combo, tries) {
     (tries > 1 ? 's' : '') + ' · toutes les règles validées';
 
   const p = parityCount(combo.balls);
+  const worth = gridWorth(combo);
   profile.innerHTML =
     '<span>Somme <strong>' + sum(combo.balls) + '</strong></span>' +
     '<span>Range <strong>' + range(combo.balls) + '</strong></span>' +
     '<span>Parité <strong>' + p.even + 'p / ' + p.odd + 'i</strong></span>' +
     (state.popularity
       ? '<span>Co-joueurs <strong>' + pctLabel(popularityFactor(combo, state.popularity)) + '</strong></span>'
+      : '') +
+    (worth
+      ? '<span title="Espérance au prochain tirage, ' + worthScope(worth) + '">Espérance <strong>' + formatMoney(worth.total) +
+        '</strong> (hasard ' + formatMoney(worth.base) + ')</span>'
       : '');
 }
 
@@ -4618,6 +4796,34 @@ function nearestDraw(combo, draws) {
   return { draw: best, shared: bestScore };
 }
 
+// Espérance et risque de partage de la grille auditée, au prochain tirage
+function auditWorthHtml(combo) {
+  const w = gridWorth(combo);
+  if (!w) return '';
+  const strong = s => '<strong style="color:var(--text)">' + s + '</strong>';
+  const pct = p => Math.round(100 * p) + ' %';
+  const levels = Object.keys(w.byLevel).map(Number).sort((a, b) => a - b)
+    .map(m => m + ' numéro' + (m > 1 ? 's' : '') + ' ' + pctLabel(w.byLevel[m].grid / w.byLevel[m].ref)).join(' · ');
+  // « Moins de co-joueurs que la grille moyenne » et pourtant pas mieux
+  // qu'une grille au hasard : les deux repères diffèrent. La moyenne est
+  // tirée vers le haut par une minorité de grilles très jouées ; une grille
+  // prise au hasard est, une fois sur deux, sous l'indice médian.
+  const typical = state.filters && state.filters.typicalLogFactor;
+  const twoBenchmarks = w.gain <= 0 && typical !== null && typical !== undefined && typical < 0 &&
+    popularityFactor(combo, state.popularity) < 1
+    ? ' Moins de co-joueurs que la grille moyenne, mais pas moins qu\'une grille prise au hasard : une sur deux est sous ' +
+      pctLabel(Math.exp(typical)) + ', la moyenne étant tirée vers le haut par une minorité de grilles très jouées.'
+    : '';
+  return '<br>Espérance au prochain tirage : ' + strong(formatMoney(w.total)) + ' pour ' + formatMoney(getGridCost()) +
+    ' misés, contre ' + formatMoney(w.base) + ' pour une grille au hasard (' + worthScope(w) + ').' + twoBenchmarks +
+    (w.pShare !== null
+      ? ' Si elle décroche le jackpot : ' + strong(pct(w.pShare)) + ' de risque de devoir le partager (' +
+        pct(w.pShareRef) + ' pour une grille au hasard).'
+      : '') +
+    ' Lots attendus si elle gagne, face à une grille au hasard : ' + levels +
+    '. Ses chances de gagner, elles, sont celles de n\'importe quelle grille.' + worthCaveat(w.total);
+}
+
 function runAudit() {
   const resultEl = document.getElementById('auditResult');
   const verdictEl = document.getElementById('auditVerdict');
@@ -4657,7 +4863,7 @@ function runAudit() {
     (popA
       ? '<br>Co-joueurs estimés vs grille moyenne : <strong style="color:var(--text)">' + pctLabel(popularityFactor(combo, popA)) +
         '</strong> — ' + popularityBreakdown(combo, popA)
-      : '');
+      : '') + auditWorthHtml(combo);
 
   checksEl.innerHTML = '';
   for (const c of checks) {
@@ -5103,11 +5309,14 @@ function generateContrarianPortfolio(f, target = 10) {
 
 function renderGridList(containerId, grids) {
   const el = document.getElementById(containerId);
+  const valueNote = containerId === 'contrarianGrids' ? document.getElementById('contrarianValueNote') : null;
+  if (valueNote) valueNote.innerHTML = '';
   if (grids.length === 0) {
     el.innerHTML = '<div class="grid-empty">Aucune grille générée — réessayez.</div>';
     return;
   }
   el.innerHTML = '';
+  const worths = [];
   grids.forEach((g, i) => {
     const row = document.createElement('div');
     row.className = 'grid-row';
@@ -5124,9 +5333,11 @@ function renderGridList(containerId, grids) {
     // Facteur de co-joueurs estimé vs grille moyenne (toutes les grilles)
     const pf = g.popFactor !== undefined ? g.popFactor
       : (state.popularity ? popularityFactor(g, state.popularity) : undefined);
-    const popLabel = pf !== undefined
-      ? ' · <strong>' + pctLabel(pf) + ' co-joueurs</strong>'
-      : '';
+    // Espérance au prochain tirage (même probabilité de gagner, lots moins partagés)
+    const worth = gridWorth(g);
+    if (worth) worths.push(worth);
+    const popLabel = (pf !== undefined ? ' · <strong>' + pctLabel(pf) + ' co-joueurs</strong>' : '') +
+      (worth ? ' · espérance ' + formatMoney(worth.total) : '');
 
     row.innerHTML =
       '<div class="grid-num">' + String(i + 1).padStart(2, '0') + '</div>' +
@@ -5158,6 +5369,12 @@ function renderGridList(containerId, grids) {
 
     el.appendChild(row);
   });
+  if (valueNote && worths.length === grids.length) {
+    const avg = worths.reduce((s, w) => s + w.total, 0) / worths.length;
+    valueNote.innerHTML = 'Espérance moyenne de ces grilles au prochain tirage : <strong>' + formatMoney(avg) +
+      '</strong> par grille, contre ' + formatMoney(worths[0].base) + ' pour une grille au hasard (' + worthScope(worths[0]) +
+      '). Mêmes chances de gagner : l\'écart vient seulement de lots moins partagés.' + worthCaveat(avg);
+  }
 }
 
 document.getElementById('genCoreBtn').addEventListener('click', () => {

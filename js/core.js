@@ -371,6 +371,7 @@ function emStarMax(draw) {
 //   p      : { rang → probabilité }
 //   label  : { rang → étiquette lisible, valable pour l'ère du tirage }
 //   era    : clé de l'ère de la table des rangs
+//   combos : { rang → [[numéros, étoiles ou bonus], …] } (null : remboursement cumulable)
 //   levels : { m → rangs dont la somme des gagnants compte les grilles ayant
 //              EXACTEMENT m bons numéros, étoiles / N° Chance confondus } —
 //            seulement quand tous les cas sont des rangs payés (en EM : 2 à 5
@@ -445,7 +446,7 @@ function makeRankProbs(game, cfg) {
       }
       if (clean && covered === bonusLevels) levels[m] = ranks;
     }
-    cache[eraKey] = { p: out, label: labels, era: eraKey, levels };
+    cache[eraKey] = { p: out, label: labels, era: eraKey, levels, combos: combosByRank };
     return cache[eraKey];
   };
 }
@@ -550,6 +551,7 @@ function preparePopModel(g) {
 // log du poids non normalisé d'une grille de numéros chez les joueurs
 // manuels — DOIT rester identique à ce que calcule la passe d'énumération de
 // scripts/fit-popularity.js (qui se contrôle contre elle à chaque ajustement).
+const _alignCols = new Int8Array(16), _alignRows = new Int8Array(16); // compteurs réutilisés (appelée des millions de fois)
 function manualLogWeight(balls, m) {
   const B = m.N + 1;
   const K = balls.length;
@@ -559,12 +561,12 @@ function manualLogWeight(balls, m) {
     for (let j = i + 1; j < K; j++) s += m.PW[balls[i] * B + balls[j]];
   }
   if (m.gAlign !== 0) {
-    const cols = new Array(m.width).fill(0);
-    const rows = new Array(8).fill(0);
+    _alignCols.fill(0);
+    _alignRows.fill(0);
     let align = false;
     for (let i = 0; i < K; i++) {
-      if (++cols[(balls[i] - 1) % m.width] >= 3) align = true;
-      if (++rows[Math.floor((balls[i] - 1) / m.width)] >= 3) align = true;
+      if (++_alignCols[(balls[i] - 1) % m.width] >= 3) align = true;
+      if (++_alignRows[Math.floor((balls[i] - 1) / m.width)] >= 3) align = true;
     }
     if (align) s += m.gAlign;
   }
@@ -576,6 +578,315 @@ function manualBallLog(balls, m) {
   return manualLogWeight(balls, m) + m.logNorm;
 }
 
+// --- marginales du modèle manuel ---------------------------------------
+// Une passe sur les C(N, 5) grilles donne la constante de normalisation Z et
+// les « marginales » : le poids total des grilles contenant une paire, un
+// triplet ou un quadruplet donné. La part des joueurs manuels ayant
+// exactement k numéros d'un tirage s'en déduit par inclusion-exclusion, sans
+// énumérer les grilles tirage par tirage. Sert à l'ajustement (une passe par
+// évaluation du modèle) et, dans l'app, à l'espérance d'une grille.
+//
+// Tables compactes, indexées dans l'ordre colexicographique : la paire
+// (a < b) est au rang C(b−1, 2) + (a−1), etc. — 2 Mo pour 50 numéros.
+// La passe est découpable (popTablesRun) pour ne pas figer le navigateur.
+
+function popTablesInit(m) {
+  const N = m.N;
+  if (m.K !== 5) throw new Error('popTables : grilles de 5 numéros seulement');
+  const c1 = new Int32Array(N + 2), c2 = new Int32Array(N + 2), c3 = new Int32Array(N + 2), c4 = new Int32Array(N + 2);
+  const row = new Int32Array(N + 2), col = new Int32Array(N + 2);
+  for (let x = 1; x <= N; x++) {
+    c1[x] = x - 1; c2[x] = binom(x - 1, 2); c3[x] = binom(x - 1, 3); c4[x] = binom(x - 1, 4);
+    row[x] = Math.floor((x - 1) / m.width); col[x] = (x - 1) % m.width;
+  }
+  const pk = [];
+  for (let k = 0; k <= 5; k++) pk.push(binom(5, k) * binom(N - 5, 5 - k) / binom(N, 5));
+  return {
+    m, N, c1, c2, c3, c4, row, col, pk,
+    M1: new Float64Array(N + 1),
+    M2: new Float64Array(binom(N, 2)), M3: new Float64Array(binom(N, 3)), M4: new Float64Array(binom(N, 4)),
+    Z: 0, next: 1, done: false,
+  };
+}
+
+// Traite les grilles dont le plus petit numéro est ≤ upTo (reprend où la
+// passe s'était arrêtée). Le poids de chaque grille est celui de
+// manualLogWeight, calculé de proche en proche.
+function popTablesRun(t, upTo) {
+  const { m, N, c1, c2, c3, c4, row, col, M2, M3, M4 } = t;
+  const theta = m.theta, PW = m.PW, gAlign = m.gAlign, B = N + 1;
+  const eAlign = Math.exp(gAlign);
+  let Z = t.Z;
+  const last = Math.min(upTo, N - 4);
+  let a = t.next;
+  for (; a <= last; a++) {
+    const sa = theta[a], aB = a * B;
+    for (let b = a + 1; b <= N - 3; b++) {
+      const sb = sa + theta[b] + PW[aB + b], bB = b * B;
+      const pAB = c2[b] + c1[a];
+      for (let c = b + 1; c <= N - 2; c++) {
+        const sc = sb + theta[c] + PW[aB + c] + PW[bB + c], cB = c * B;
+        const pAC = c2[c] + c1[a], pBC = c2[c] + c1[b], qABC = c3[c] + pAB;
+        const f3 = (row[a] === row[c]) || (col[a] === col[b] && col[b] === col[c]);
+        for (let d = c + 1; d <= N - 1; d++) {
+          const sd = sc + theta[d] + PW[aB + d] + PW[bB + d] + PW[cB + d], dB = d * B;
+          const cd = (col[a] === col[d] ? 1 : 0) + (col[b] === col[d] ? 1 : 0) + (col[c] === col[d] ? 1 : 0);
+          const f4 = f3 || (row[b] === row[d]) || cd >= 2;
+          const pAD = c2[d] + c1[a], pBD = c2[d] + c1[b], pCD = c2[d] + c1[c];
+          const qABD = c3[d] + pAB, qACD = c3[d] + pAC, qBCD = c3[d] + pBC;
+          let S = 0;
+          for (let e = d + 1; e <= N; e++) {
+            let q = Math.exp(sd + theta[e] + PW[aB + e] + PW[bB + e] + PW[cB + e] + PW[dB + e]);
+            if (gAlign !== 0) {
+              const ce = (col[a] === col[e] ? 1 : 0) + (col[b] === col[e] ? 1 : 0) + (col[c] === col[e] ? 1 : 0) + (col[d] === col[e] ? 1 : 0);
+              if (f4 || row[c] === row[e] || ce >= 2) q *= eAlign;
+            }
+            S += q;
+            // sous-ensembles contenant e
+            const e2 = c2[e], e3 = c3[e], e4 = c4[e];
+            M2[e2 + c1[a]] += q; M2[e2 + c1[b]] += q; M2[e2 + c1[c]] += q; M2[e2 + c1[d]] += q;
+            M3[e3 + pAB] += q; M3[e3 + pAC] += q; M3[e3 + pAD] += q; M3[e3 + pBC] += q; M3[e3 + pBD] += q; M3[e3 + pCD] += q;
+            M4[e4 + qABC] += q; M4[e4 + qABD] += q; M4[e4 + qACD] += q; M4[e4 + qBCD] += q;
+          }
+          Z += S;
+          // sous-ensembles de {a, b, c, d} : communs à tous les e
+          M4[c4[d] + qABC] += S;
+          M3[qABC] += S; M3[qABD] += S; M3[qACD] += S; M3[qBCD] += S;
+          M2[pAB] += S; M2[pAC] += S; M2[pAD] += S; M2[pBC] += S; M2[pBD] += S; M2[pCD] += S;
+        }
+      }
+    }
+  }
+  t.Z = Z;
+  t.next = a;
+  if (a > N - 4 && !t.done) {
+    // poids des grilles contenant chaque numéro : 4 paires par grille le contiennent
+    for (let i = 1; i <= N; i++) {
+      let s = 0;
+      for (let j = 1; j <= N; j++) if (j !== i) s += i < j ? M2[c2[j] + c1[i]] : M2[c2[i] + c1[j]];
+      t.M1[i] = s / 4;
+    }
+    t.done = true;
+  }
+  return t.done;
+}
+
+function popTables(m) {
+  const t = popTablesInit(m);
+  popTablesRun(t, m.N);
+  return t;
+}
+
+// G_k(D) pour k = 1..5 : part des grilles manuelles ayant exactement k numéros
+// du tirage D (numéros triés), rapportée à celle d'un joueur au hasard.
+// Résultat dans out[k].
+function levelFactors(t, balls, out) {
+  const { c1, c2, c3, c4, M1, M2, M3, M4 } = t;
+  let T1 = 0, T2 = 0, T3 = 0, T4 = 0;
+  for (let i = 0; i < 5; i++) {
+    T1 += M1[balls[i]];
+    for (let j = i + 1; j < 5; j++) {
+      const p = c2[balls[j]] + c1[balls[i]];
+      T2 += M2[p];
+      for (let k = j + 1; k < 5; k++) {
+        const q = c3[balls[k]] + p;
+        T3 += M3[q];
+        for (let l = k + 1; l < 5; l++) T4 += M4[c4[balls[l]] + q];
+      }
+    }
+  }
+  const T5 = Math.exp(manualLogWeight(balls, t.m));
+  const Z = t.Z, pk = t.pk;
+  out[5] = T5 / Z / pk[5];
+  out[4] = (T4 - 5 * T5) / Z / pk[4];
+  out[3] = (T3 - 4 * T4 + 10 * T5) / Z / pk[3];
+  out[2] = (T2 - 3 * T3 + 6 * T4 - 10 * T5) / Z / pk[2];
+  out[1] = (T1 - 2 * T2 + 3 * T3 - 4 * T4 + 5 * T5) / Z / pk[1];
+  return out;
+}
+
+// --- espérance d'une grille --------------------------------------------
+// Ce que rapporte une grille ne dépend pas que de ses chances : à chaque rang
+// en répartition, le lot est la dotation divisée par le nombre de gagnants —
+// et ce nombre dépend de ce que jouent les autres. Si la grille gagne au rang
+// « m numéros + s étoiles », le tirage contient m de ses numéros : on moyenne
+// donc 1 / (gagnants) sur les tirages compatibles, avec le modèle
+//     gagnants = V × p × [π + (1−π) × G_m(tirage) × Q_s(étoiles tirées)].
+// La grille elle-même s'ajoute aux gagnants : avec K autres gagnants, K suivant
+// une loi de Poisson de moyenne λ, E[1 / (1 + K)] = (1 − e^−λ) / λ — ce qui
+// vaut aussi bien pour le jackpot (λ petit) que pour les petits rangs.
+
+// Générateur déterministe : une grille donnée a toujours la même estimation
+function seededRandom(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let x = Math.imul(a ^ (a >>> 15), 1 | a);
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Facteurs des étoiles / du N° Chance chez les joueurs manuels, par nombre
+// d'étoiles trouvées. manual : { clé → facteur manuel } (table mesurée,
+// ramenée à la part des joueurs manuels) ; kind : 'starPairs' ou 'chance'.
+// Renvoie levels(mine, s) → les facteurs Q_s de chaque tirage d'étoiles (ou
+// de N° Chance) qui donne exactement s bonnes étoiles à `mine`, et all(s) →
+// ceux de tous les tirages possibles (grille au hasard).
+function bonusLevels(kind, manual) {
+  const keys = Object.keys(manual);
+  let total = 0;
+  for (const k of keys) total += manual[k];
+  if (kind === 'chance') {
+    const n = keys.length;
+    const share = {}; // part des grilles manuelles portant ce N° Chance
+    for (const k of keys) share[k] = manual[k] / total;
+    const q = (c, s) => (s === 1 ? share[c] * n : (1 - share[c]) * n / (n - 1));
+    return {
+      top: 1,
+      levels: (mine, s) => keys.filter(c => (c === String(mine)) === (s === 1)).map(c => q(c, s)),
+      all: s => keys.map(c => q(c, s)),
+    };
+  }
+  // paires d'étoiles « a-b »
+  const pair = {}, marg = {};
+  let stars = 0;
+  for (const k of keys) {
+    pair[k] = manual[k] / total;
+    const [a, b] = k.split('-').map(Number);
+    marg[a] = (marg[a] || 0) + pair[k];
+    marg[b] = (marg[b] || 0) + pair[k];
+    stars = Math.max(stars, a, b);
+  }
+  const nPairs = keys.length, p2 = 1 / nPairs, p1 = 2 * (stars - 2) / nPairs, p0 = 1 - p1 - p2;
+  const q = (k, s) => {
+    const [a, b] = k.split('-').map(Number);
+    if (s === 2) return pair[k] / p2;
+    if (s === 1) return (marg[a] + marg[b] - 2 * pair[k]) / p1;
+    return (1 - marg[a] - marg[b] + pair[k]) / p0;
+  };
+  const hits = (k, mine) => { const [a, b] = k.split('-').map(Number); return (mine.includes(a) ? 1 : 0) + (mine.includes(b) ? 1 : 0); };
+  return {
+    top: 2,
+    levels: (mine, s) => keys.filter(k => hits(k, mine) === s).map(k => q(k, s)),
+    all: s => keys.map(k => q(k, s)),
+  };
+}
+
+// Espérance d'une grille, rang par rang.
+//   t      : marginales du modèle manuel (popTables), pi : part de Flash
+//   bonus  : bonusLevels(...) ou null (pas de table d'étoiles / N° Chance)
+//   ranks  : rangs en répartition [{ rank, m, s, p, pool }] — pool en euros de
+//            dotation par grille jouée
+//   V      : volume attendu ; jackpot : { p, m, s, amount } ou null
+//   balls, mine : la grille (numéros triés, étoiles ou N° Chance) — ou
+//            balls = null pour une grille tirée au hasard (la référence)
+// Renvoie { ranks: [{ rank, m, s, ev }], evRanks, jackpot: { factor, pShare,
+// kept, ev } }.
+function gridValue({ t, pi, bonus, ranks, V, jackpot }, balls, mine) {
+  const N = t.N, SAMPLE = 1500; // tirages par niveau : moyenne à ±0,2 % près, soit moins d'un dixième de centime
+  const rnd = seededRandom(balls ? balls.reduce((h, x) => h * 53 + x, 7) : 12345);
+  const g = [0, 0, 0, 0, 0, 0];
+  // G_m des tirages compatibles avec « m numéros de la grille » (tous s'ils
+  // sont peu nombreux, un échantillon sinon) ; grille au hasard : tirages
+  // uniformes, tous niveaux à la fois
+  const byLevel = {};
+  const levelsFor = m => {
+    if (byLevel[m]) return byLevel[m];
+    const out = [];
+    if (!balls) {
+      if (!byLevel.any) {
+        byLevel.any = [];
+        for (let i = 0; i < SAMPLE; i++) {
+          const set = new Set();
+          while (set.size < 5) set.add(1 + Math.floor(rnd() * N));
+          levelFactors(t, [...set].sort((x, y) => x - y), g);
+          byLevel.any.push(g.slice());
+        }
+      }
+      for (const v of byLevel.any) out.push(v[m]);
+    } else if (m === 5) {
+      levelFactors(t, balls, g);
+      out.push(g[5]);
+    } else {
+      const inGrid = new Uint8Array(N + 1);
+      for (const x of balls) inGrid[x] = 1;
+      const others = [];
+      for (let x = 1; x <= N; x++) if (!inGrid[x]) others.push(x);
+      const need = 5 - m;
+      const count = binom(5, m) * binom(others.length, need);
+      const push = (kept, extra) => { levelFactors(t, kept.concat(extra).sort((x, y) => x - y), g); out.push(g[m]); };
+      if (count <= SAMPLE) {
+        // énumération : tous les sous-ensembles gardés × tous les compléments
+        const subsets = (arr, k) => {
+          const res = [];
+          const rec = (from, cur) => {
+            if (cur.length === k) { res.push(cur.slice()); return; }
+            for (let i = from; i < arr.length; i++) { cur.push(arr[i]); rec(i + 1, cur); cur.pop(); }
+          };
+          rec(0, []);
+          return res;
+        };
+        const keeps = subsets(balls, m), extras = subsets(others, need);
+        for (const kept of keeps) for (const extra of extras) push(kept, extra);
+      } else {
+        for (let i = 0; i < SAMPLE; i++) {
+          const kept = balls.slice();
+          while (kept.length > m) kept.splice(Math.floor(rnd() * kept.length), 1);
+          const extra = new Set();
+          while (extra.size < need) extra.add(others[Math.floor(rnd() * others.length)]);
+          push(kept, [...extra]);
+        }
+      }
+    }
+    byLevel[m] = out;
+    return out;
+  };
+  const bonusFor = s => {
+    if (!bonus) return [1];
+    return balls ? bonus.levels(mine, s) : bonus.all(s);
+  };
+  // E[(1 − e^−λ) / F] sur les tirages compatibles, λ = V × p × F
+  const share = (m, s, p) => {
+    const gs = levelsFor(m), qs = bonusFor(s);
+    let sum = 0;
+    for (const gm of gs) {
+      for (const q of qs) {
+        const F = pi + (1 - pi) * gm * q;
+        const lam = V * p * F;
+        sum += (lam > 40 ? 1 : lam > 1e-9 ? 1 - Math.exp(-lam) : lam) / F;
+      }
+    }
+    return sum / (gs.length * qs.length);
+  };
+  const out = { ranks: [], evRanks: 0, jackpot: null };
+  for (const r of ranks) {
+    const ev = r.pool * share(r.m, r.s, r.p);
+    out.ranks.push({ rank: r.rank, m: r.m, s: r.s, ev });
+    out.evRanks += ev;
+  }
+  if (jackpot) {
+    // part du jackpot gardée : E[1 / (1 + K)] = (1 − e^−λ) / λ
+    const gs = levelsFor(jackpot.m), qs = bonusFor(jackpot.s);
+    let kept = 0, pShare = 0, factor = 0;
+    for (const gm of gs) {
+      for (const q of qs) {
+        const F = pi + (1 - pi) * gm * q;
+        const lam = V * jackpot.p * F;
+        kept += lam > 1e-9 ? (1 - Math.exp(-lam)) / lam : 1;
+        pShare += 1 - Math.exp(-lam);
+        factor += F;
+      }
+    }
+    const n = gs.length * qs.length;
+    out.jackpot = {
+      factor: factor / n, pShare: pShare / n, kept: kept / n,
+      ev: jackpot.amount ? jackpot.p * jackpot.amount * kept / n : null,
+    };
+  }
+  return out;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     STAR_12_ERA_START, EM_13_RANKS_START,
@@ -584,5 +895,6 @@ if (typeof module !== 'undefined' && module.exports) {
     STRUCT_FEATURES, gridWidthFor, structFeatures,
     exactVolumes, binom, emStarMax, makeRankProbs, VOLUME_MIN_P, volumeRanks, drawLevels,
     pairWeights, preparePopModel, manualLogWeight, manualBallLog,
+    popTablesInit, popTablesRun, popTables, levelFactors, seededRandom, bonusLevels, gridValue,
   };
 }

@@ -39,105 +39,13 @@ const args = process.argv.slice(2);
 const flag = name => args.includes('--' + name);
 const optGame = args.includes('--game') ? args[args.indexOf('--game') + 1] : null;
 
-// --- énumération des grilles et marginales ---------------------------
-// Une passe sur les C(N, 5) grilles donne la constante de normalisation Z et
-// les « marginales » M_j(S) = Σ des poids des grilles contenant S, pour toute
-// paire, tout triplet et tout quadruplet S. La part de grilles manuelles
-// ayant exactement m bons numéros d'un tirage s'en déduit par
-// inclusion-exclusion — sans énumérer les grilles tirage par tirage.
-
-function makeEngine(N, width) {
-  const B = N + 1;
-  const M2 = new Float64Array(B * B);
-  const M3 = new Float64Array(B * B * B);
-  const M4 = new Float64Array(B * B * B * B);
-  const row = new Int32Array(B), col = new Int32Array(B);
-  for (let x = 1; x <= N; x++) { row[x] = Math.floor((x - 1) / width); col[x] = (x - 1) % width; }
-  let Z = 0;
-
-  // Même poids que core.manualLogWeight, calculé de proche en proche
-  function pass(m) {
-    const theta = m.theta, PW = m.PW, gAlign = m.gAlign;
-    const eAlign = Math.exp(gAlign);
-    M2.fill(0); M3.fill(0); M4.fill(0);
-    Z = 0;
-    for (let a = 1; a <= N - 4; a++) {
-      const sa = theta[a], aB = a * B;
-      for (let b = a + 1; b <= N - 3; b++) {
-        const sb = sa + theta[b] + PW[aB + b], bB = b * B, abB = (aB + b) * B;
-        for (let c = b + 1; c <= N - 2; c++) {
-          const sc = sb + theta[c] + PW[aB + c] + PW[bB + c], cB = c * B;
-          const abcB = (abB + c) * B, acB = (aB + c) * B, bcB = (bB + c) * B;
-          const f3 = (row[a] === row[c]) || (col[a] === col[b] && col[b] === col[c]);
-          for (let d = c + 1; d <= N - 1; d++) {
-            const sd = sc + theta[d] + PW[aB + d] + PW[bB + d] + PW[cB + d], dB = d * B;
-            const cd = (col[a] === col[d] ? 1 : 0) + (col[b] === col[d] ? 1 : 0) + (col[c] === col[d] ? 1 : 0);
-            const f4 = f3 || (row[b] === row[d]) || cd >= 2;
-            const abdB = (abB + d) * B, acdB = (acB + d) * B, bcdB = (bcB + d) * B;
-            const adB = (aB + d) * B, bdB = (bB + d) * B, cdB = (cB + d) * B;
-            let S = 0;
-            for (let e = d + 1; e <= N; e++) {
-              let q = Math.exp(sd + theta[e] + PW[aB + e] + PW[bB + e] + PW[cB + e] + PW[dB + e]);
-              if (gAlign !== 0) {
-                const ce = (col[a] === col[e] ? 1 : 0) + (col[b] === col[e] ? 1 : 0) + (col[c] === col[e] ? 1 : 0) + (col[d] === col[e] ? 1 : 0);
-                if (f4 || row[c] === row[e] || ce >= 2) q *= eAlign;
-              }
-              S += q;
-              // sous-ensembles contenant e
-              M2[aB + e] += q; M2[bB + e] += q; M2[cB + e] += q; M2[dB + e] += q;
-              M3[abB + e] += q; M3[acB + e] += q; M3[adB + e] += q; M3[bcB + e] += q; M3[bdB + e] += q; M3[cdB + e] += q;
-              M4[abcB + e] += q; M4[abdB + e] += q; M4[acdB + e] += q; M4[bcdB + e] += q;
-            }
-            Z += S;
-            // sous-ensembles de {a, b, c, d} : communs à tous les e
-            M4[abcB + d] += S;
-            M3[abB + c] += S; M3[abB + d] += S; M3[acB + d] += S; M3[bcB + d] += S;
-            M2[aB + b] += S; M2[aB + c] += S; M2[aB + d] += S; M2[bB + c] += S; M2[bB + d] += S; M2[cB + d] += S;
-          }
-        }
-      }
-    }
-    return Z;
-  }
-
-  // G_m(D), m = 2..5 : part des grilles manuelles ayant exactement m numéros
-  // du tirage D, rapportée à la part p_m d'un joueur au hasard
-  function levels(balls, m, pm, out, o) {
-    let T2 = 0, T3 = 0, T4 = 0;
-    for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) {
-      const ij = balls[i] * B + balls[j];
-      T2 += M2[ij];
-      for (let k = j + 1; k < 5; k++) {
-        const ijk = ij * B + balls[k];
-        T3 += M3[ijk];
-        for (let l = k + 1; l < 5; l++) T4 += M4[ijk * B + balls[l]];
-      }
-    }
-    const T5 = Math.exp(core.manualLogWeight(balls, m));
-    out[o] = (T2 - 3 * T3 + 6 * T4 - 10 * T5) / Z / pm[2];
-    out[o + 1] = (T3 - 4 * T4 + 10 * T5) / Z / pm[3];
-    out[o + 2] = (T4 - 5 * T5) / Z / pm[4];
-    out[o + 3] = T5 / Z / pm[5];
-  }
-
-  // Part des grilles manuelles contenant chaque numéro, rapportée à k/N
-  function singles() {
-    const out = new Array(N + 1).fill(0);
-    for (let i = 1; i <= N; i++) {
-      let s = 0;
-      for (let j = 1; j <= N; j++) if (j !== i) s += M2[Math.min(i, j) * B + Math.max(i, j)];
-      out[i] = (s / 4) / Z / (5 / N);
-    }
-    return out;
-  }
-
-  return { pass, levels, singles, get Z() { return Z; } };
-}
-
 // --- modèle à partir du vecteur de paramètres --------------------------
 // u = [θ_1..θ_N, γ (structures, ordre de STRUCT_FEATURES), logit π, une
 // constante par segment de volume]. Les constantes absorbent l'erreur commune
 // de la calibration du volume dans chaque régime (0,3 à 2 %).
+// La part des grilles manuelles ayant 2 à 5 numéros d'un tirage vient des
+// marginales de js/core.js (popTables : une passe sur les C(N, 5) grilles par
+// évaluation du modèle, puis inclusion-exclusion tirage par tirage).
 
 function modelFrom(u, N, width) {
   const theta = new Float64Array(N + 1);
@@ -149,7 +57,6 @@ function modelFrom(u, N, width) {
 // --- ajustement (Levenberg-Marquardt, jacobien numérique) --------------
 
 function fit(rows, nSeg, N, width, pm, init, opts = {}) {
-  const eng = opts.eng;
   const iPi = N + NF, iC = iPi + 1, P = iC + nSeg;
   const u = new Float64Array(P);
   if (init) u.set(init.subarray(0, Math.min(P, init.length)));
@@ -157,11 +64,14 @@ function fit(rows, nSeg, N, width, pm, init, opts = {}) {
   const n = rows.length;
   const NR = LEVELS.length + 1;
 
+  const lv = [0, 0, 0, 0, 0, 0];
   const evalG = uu => {
-    const m = modelFrom(uu, N, width);
-    eng.pass(m);
+    const tables = core.popTables(modelFrom(uu, N, width));
     const G = new Float64Array(n * 4);
-    for (let t = 0; t < n; t++) eng.levels(rows[t].balls, m, pm, G, 4 * t);
+    for (let t = 0; t < n; t++) {
+      core.levelFactors(tables, rows[t].balls, lv);
+      G[4 * t] = lv[2]; G[4 * t + 1] = lv[3]; G[4 * t + 2] = lv[4]; G[4 * t + 3] = lv[5];
+    }
     return G;
   };
   const resid = (uu, G) => {
@@ -250,15 +160,14 @@ function fit(rows, nSeg, N, width, pm, init, opts = {}) {
 }
 
 // Prédictions du modèle sur des tirages (éventuellement hors échantillon)
-function predict(fitted, rows, N, width, pm, eng) {
+function predict(fitted, rows, N, width) {
   const { u, pi, idx } = fitted;
-  const m = modelFrom(u, N, width);
-  eng.pass(m);
-  const G = new Float64Array(4);
+  const tables = core.popTables(modelFrom(u, N, width));
+  const lv = [0, 0, 0, 0, 0, 0];
   return rows.map(row => {
-    eng.levels(row.balls, m, pm, G, 0);
+    core.levelFactors(tables, row.balls, lv);
     const c = row.seg < idx.P - idx.iC ? u[idx.iC + row.seg] : 0;
-    const F = Array.from(G, g => pi + (1 - pi) * g);
+    const F = [lv[2], lv[3], lv[4], lv[5]].map(g => pi + (1 - pi) * g);
     return { a: { 2: c + Math.log(F[0]), 3: c + Math.log(F[1]), 4: c + Math.log(F[2]) }, mu5: row.off5 * Math.exp(c) * F[3], F5: F[3] };
   });
 }
@@ -336,12 +245,12 @@ function bonusTable(data) {
 // --- validation hors échantillon ---------------------------------------
 // Appris sur les 70 % premiers tirages, jugé sur les 30 % suivants.
 
-function validate(data, eng, init, maxIter) {
+function validate(data, init, maxIter) {
   const { rows, N, width, pm, nSeg } = data;
   const cut = Math.floor(rows.length * 0.7);
   const train = rows.slice(0, cut), test = rows.slice(cut);
-  const fitted = fit(train, nSeg, N, width, pm, init, { eng, rounds: 2, maxIter: maxIter || 20 });
-  const pred = predict(fitted, test, N, width, pm, eng);
+  const fitted = fit(train, nSeg, N, width, pm, init, { rounds: 2, maxIter: maxIter || 20 });
+  const pred = predict(fitted, test, N, width);
   const rmse = (obs, est) => Math.sqrt(obs.reduce((s, v, i) => s + (v - est[i]) ** 2, 0) / obs.length);
   const pdev = (ys, mus) => ys.reduce((s, y, i) => s + 2 * ((y > 0 ? y * Math.log(y / mus[i]) : 0) - (y - mus[i])), 0);
   const out = { asOf: rows[rows.length - 1].date, nTrain: train.length, nTest: test.length, testFrom: test[0].date, pi: +fitted.pi.toFixed(3), rmse: {}, rmseNoModel: {} };
@@ -386,8 +295,6 @@ function fitGame(game, previous, doValidate, cold, maxIter) {
     console.log('  = ' + game + ' : aucun nouveau tirage depuis le ' + last + ' — paramètres conservés');
     return prev;
   }
-  const eng = makeEngine(N, width);
-
   // Départ : paramètres déjà publiés (quelques itérations suffisent), sinon zéro
   let init = null;
   if (prev && !cold) {
@@ -398,7 +305,7 @@ function fitGame(game, previous, doValidate, cold, maxIter) {
     (prev.segOffsets || []).forEach((v, i) => { if (i < nSeg) init[N + NF + 1 + i] = v; });
   }
   const t0 = Date.now();
-  const fitted = fit(rows, nSeg, N, width, pm, init, { eng, rounds: 2, maxIter, sig: prev && !cold && prev.fit ? prev.fit.resSd : undefined });
+  const fitted = fit(rows, nSeg, N, width, pm, init, { rounds: 2, maxIter, sig: prev && !cold && prev.fit ? prev.fit.resSd : undefined });
   const u = fitted.u;
 
   // Jauge : θ de moyenne nulle. Puis arrondi — et TOUT ce qui suit (constante
@@ -413,7 +320,8 @@ function fitGame(game, previous, doValidate, cold, maxIter) {
   const pi = +fitted.pi.toFixed(4);
   const published = { ballMax: N, ballCount: 5, width, pi, theta, gamma, logZ: 0 };
   let model = core.preparePopModel(published);
-  const Z = eng.pass(model);
+  const tables = core.popTables(model);
+  const Z = tables.Z;
   published.logZ = +Math.log(Z).toFixed(6);
   model = core.preparePopModel(published);
 
@@ -434,7 +342,9 @@ function fitGame(game, previous, doValidate, cold, maxIter) {
   all.sort();
   const quantiles = [];
   for (let i = 0; i <= QUANTILES; i++) quantiles.push(+all[Math.min(total - 1, Math.round(i * (total - 1) / QUANTILES))].toFixed(4));
-  const single = eng.singles().slice(1).map(v => +v.toFixed(4));
+  // part des grilles manuelles contenant chaque numéro, rapportée à k/N
+  const single = [];
+  for (let i = 1; i <= N; i++) single.push(+(tables.M1[i] / Z / (5 / N)).toFixed(4));
 
   const out = Object.assign(published, {
     asOf: last,
@@ -451,7 +361,7 @@ function fitGame(game, previous, doValidate, cold, maxIter) {
     ((Date.now() - t0) / 1000).toFixed(0) + ' s — π = ' + pi.toFixed(3) + ', résidus ' + out.fit.resSd.join(' / ') + ', surdispersion à 5 numéros ' + out.fit.disp5);
   if (doValidate) {
     const tv = Date.now();
-    out.validation = validate(data, eng, u, maxIter);
+    out.validation = validate(data, u, maxIter);
     const v = out.validation;
     console.log('    validation (' + v.nTrain + ' → ' + v.nTest + ' tirages dès le ' + v.testFrom + ', ' + ((Date.now() - tv) / 1000).toFixed(0) + ' s) : erreur à 2/3/4 numéros ' +
       LEVELS.map(m => (100 * v.rmse[m]).toFixed(1) + ' %').join(' / ') + ' (sans modèle : ' + LEVELS.map(m => (100 * v.rmseNoModel[m]).toFixed(1) + ' %').join(' / ') + ')' +
@@ -501,4 +411,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { makeEngine, modelFrom, fit, predict, loadGame, bonusTable, validate, fitGame };
+module.exports = { modelFrom, fit, predict, loadGame, bonusTable, validate, fitGame };

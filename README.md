@@ -44,14 +44,15 @@ EuroDreams (6 numéros, ~300 tirages) garde le modèle local de l'app, par moind
 
 - **Volume de joueurs par tirage** — la série que la FDJ ne publie pas, mesurée par les **dotations** : `lot × gagnants` d'un rang est une part fixe des mises, d'où le volume joué à 1 ou 2 % près, quels que soient les numéros sortis. L'ancienne estimation `gagnants ÷ probabilité` gonflait avec les numéros populaires : écart-type de 13 % contre le volume exact en EM, 17 % au LOTO, jusqu'à +73 % et +70 % les soirs de dates. Les régimes de répartition sont reconnus dans les données, sans une seule date codée (EM 2004, 2011, 2016, 2020 ; LOTO 2019 ; EuroDreams 2025), de même que les lots fixes prélevés sur l'enveloppe des autres rangs (remboursements du N° Chance au LOTO depuis 2019, des « 2 numéros » en EuroDreams) : le volume mesuré ne dépend plus des numéros sortis, ce qui se vérifie. Repli sur `gagnants ÷ probabilité` quand tous les lots sont fixes (LOTO de mars 2017 à octobre 2019). Graphique, effet jour, élasticité à la cagnotte
 - **Espérance réelle d'une grille** — rangs fixes + My Million ; le jackpot seul ne suffit jamais (seuil ≈ 280 M€ à volume médian, au-dessus du plafond de 250 M€), **mais au plafond l'excédent est reversé au rang 5+1** : mesuré sur 16 soirs plafonnés 2019–2025, +0,46 € par grille — la mesure retombe sur le règlement, 42 % de 1,10 €, la part du jackpot après cinq reports. Au volume réellement joué ces soirs-là (53 M de grilles en médiane, contre 32 M un soir de gros report ordinaire ; 12 M de grilles françaises s'y partagent My Million, qui ne pèse plus que 0,08 € au lieu de 0,20 €), l'espérance est d'environ 2,5 € pour 2,50 € — le seul cas où une grille vaut sa mise (panneau « soir de plafond » quand la cagnotte annoncée atteint 250 M€)
-- **Modèle de Poisson du jackpot** — validé sur l'historique (22,9 % prédit vs 22,6 % observé sur 1 998 tirages EM) ; panneau « prochain tirage » : volume attendu (± erreur mesurée en walk-forward : 10 % en EM, 3 % au LOTO), P(le jackpot tombe), P(devoir partager), espérance jackpot et My Million compris (le million étant partagé entre les grilles françaises du soir)
+- **Modèle de Poisson du jackpot** — validé sur l'historique (22,9 % prédit vs 22,6 % observé sur 1 998 tirages EM) ; panneau « prochain tirage » : volume attendu (± erreur mesurée en walk-forward : 10 % en EM, 3 % au LOTO), P(le jackpot tombe), risque de devoir le partager — celui d'une grille au hasard, et la fourchette selon la grille, du plancher des Flash aux grilles très jouées —, espérance d'une grille au hasard, jackpot et My Million compris (le million étant partagé entre les grilles françaises du soir)
+- **Espérance propre à chaque grille** (EuroMillions, LOTO) — toutes les grilles ont les mêmes chances ; ce qui les distingue, c'est avec combien de gagnants elles partageraient chaque lot. Pour chaque rang en répartition, l'app moyenne la part touchée sur les tirages qui feraient gagner la grille à ce rang (le nombre de co-gagnants y suit le modèle « Flash + joueurs manuels » au volume attendu), et chiffre de même la part du jackpot gardée. Elle affiche l'**écart à une grille tirée au hasard**, ajouté à l'espérance « ce soir » du panneau : une seule référence dans toute la page. Un soir ordinaire d'EuroMillions (26 M€), une grille au hasard vaut 0,88 € pour 2,50 € misés, 98 grilles sur 100 valent entre 0,80 et 0,93 €, le portefeuille contre-tendance 0,91 à 0,93 € ; au LOTO (23 M€), 1,91 € pour 2,20 €, entre 1,59 et 2,06 €. Un soir de plafond, l'écart se creuse — 2,49 € au hasard, de 1,74 à 2,85 €, ≈ 2,80 € pour le portefeuille contre-tendance : au-dessus de la mise, mais l'essentiel tient dans des gains à une chance sur plusieurs millions, ce que l'app rappelle à chaque fois. Le risque de partager le jackpot va de 8 à 32 % selon la grille pour 12 % en moyenne (EM, soir ordinaire), de 8 à 44 % au LOTO, de 21 à 67 % un soir de plafond. Deux repères à ne pas confondre : l'indice de co-joueurs se compare à la grille *moyenne*, tirée vers le haut par une minorité de grilles très jouées ; l'espérance se compare à une grille *au hasard*, dont la moitié sont déjà sous −13 % (EM) ou −19 % (LOTO) — une grille à −5 % de co-joueurs ne vaut donc en général pas plus qu'une grille au hasard, et l'audit le dit
 - **Hall of shame du partage** — surdispersion des gagnants (sd(z) jusqu'à 7,1 pour 1,0 attendu sous hasard) et les pires soirées où un pattern « humain » a pulvérisé les lots, classées par ratio gagnants/attendus (ex. LOTO 11/03/2026, 10-12-14-16-18 : 41 gagnants à 5 numéros pour 1,6 attendu, ×25)
 
 ### Génération de grilles
 
-- **Grille filtrée** — Combinaison aléatoire passant les règles dures et la règle cœur, affichée avec son indice de co-joueurs
+- **Grille filtrée** — Combinaison aléatoire passant les règles dures et la règle cœur, affichée avec son indice de co-joueurs et son espérance au prochain tirage, face à celle d'une grille au hasard
 - **Portefeuille cœur en partition disjointe** — 10 grilles couvrant 100 % des numéros (recouvrement minimal) : P(au moins une grille avec ≥ 2 bons numéros) gagne jusqu'à ~10 points à budget identique ; les étoiles / N° Chance les moins joués vont aux blocs les plus populaires pour que chaque grille reste sous le seuil du cœur
-- **Portefeuille contre-tendance calibré** — les 10 grilles les moins jouées d'un pool de 300 candidates du cœur, triées par l'indice complet (numéros + structures + étoiles ou N° Chance, plus deux règles structurelles : suites arithmétiques, alignements grille) ; chaque grille affiche son % de co-joueurs estimé (typiquement −36 à −40 % en EM, −46 à −49 % au LOTO : les Flash font plancher)
+- **Portefeuille contre-tendance calibré** — les 10 grilles les moins jouées d'un pool de 300 candidates du cœur, triées par l'indice complet (numéros + structures + étoiles ou N° Chance, plus deux règles structurelles : suites arithmétiques, alignements grille) ; chaque grille affiche son % de co-joueurs estimé (typiquement −36 à −40 % en EM, −46 à −49 % au LOTO : les Flash font plancher) et son espérance au prochain tirage, avec la moyenne du portefeuille face à une grille au hasard
 
 ### Visualisations
 
@@ -64,6 +65,7 @@ EuroDreams (6 numéros, ~300 tirages) garde le modèle local de l'app, par moind
 
 Saisissez vos numéros fétiches pour vérifier :
 - Passage ou rejet par chaque règle, et l'indice de co-joueurs de la grille avec son détail (paires de dates, paires consécutives, étoile qui répète un numéro…)
+- Son espérance au prochain tirage face à une grille au hasard, son risque de partager le jackpot si elle le décroche, et les lots attendus par nombre de bons numéros (EuroMillions et LOTO)
 - Plus proche voisin dans l'historique
 - Simulation « si j'avais joué cette grille à chaque tirage » avec bilan net, calculée avec les règles de gains de chaque époque
 
@@ -134,7 +136,7 @@ Les deux dernières lignes ne dépendent d'aucun service tiers : même avec `eur
 euroaffute/
 ├── index.html              # Application (HTML + JS inline)
 ├── js/
-│   └── core.js             # Calcul partagé avec les scripts Node : rangs par ère, volume exact, évaluation du modèle
+│   └── core.js             # Calcul partagé avec les scripts Node : rangs par ère, volume exact, modèle de popularité, espérance par grille
 ├── css/
 │   ├── common.css          # Styles partagés, design system, spacing tokens
 │   ├── fonts/              # Polices auto-hébergées (woff2, sous-ensemble latin)
@@ -162,9 +164,10 @@ euroaffute/
 
 1. **Chargement** — Le JSON du jeu sélectionné est chargé, parsé et mis en cache de session (changement d'onglet ≈ 15 ms)
 2. **Apprentissage** — `learnPopularity()` charge le modèle de popularité publié (`data/popularity.json`, ajusté hors ligne par `scripts/fit-popularity.js` : l'app ne fait que l'évaluer) et garde en repli son modèle local, par moindres carrés ; `learnFilters()` en déduit le seuil du cœur — exact avec le modèle publié, dont les quantiles sont calculés sur toutes les grilles, par Monte Carlo sinon —, plus les règles dures ; `learnEconomics()` mesure le volume de joueurs par les dotations (`exactVolumes()` : régimes de répartition reconnus par leurs rapports de dotation, constante de chaque rang apprise par une identité exacte), puis l'espérance, le modèle de Poisson et l'excédent des soirs de plafond ; `learnFairness()` calcule les tests d'équité
-3. **Filtrage** — `passesAll()` applique les règles dures puis compare l'indice de co-joueurs de la grille complète au seuil du cœur
-4. **Estimation Monte Carlo** — 50 000 combinaisons testées par tranches (thread principal jamais bloqué), résultat mémoïsé par jeu
-5. **Rendu** — Toutes les sections sont recalculées au changement de jeu
+3. **Espérance par grille** — après le chargement, `popTables()` (`js/core.js`, le moteur qui sert aussi à l'ajustement) parcourt une fois les ~2 millions de grilles de numéros, par tranches en tâche de fond (≈ 0,3 s) ; `gridValue()` en tire ensuite l'espérance d'une grille en 5 à 10 ms, sur un échantillon fixe de tirages (même grille, même valeur)
+4. **Filtrage** — `passesAll()` applique les règles dures puis compare l'indice de co-joueurs de la grille complète au seuil du cœur
+5. **Estimation Monte Carlo** — 50 000 combinaisons testées par tranches (thread principal jamais bloqué), résultat mémoïsé par jeu
+6. **Rendu** — Toutes les sections sont recalculées au changement de jeu
 
 > [!IMPORTANT]
 > La couverture du cœur (70 / 80 / 90 %) est un choix de confort, pas une probabilité de gain : élargir le cœur fait tomber plus de tirages dedans mais accepte des grilles plus partagées (compté aux gagnants à 5 numéros, en EM : −14 % de co-joueurs à 70 %, −11 % à 80 %, −7 % à 90 % ; au LOTO −25 / −22 / −16 %). Le portefeuille contre-tendance, lui, prend les grilles les moins jouées du cœur quelle que soit la couverture.
