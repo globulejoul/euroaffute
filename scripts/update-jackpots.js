@@ -259,13 +259,23 @@ async function main() {
   const draws = recentEuromillionsDraws(TIMELINE_SIZE);
   const wanted = draws.map(d => d.date);
   for (const draw of draws) {
-    if (out.recent[draw.date]) continue;
+    // Un gagnant au rang 1 dans les données FDJ fait autorité, y compris sur
+    // une entrée déjà présente : le listing peut avoir été lu avant la
+    // publication des gagnants, et une entrée existante n'était jamais revue
+    // (tirage du 10/11/2026 : 141,9 M€ gagnés, resté marqué « non gagné »).
+    // L'inverse n'est pas corrigé : zéro gagnant dans nos données peut venir
+    // d'une archive FDJ incomplète (colonnes Europe vides, cf. 31/01/2020).
     const exact = jackpotFromDrawData(draw);
     if (exact) {
-      out.recent[draw.date] = exact;
-      console.log('  ✓ tirage ' + draw.date + ' : ' + (exact.jackpot / 1e6).toFixed(1) + ' M€ (calculé depuis les données FDJ)');
+      const prev = out.recent[draw.date];
+      if (!prev || prev.jackpot !== exact.jackpot || prev.won !== true || prev.est) {
+        out.recent[draw.date] = exact;
+        console.log('  ✓ tirage ' + draw.date + ' : ' + (exact.jackpot / 1e6).toFixed(1) + ' M€ (calculé depuis les données FDJ' +
+                    (prev ? ', remplace ' + (prev.jackpot / 1e6).toFixed(1) + ' M€ ' + (prev.won ? 'gagné' : 'non gagné') : '') + ')');
+      }
       continue;
     }
+    if (out.recent[draw.date]) continue;
     const announced = out.pending[draw.date];
     if (announced) {
       out.recent[draw.date] = { jackpot: announced, won: false, est: true };
